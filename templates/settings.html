@@ -32,7 +32,7 @@
 
   <section class="tab-panel" data-panel="account" role="tabpanel" hidden>
     <form id="password-form" class="stacked-form">
-      {{ csrf_input(request) }}
+      {{ csrf_input }}
       <label class="field">
         <span class="field-label">Current password</span>
         <input type="password" name="current_password" required

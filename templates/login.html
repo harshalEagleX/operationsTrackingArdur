@@ -20,7 +20,7 @@
     {% endif %}
 
     <form id="login-form" method="post" autocomplete="on" novalidate>
-      {{ csrf_input(request) }}
+      {{ csrf_input }}
       <input type="hidden" name="next" value="{{ next_url }}">
 
       <label class="field">

@@ -30,7 +30,7 @@
     </div>
 
     <form method="post" action="{{ url('api:accounts:logout') }}" id="logout-form">
-      {{ csrf_input(request) }}
+      {{ csrf_input }}
       <button type="submit" class="btn btn-link">Sign out</button>
     </form>
   </div>

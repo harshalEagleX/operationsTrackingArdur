@@ -28,7 +28,7 @@
     <p class="typing-indicator" id="typing-indicator" aria-live="polite"></p>
 
     <form class="composer" id="composer">
-      {{ csrf_input(request) }}
+      {{ csrf_input }}
       <textarea id="composer-input" rows="1" maxlength="4000"
                 placeholder="Write a message" aria-label="Message"></textarea>
       <input type="file" id="composer-file" hidden multiple>

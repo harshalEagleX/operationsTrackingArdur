@@ -7,36 +7,21 @@ url_for → url swap. autoescape is on and stays on.
 from django.conf import settings
 from django.templatetags.static import static
 from django.urls import reverse
-from django.utils.html import escape
 from jinja2 import Environment
-from markupsafe import Markup
 
 from core.timezone import now_ist, today_ist
-
-
-def csrf_input(request) -> Markup:
-    """Render the hidden CSRF field. Jinja2 has no {% csrf_token %} tag."""
-    from django.middleware.csrf import get_token
-
-    token = get_token(request)
-    return Markup(f'<input type="hidden" name="csrfmiddlewaretoken" value="{escape(token)}">')
-
-
-def csrf_token(request) -> str:
-    from django.middleware.csrf import get_token
-
-    return get_token(request)
 
 
 def environment(**options) -> Environment:
     options.setdefault("autoescape", True)
     env = Environment(**options)
+    # Note: `csrf_input` and `csrf_token` are NOT defined here. Django's
+    # Jinja2 backend already injects both into every context as lazy
+    # *values*, so templates write `{{ csrf_input }}` — not a function call.
     env.globals.update(
         {
             "static": static,
             "url": reverse,
-            "csrf_input": csrf_input,
-            "csrf_token": csrf_token,
             "now_ist": now_ist,
             "today_ist": today_ist,
             "DEBUG": settings.DEBUG,
