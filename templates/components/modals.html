@@ -1,0 +1,55 @@
+{#
+  Shared dialogs. <dialog> gives focus trapping, Escape-to-close and the
+  backdrop for free — all things a hand-rolled div gets wrong.
+#}
+
+<dialog class="modal" id="confirm-modal">
+  <form method="dialog">
+    <h2 id="confirm-title">Are you sure?</h2>
+    <p id="confirm-message"></p>
+    <div class="button-row">
+      <button value="cancel" class="btn">Cancel</button>
+      <button value="confirm" class="btn btn-primary" id="confirm-ok">Confirm</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal" id="end-session-modal">
+  <form method="dialog">
+    <h2>Record your work</h2>
+    <label class="field">
+      <span class="field-label">Work units completed</span>
+      <input type="number" name="work_units" id="end-work-units" min="0" required>
+    </label>
+    <label class="field">
+      <span class="field-label">Pages (optional)</span>
+      <input type="number" name="pages" id="end-pages" min="0">
+    </label>
+    <label class="field">
+      <span class="field-label">Notes (optional)</span>
+      <input type="text" name="review" id="end-review" maxlength="255">
+    </label>
+    {# No end_time field. The server timestamps the close. #}
+    <div class="button-row">
+      <button value="cancel" class="btn">Cancel</button>
+      <button value="confirm" class="btn btn-primary">Save &amp; end</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal modal-wide" id="record-modal">
+  <form method="dialog" id="record-form">
+    <h2 id="record-modal-title">Record</h2>
+    <div id="record-modal-fields"></div>
+    <div class="button-row">
+      <button value="cancel" class="btn">Cancel</button>
+      <button value="confirm" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal modal-wide" id="image-viewer">
+  <button type="button" class="modal-close" id="image-viewer-close"
+          aria-label="Close">×</button>
+  <img id="image-viewer-img" alt="">
+</dialog>

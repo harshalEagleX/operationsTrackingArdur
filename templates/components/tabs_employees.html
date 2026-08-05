@@ -1,0 +1,25 @@
+<section class="tab-panel" data-panel="employees" role="tabpanel">
+  <div class="panel-toolbar">
+    <input type="search" id="employee-search" placeholder="Search employees"
+           aria-label="Search employees">
+    <select id="employee-role-filter" aria-label="Filter by role">
+      <option value="">All roles</option>
+      <option value="admin">Administrator</option>
+      <option value="supervisor">Supervisor</option>
+      <option value="employee">Employee</option>
+    </select>
+    <button type="button" class="btn btn-primary" id="add-employee-btn">Add employee</button>
+  </div>
+
+  <table class="data-table" id="employees-table">
+    <thead>
+      <tr>
+        <th>ID</th><th>Name</th><th>Role</th><th>Project</th>
+        <th>Shift</th><th>Status</th><th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <p class="empty-state" hidden>No employees match that search.</p>
+</section>

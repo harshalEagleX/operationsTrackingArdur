@@ -1,0 +1,58 @@
+/* Chat layout — for the deferred feature.
+   Loaded only by templates/chat.html, which is unreachable unless
+   FEATURE_CHAT is on. See apps/chat/README.md. */
+
+.chat-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: var(--gap);
+  height: calc(100vh - 8rem);
+}
+
+.chat-rail {
+  overflow-y: auto;
+  padding: .6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.conversation-list { list-style: none; margin: .6rem 0 0; padding: 0; }
+
+.chat-main {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.chat-header { padding: .6rem .85rem; border-bottom: 1px solid var(--border); }
+
+/* Scrolls independently; older messages load on scroll-to-top by keyset
+   cursor, never by OFFSET. */
+.message-list { overflow-y: auto; padding: .85rem; min-height: 0; }
+
+.typing-indicator {
+  min-height: 1.2rem;
+  margin: 0;
+  padding: 0 .85rem;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+.composer {
+  display: flex;
+  gap: .5rem;
+  align-items: flex-end;
+  padding: .6rem .85rem;
+  border-top: 1px solid var(--border);
+}
+
+.composer textarea { flex: 1; resize: none; max-height: 8rem; }
+
+@media (max-width: 800px) {
+  .chat-layout { grid-template-columns: 1fr; }
+  .chat-rail { max-height: 30vh; }
+}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block page_id %}settings{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1>Settings</h1>
+  <p class="page-subtitle">Application configuration and notification preferences</p>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Settings sections">
+  <button class="tab" role="tab" aria-selected="true"  data-tab="application">Application</button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="notifications">Notifications</button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="account">My account</button>
+</nav>
+
+<div class="tab-panels">
+  <section class="tab-panel" data-panel="application" role="tabpanel">
+    <div id="settings-list"></div>
+  </section>
+
+  <section class="tab-panel" data-panel="notifications" role="tabpanel" hidden>
+    <table class="data-table" id="notification-prefs">
+      <thead><tr><th>Notification</th><th>In app</th><th>Email</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="hint">
+      Some notifications cannot be turned off — SLA warnings and quality
+      feedback are not optional.
+    </p>
+  </section>
+
+  <section class="tab-panel" data-panel="account" role="tabpanel" hidden>
+    <form id="password-form" class="stacked-form">
+      {{ csrf_input(request) }}
+      <label class="field">
+        <span class="field-label">Current password</span>
+        <input type="password" name="current_password" required
+               autocomplete="current-password">
+      </label>
+      <label class="field">
+        <span class="field-label">New password</span>
+        <input type="password" name="new_password" required
+               autocomplete="new-password" minlength="8">
+      </label>
+      <label class="field">
+        <span class="field-label">Confirm new password</span>
+        <input type="password" name="confirm_password" required
+               autocomplete="new-password" minlength="8">
+      </label>
+      <button type="submit" class="btn btn-primary">Change password</button>
+    </form>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ static('js/features/settings.js') }}"></script>
+{% endblock %}

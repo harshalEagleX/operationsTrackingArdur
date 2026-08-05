@@ -1,0 +1,44 @@
+# Local development infrastructure only — Postgres + Redis.
+# The Django app itself runs on the host (see Makefile / docs/SETUP.md)
+# so that reloads are instant and debuggers attach normally.
+#
+#   docker compose up -d
+#   docker compose down          # keeps data
+#   docker compose down -v       # wipes data
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: opstracking-postgres
+    environment:
+      POSTGRES_DB: opstracking
+      POSTGRES_USER: opstracking
+      POSTGRES_PASSWORD: opstracking
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opstracking -d opstracking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: opstracking-redis
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly no
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:

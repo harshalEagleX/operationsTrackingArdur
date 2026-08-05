@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ page_title|default("OpsTracking") }}{% endblock %} · OpsTracking</title>
+
+  <link rel="stylesheet" href="{{ static('css/app.css') }}">
+  <link rel="stylesheet" href="{{ static('css/toast.css') }}">
+  {% block styles %}{% endblock %}
+</head>
+<body data-page="{% block page_id %}{% endblock %}">
+
+  {# Bootstrap payload. The client reads this instead of making three requests
+     before it can render anything. Rendered with |tojson so a name containing
+     a quote cannot break out of the script tag. #}
+  <script id="bootstrap-data" type="application/json">
+    {{ {
+        "user": current_user,
+        "features": features,
+        "wsUrl": ws_url,
+        "apiBase": api_base
+    } | tojson }}
+  </script>
+
+  {% block chrome %}
+    {% include "components/navbar.html" %}
+    <div class="layout">
+      {% include "components/sidebar.html" %}
+      <main class="content" id="main">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  {% endblock %}
+
+  {% include "components/toast_host.html" %}
+
+  <script type="module" src="{{ static('js/core/bootstrap.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

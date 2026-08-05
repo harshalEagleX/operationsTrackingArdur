@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block page_id %}userdashboard{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1>My dashboard</h1>
+  <p class="page-subtitle">
+    {{ current_user.name }}
+    {% if current_user.project %} · {{ current_user.project }}{% endif %}
+  </p>
+</header>
+
+{# ── work timer ─────────────────────────────────────────── #}
+<section class="panel" id="work-panel" aria-labelledby="work-heading">
+  <h2 id="work-heading">Work session</h2>
+
+  <div id="work-idle" class="work-state">
+    <form id="start-session-form" class="inline-form">
+      <label class="field">
+        <span class="field-label">Project</span>
+        <select name="project" id="project" required></select>
+      </label>
+      <label class="field">
+        <span class="field-label">Work type</span>
+        <select name="work_type" id="work_type" required></select>
+      </label>
+      <label class="field">
+        <span class="field-label">Client code</span>
+        <select name="client_code" id="client_code"></select>
+      </label>
+      <label class="field">
+        <span class="field-label">Batch</span>
+        <input type="text" name="batch" id="batch" maxlength="100">
+      </label>
+      <button type="submit" class="btn btn-primary">Start work</button>
+    </form>
+  </div>
+
+  <div id="work-running" class="work-state" hidden>
+    {# The elapsed value is rendered from the server's clock, not the
+       browser's — see js/features/userdashboard-work.js #}
+    <p class="timer" id="work-timer" aria-live="off">00:00:00</p>
+    <p class="timer-meta" id="work-meta"></p>
+    <div class="button-row">
+      <button type="button" class="btn" id="pause-btn">Pause</button>
+      <button type="button" class="btn" id="resume-btn" hidden>Resume</button>
+      <button type="button" class="btn btn-primary" id="end-btn">End &amp; record units</button>
+    </div>
+  </div>
+</section>
+
+{# ── breaks ─────────────────────────────────────────────── #}
+<section class="panel" id="break-panel" aria-labelledby="break-heading">
+  <h2 id="break-heading">Breaks</h2>
+  {# Buttons are built from /api/v1/breaks/types/ — allowances come from the
+     server and are displayed only, never submitted. #}
+  <div class="break-buttons" id="break-buttons"></div>
+  <div id="break-running" hidden>
+    <p class="timer" id="break-timer">00:00</p>
+    <p class="timer-meta" id="break-meta"></p>
+    <button type="button" class="btn btn-primary" id="end-break-btn">End break</button>
+  </div>
+</section>
+
+<nav class="tabs" role="tablist" aria-label="My records">
+  <button class="tab" role="tab" aria-selected="true"  data-tab="tasks">My tasks</button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="sessions">Today's work</button>
+  <button class="tab" role="tab" aria-selected="false" data-tab="feedback">Feedback</button>
+</nav>
+
+<div class="tab-panels">
+  <section class="tab-panel" data-panel="tasks" role="tabpanel">
+    <table class="data-table" id="tasks-table">
+      <thead><tr>
+        <th>Allocation</th><th>Project</th><th>Quantity</th>
+        <th>Progress</th><th>Due</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="empty-state" hidden>No tasks allocated to you right now.</p>
+  </section>
+
+  <section class="tab-panel" data-panel="sessions" role="tabpanel" hidden>
+    <table class="data-table" id="sessions-table">
+      <thead><tr>
+        <th>Started</th><th>Project</th><th>Work type</th>
+        <th>Units</th><th>Time</th><th>Avg/unit</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="empty-state" hidden>No completed sessions today.</p>
+  </section>
+
+  <section class="tab-panel" data-panel="feedback" role="tabpanel" hidden>
+    <div id="feedback-list"></div>
+    <p class="empty-state" hidden>No feedback recorded.</p>
+  </section>
+</div>
+
+{% include "components/modals.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ static('js/user/userdashboard.js') }}"></script>
+{% endblock %}

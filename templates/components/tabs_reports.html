@@ -1,0 +1,37 @@
+<section class="tab-panel" data-panel="reports" role="tabpanel" hidden>
+  <form class="panel-toolbar" id="report-form">
+    <label class="field">
+      <span class="field-label">Report</span>
+      <select name="report_key" id="report-key" required></select>
+    </label>
+    <label class="field">
+      <span class="field-label">From</span>
+      <input type="date" name="date_from" id="report-from">
+    </label>
+    <label class="field">
+      <span class="field-label">To</span>
+      <input type="date" name="date_to" id="report-to">
+    </label>
+
+    <button type="submit" class="btn btn-primary">Run</button>
+
+    {#
+      Export returns 202 immediately and the file arrives as a notification
+      with a download link — the request never waits for a 50,000-row build.
+    #}
+    <button type="button" class="btn" data-export="xlsx">Export Excel</button>
+    <button type="button" class="btn" data-export="csv">Export CSV</button>
+  </form>
+
+  <div class="table-scroll">
+    <table class="data-table" id="report-table">
+      <thead><tr id="report-head"></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <p class="hint" id="report-truncated" hidden>
+    Showing the first 5,000 rows. Export to see the full result.
+  </p>
+  <p class="empty-state" hidden>Run a report to see results.</p>
+</section>

@@ -1,0 +1,15 @@
+<nav class="sidebar" aria-label="Main navigation">
+  <ul class="nav-list">
+    {% if current_user.is_supervisor %}
+      <li><a href="{{ url('pages:dashboard') }}" class="nav-link">Dashboard</a></li>
+    {% endif %}
+    <li><a href="{{ url('pages:userdashboard') }}" class="nav-link">My work</a></li>
+    {% if current_user.is_admin %}
+      <li><a href="{{ url('pages:settings') }}" class="nav-link">Settings</a></li>
+    {% endif %}
+  </ul>
+
+  {% if features.presence %}
+    {% include "components/presence_list.html" %}
+  {% endif %}
+</nav>

@@ -1,0 +1,47 @@
+# OpsTracking — runtime dependencies
+# Python 3.12+ required (Django 5.2 LTS drops 3.9).
+#
+# Version policy: pin to a minor series. Django 5.2 is LTS with security
+# support to April 2028 — see docs/OpsTracking_DRF_Realtime_Architecture.md §2.
+
+# --- core ---
+Django==5.2.*
+djangorestframework==3.16.*
+django-environ==0.12.*
+
+# --- database ---
+# Local dev and staging run PostgreSQL. Production may run MySQL against the
+# legacy schema — uncomment mysqlclient there and set DATABASE_URL accordingly.
+psycopg[binary]==3.2.*
+# mysqlclient==2.2.*
+
+# --- realtime (Channels / ASGI) ---
+channels[daphne]==4.2.*
+channels-redis==4.2.*
+
+# --- background jobs ---
+celery==5.5.*
+redis==5.2.*
+django-celery-beat==2.8.*   # 2.7 pins Django<5.2 and will not resolve
+django-celery-results==2.6.*
+
+# --- auth / security ---
+bcrypt==4.2.*
+django-cors-headers==4.6.*
+
+# --- files / media ---
+Pillow==11.*
+python-magic==0.4.*        # needs libmagic: `brew install libmagic` / `dnf install file-devel`
+
+# --- templating ---
+Jinja2==3.1.*
+
+# --- reports ---
+openpyxl==3.1.*
+
+# --- serving ---
+gunicorn==23.*
+whitenoise==6.8.*
+
+# --- ops ---
+sentry-sdk==2.*

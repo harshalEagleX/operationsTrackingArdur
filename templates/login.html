@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · OpsTracking</title>
+  <link rel="stylesheet" href="{{ static('css/app.css') }}">
+  <link rel="stylesheet" href="{{ static('css/toast.css') }}">
+</head>
+<body class="login-body" data-page="login">
+
+  <main class="login-card">
+    <h1 class="login-title">OpsTracking</h1>
+    <p class="login-subtitle">Sign in to continue</p>
+
+    {% if reason == "session_expired" %}
+      <p class="alert alert-warning" role="status">
+        Your session ended. Sign in again to pick up where you left off.
+      </p>
+    {% endif %}
+
+    <form id="login-form" method="post" autocomplete="on" novalidate>
+      {{ csrf_input(request) }}
+      <input type="hidden" name="next" value="{{ next_url }}">
+
+      <label class="field">
+        <span class="field-label">Employee ID</span>
+        <input type="text" name="emp_id" id="emp_id"
+               required autofocus autocapitalize="characters"
+               autocomplete="username" spellcheck="false">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Password</span>
+        <input type="password" name="password" id="password"
+               required autocomplete="current-password">
+      </label>
+
+      {# aria-live so a screen reader announces the failure without a focus jump #}
+      <p class="form-error" id="login-error" role="alert" aria-live="polite" hidden></p>
+
+      <button type="submit" class="btn btn-primary btn-block" id="login-submit">
+        Sign in
+      </button>
+    </form>
+  </main>
+
+  {% include "components/toast_host.html" %}
+
+  <script id="bootstrap-data" type="application/json">
+    {{ {"user": none, "features": features, "wsUrl": ws_url, "apiBase": api_base} | tojson }}
+  </script>
+  <script type="module" src="{{ static('js/features/login.js') }}"></script>
+</body>
+</html>

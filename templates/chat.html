@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{#
+  Chat is not implemented. pages.views.ChatPage raises 404 unless
+  FEATURE_CHAT is on, so this template is unreachable by default.
+
+  It exists as the layout the feature will fill: a conversation rail, a
+  message list that pages backwards by keyset cursor, and a composer.
+  See apps/chat/README.md.
+#}
+
+{% block page_id %}chat{% endblock %}
+
+{% block content %}
+<div class="chat-layout">
+  <aside class="chat-rail" aria-label="Conversations">
+    <input type="search" id="conversation-search" placeholder="Search people"
+           aria-label="Search conversations">
+    <ul class="conversation-list" id="conversation-list"></ul>
+  </aside>
+
+  <section class="chat-main" aria-label="Conversation">
+    <header class="chat-header" id="chat-header"></header>
+
+    {# Scrolls; older messages load on scroll-to-top via ?before=<id> #}
+    <div class="message-list" id="message-list" aria-live="polite"></div>
+
+    <p class="typing-indicator" id="typing-indicator" aria-live="polite"></p>
+
+    <form class="composer" id="composer">
+      {{ csrf_input(request) }}
+      <textarea id="composer-input" rows="1" maxlength="4000"
+                placeholder="Write a message" aria-label="Message"></textarea>
+      <input type="file" id="composer-file" hidden multiple>
+      <button type="button" class="btn btn-icon" id="attach-btn"
+              aria-label="Attach a file">📎</button>
+      <button type="submit" class="btn btn-primary">Send</button>
+    </form>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{# js/features/chat.js does not exist yet — it is written when the app is built. #}
+{% endblock %}

@@ -1,0 +1,75 @@
+/* Toasts — the replacement for alert().
+   Non-blocking, stackable, dismissible, and announced politely to screen
+   readers instead of stealing focus. */
+
+.toast-host {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  max-width: min(400px, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .7rem .85rem;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 14%);
+  pointer-events: auto;
+  animation: toast-in .2s ease-out;
+}
+
+.toast-leaving {
+  opacity: 0;
+  transform: translateX(1rem);
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.toast-info    { border-left-color: var(--primary); }
+.toast-success { border-left-color: var(--success); }
+.toast-warning { border-left-color: var(--warning); }
+.toast-error   { border-left-color: var(--danger); }
+
+.toast span { flex: 1; font-size: .9rem; }
+
+.toast-action {
+  border: 0;
+  background: none;
+  padding: .1rem .3rem;
+  font: inherit;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.toast-close {
+  border: 0;
+  background: none;
+  padding: 0 .2rem;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(1rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Respect the OS setting — a toast that slides in is decoration, not
+   information. */
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+  .toast-leaving { transition: none; }
+}

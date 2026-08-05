@@ -1,0 +1,18 @@
+<div class="notification-center" id="notification-center" role="dialog"
+     aria-label="Notifications" hidden>
+  <header class="nc-header">
+    <h2>Notifications</h2>
+    <button type="button" class="btn btn-link" id="mark-all-read">Mark all read</button>
+  </header>
+
+  {# Keyset paginated — "load older" passes ?before=<lowest id seen> #}
+  <ul class="nc-list" id="notification-list"></ul>
+
+  <footer class="nc-footer">
+    <button type="button" class="btn btn-link" id="load-more-notifications">
+      Load older
+    </button>
+  </footer>
+
+  <p class="empty-state" id="notifications-empty" hidden>Nothing new.</p>
+</div>

@@ -1,0 +1,7 @@
+{#
+  Toast container. This is what replaces alert().
+
+  aria-live="polite" so a screen reader announces a toast without stealing
+  focus mid-task — which is precisely what alert() did wrong.
+#}
+<div class="toast-host" id="toast-host" role="status" aria-live="polite" aria-atomic="false"></div>

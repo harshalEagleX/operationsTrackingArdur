@@ -1,0 +1,26 @@
+<section class="tab-panel" data-panel="masters" role="tabpanel" hidden>
+  <nav class="subtabs" role="tablist" aria-label="Master data type">
+    <button class="subtab" role="tab" aria-selected="true"  data-master="worktypes">Work types</button>
+    <button class="subtab" role="tab" aria-selected="false" data-master="projects">Projects</button>
+    <button class="subtab" role="tab" aria-selected="false" data-master="clientcodes">Client codes</button>
+    <button class="subtab" role="tab" aria-selected="false" data-master="shifts">Shifts</button>
+  </nav>
+
+  <div class="panel-toolbar">
+    <label class="checkbox">
+      <input type="checkbox" id="masters-active-only" checked>
+      Active only
+    </label>
+    {# Only rendered for admins; the API refuses the write regardless. #}
+    {% if current_user.is_admin %}
+      <button type="button" class="btn btn-primary" id="add-master-btn">Add</button>
+    {% endif %}
+  </div>
+
+  <table class="data-table" id="masters-table">
+    <thead><tr id="masters-head"></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <p class="empty-state" hidden>Nothing here yet.</p>
+</section>

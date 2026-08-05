@@ -1,0 +1,12 @@
+<section class="presence-rail" aria-labelledby="presence-heading">
+  <h2 id="presence-heading" class="rail-heading">
+    On the floor <span class="count" id="presence-count"></span>
+  </h2>
+
+  {#
+    Fetched once from /api/v1/presence/ on load, then updated by
+    `presence.changed` deltas over the websocket. Never polled — see
+    js/features/presence.js.
+  #}
+  <ul class="presence-list" id="presence-list"></ul>
+</section>

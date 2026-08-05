@@ -1,0 +1,46 @@
+# ---- secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+venv/
+.venv/
+env/
+
+# ---- django ----
+*.log
+db.sqlite3
+db.sqlite3-journal
+/staticfiles/
+/media/
+/storage/
+/logs/
+
+# ---- test / lint ----
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# ---- editors / os ----
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# ---- local infra ----
+docker-data/

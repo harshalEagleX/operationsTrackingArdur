@@ -1,0 +1,15 @@
+-r requirements.txt
+
+# --- testing ---
+pytest==8.3.*
+pytest-django==4.9.*
+pytest-asyncio==0.25.*
+pytest-cov==6.0.*
+model-bakery==1.20.*
+
+# --- linting / formatting ---
+ruff==0.9.*
+
+# --- developer QoL ---
+django-extensions==3.2.*
+ipython==8.*

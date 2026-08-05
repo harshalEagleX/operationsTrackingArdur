@@ -1,0 +1,31 @@
+<section class="tab-panel" data-panel="allocations" role="tabpanel" hidden>
+  <div class="panel-toolbar">
+    <input type="search" id="allocation-search" placeholder="Search allocations"
+           aria-label="Search allocations">
+    <select id="allocation-status-filter" aria-label="Filter by status">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="in_progress">In progress</option>
+      <option value="completed">Completed</option>
+      <option value="on_hold">On hold</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+    <label class="checkbox">
+      <input type="checkbox" id="allocation-overdue-only"> Overdue only
+    </label>
+    <button type="button" class="btn btn-primary" id="add-allocation-btn">Allocate work</button>
+    <button type="button" class="btn" id="import-allocations-btn">Import sheet</button>
+  </div>
+
+  <table class="data-table" id="allocations-table">
+    <thead>
+      <tr>
+        <th>Allocation</th><th>Employee</th><th>Project</th>
+        <th>Quantity</th><th>Progress</th><th>Due</th><th>Status</th><th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <p class="empty-state" hidden>No allocations match those filters.</p>
+</section>
