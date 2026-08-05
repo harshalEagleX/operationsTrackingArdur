@@ -1,105 +1,94 @@
 # OpsTracking — Django + DRF + Channels + Celery
-## Architecture, Real-Time Design & GoDaddy cPanel Hosting Guide
+## Architecture & Real-Time Design
 
-**Version:** 2.0 (supersedes the Flask→FastAPI plan)
-**Date:** 05 August 2026
-**Stack:** Python · Django 5.2 LTS · Django REST Framework · Django Channels (ASGI) · Celery · Redis · MySQL · Jinja2 templates · Vanilla JS/CSS
-**Web server:** Apache (bundled with cPanel) — **no Nginx**
+**Version:** 3.0
+**Stack:** Python 3.12+ · Django 5.2 LTS · Django REST Framework · Django Channels (ASGI) · Celery · Redis · PostgreSQL (MySQL supported) · Jinja2 templates · vanilla JS/CSS
+
+> **Scope of this document.** This is the architecture and design reference:
+> what the pieces are, how they fit together, and why each decision was made
+> the way it was. It is deliberately **hosting-agnostic** — it states what the
+> runtime must provide, not which vendor provides it or what that costs. Choose
+> the host separately; Part 14 lists the requirements any candidate has to meet.
+>
+> For getting the application running, see `README.md` and `docs/SETUP.md`.
 
 ---
 
-# PART 0 — VERIFICATION REPORT (read this first)
+# PART 0 — RUNTIME REQUIREMENTS (read this first)
 
-You asked me to verify the claim that *"GoDaddy cPanel supports WebSockets and Celery."*
+Everything downstream assumes the runtime below. If a host cannot provide it,
+the real-time half of this application does not work there — and that is a
+property of the technology, not of any particular vendor.
 
-I checked GoDaddy's own component documentation, their VPS product page, and the Django/Channels documentation. **The claim is half true, and the half that is false is the half that matters.** Here is the evidence.
+## 0.1 What the application needs
 
-## 0.1 What GoDaddy officially publishes
-
-GoDaddy's supported-components table for **Web Hosting (cPanel)** lists exactly these server-side capabilities:
-
-| Component | Web Hosting (cPanel) |
-|---|---|
-| Python | ✓ |
-| MySQL | ✓ |
-| Cron Jobs | ✓ |
-| mod_rewrite | ✓ |
-| CGI | ✓ |
-| cURL, Perl, PHP, SSI, logs | ✓ |
-| **WebSockets** | **not listed** |
-| **Redis** | **not listed** |
-| **Background daemons / workers** | **not listed** |
-
-There is no WebSocket entry, no Redis entry, and no persistent-process entry anywhere on that page. Absence from a support matrix is not proof of prohibition, but combined with the points below it is decisive.
-
-## 0.2 The mechanism that actually blocks you
-
-cPanel's **"Setup Python App"** is Phusion **Passenger**, and Passenger runs your app through **WSGI**.
-
-That single fact ends the discussion:
-
-- **WSGI has no concept of a persistent connection.** It is a request-in / response-out contract. There is no protocol slot for an HTTP `Upgrade: websocket` handshake.
-- **Django has no native WebSocket support either.** To do WebSockets in Django you must install **Django Channels**, switch the project from WSGI to **ASGI**, write consumers, run under **Daphne or Uvicorn** (Gunicorn cannot run ASGI apps), and use **Redis as the channel layer** for anything with more than one process.
-- Shared cPanel gives you Passenger/WSGI and nothing else. You cannot bind your own port, you cannot run Daphne as a daemon, and the account process reaper kills long-lived non-web processes.
-
-**Therefore: moving FastAPI → DRF does not solve your WebSocket problem.** DRF is a synchronous WSGI framework. It is *less* async-capable out of the box than FastAPI was. The runtime requirement — ASGI server + Redis + long-lived processes — is **identical** for both frameworks.
-
-If the reason for the switch was "DRF will let me use WebSockets on shared cPanel," that reason is not valid. If the reason is "we know Django better, we want the ORM/migrations/admin/Celery ecosystem" — that is an excellent reason, and this document is built on it.
-
-## 0.3 Celery on shared cPanel
-
-Celery needs two things shared cPanel does not give you:
-
-1. **A broker.** Redis or RabbitMQ, running as a daemon. Shared hosting almost universally blocks custom daemons and non-standard ports. GoDaddy does not offer a managed Redis add-on on cPanel shared plans.
-2. **A persistent worker process.** `celery -A opstracking worker` must stay alive indefinitely. Shared accounts kill orphaned long-running processes.
-
-The commonly-cited workaround — a cron job every minute that runs a management command — is **not Celery**. It is a 60-second-granularity batch runner. It cannot do sub-second notification fan-out, it cannot retry with backoff, and it will not deliver your chat messages.
-
-## 0.4 What GoDaddy *does* give you that works
-
-GoDaddy **VPS Hosting** publishes exactly what you need:
-
-- **Full root access** with SSH keys and command line
-- **KVM virtualisation**, choice of OS (AlmaLinux, Ubuntu, Debian)
-- **Optional cPanel/WHM + Installatron** — so you keep the cPanel workflow your team knows
-- Plans from 1 vCPU/2 GB up to 32 vCPU/128 GB, with additional dedicated IPs available
-
-Indicative India pricing at time of writing: 1 vCPU / 2 GB ≈ ₹649/mo, **2 vCPU / 4 GB ≈ ₹1,299/mo**, 4 vCPU / 8 GB ≈ ₹2,699/mo (promotional 3-year first-term rates; renewals are higher — budget the renewal number, not the promo).
-
-With root you install Redis, run Daphne and Celery under `systemd`, and proxy WebSockets through the **Apache** that cPanel already ships. **No Nginx is involved at any point.**
-
-## 0.5 Verdict
-
-| Requirement | Shared cPanel | **VPS + cPanel/WHM** |
+| Requirement | Why | Non-negotiable? |
 |---|---|---|
-| Django + DRF (HTTP/JSON) | ✓ via Passenger WSGI | ✓ Gunicorn |
-| Jinja2 / HTML pages | ✓ | ✓ |
-| MySQL | ✓ | ✓ |
-| **WebSockets (chat, presence)** | ✗ | ✓ Daphne + Apache `mod_proxy_wstunnel` |
-| **Redis** | ✗ | ✓ |
-| **Celery worker + beat** | ✗ | ✓ systemd |
-| Real-time notifications | ✗ (polling only, and it will choke) | ✓ |
-| Cost | ~₹200–500/mo | ~₹1,300–2,700/mo |
+| **Long-running processes** | Daphne holds WebSocket connections open; Celery workers must stay alive indefinitely | Yes, for real-time and background work |
+| **ASGI server** (Daphne or Uvicorn) | WSGI has no protocol slot for an HTTP `Upgrade: websocket` handshake | Yes, for WebSockets |
+| **Redis** | Channels layer, Celery broker, cache | Yes |
+| **PostgreSQL or MySQL** | Application data | Yes |
+| **Loopback ports** | The web process, the socket process and Redis bind to `127.0.0.1` | Yes |
+| **Reverse proxy that forwards the upgrade** | The `/ws/` path must reach the ASGI process with `Connection: Upgrade` intact | Yes, for WebSockets |
+| **Writable storage outside the web root** | Uploads must not be reachable by URL | Yes |
+| **TLS** | `wss://` requires a valid certificate | Yes in production |
 
-**Recommendation: GoDaddy VPS, 2 vCPU / 4 GB, AlmaLinux 9, cPanel/WHM licence.** That is the smallest configuration that runs Django + Daphne + Celery + Redis + MySQL comfortably for your ~150 concurrent users. Go to 4 vCPU / 8 GB if MySQL and the Excel report generation share the box.
+Python 3.12 or newer, because Django 5.2 dropped 3.9.
 
-Everything from Part 1 onward assumes that box. Part 15 covers what to do if the VPS purchase is blocked and you must ship on shared hosting anyway.
+## 0.2 The constraint that decides your host
+
+**WSGI cannot carry WebSockets.** It is a request-in / response-out contract
+with no concept of a persistent connection. Django has no native WebSocket
+support either — it needs Django Channels, an ASGI server, and Redis as the
+channel layer for anything running more than one process.
+
+This is true of Django and equally true of FastAPI or anything else: the
+runtime requirement is the framework's, not the framework's fault. Swapping web
+frameworks does not remove it.
+
+The practical consequence: **a host that only offers WSGI through a managed
+Python-app panel cannot run the real-time features**, no matter how the
+application is written.
+
+Likewise, Celery needs a broker daemon and a worker process that stays alive.
+The commonly suggested substitute — a cron job every minute running a
+management command — is a batch runner, not Celery. It cannot do sub-second
+notification fan-out and it cannot retry with backoff.
+
+## 0.3 What still works without long-running processes
+
+Should the real-time runtime be unavailable, roughly the following still runs
+under plain WSGI:
+
+- Django + DRF (all HTTP/JSON endpoints)
+- Jinja2 pages
+- The database and every business rule in the service layer
+- Reports, though export generation would move back into the request
+
+What does not: WebSockets, Redis, Celery, live presence, push notifications.
+The application is built so this degrades rather than breaks — `publish()` is
+the single realtime entry point and the durable outbox means events are still
+recorded — but the user experience is materially worse, and any polling
+fallback puts sustained request load on the web tier.
+
+**Recommendation: run on something that gives you persistent processes.** The
+feature set assumes it.
 
 ---
 
 # PART 1 — RUNTIME TOPOLOGY
 
-No Nginx. cPanel's Apache is the single public-facing server; it terminates TLS (AutoSSL) and reverse-proxies to three local Python processes.
+One public-facing reverse proxy terminates TLS and forwards to the local Python processes. Nothing else is reachable from the internet.
 
 ```
                          Internet  (HTTPS / WSS :443)
                                 │
                     ┌───────────┴───────────┐
-                    │  Apache  (cPanel EA4) │
-                    │  AutoSSL, TLS term.   │
-                    │  mod_proxy            │
-                    │  mod_proxy_http       │
-                    │  mod_proxy_wstunnel   │
+                    │    Reverse proxy      │
+                    │    TLS termination    │
+                    │    HTTP forwarding    │
+                    │    WebSocket upgrade  │
+                    │    static from disk   │
                     └───────────┬───────────┘
                                 │
         ┌───────────────────────┼───────────────────────┐
@@ -137,7 +126,7 @@ No Nginx. cPanel's Apache is the single public-facing server; it terminates TLS 
                              │  MySQL :3306    │
                              └─────────────────┘
 
-            /home/opsuser/storage/   ← uploads, OUTSIDE public_html
+            <app-user-home>/storage/   ← uploads, OUTSIDE public_html
 ```
 
 ## 1.1 Why two Python processes instead of one
@@ -145,7 +134,7 @@ No Nginx. cPanel's Apache is the single public-facing server; it terminates TLS 
 Django 5.2 can serve HTTP under ASGI, so a single Daphne could technically do everything. Do not do that.
 
 - **DRF is synchronous.** Under ASGI every DRF view runs in a thread-pool via `sync_to_async`. You pay the overhead and gain nothing.
-- **Deployment safety.** `systemctl restart opstracking-api` during a deploy drops zero WebSocket connections, because the sockets live in a different process. If you merge them, every deploy disconnects every chat user.
+- **Deployment safety.** Restarting the API process during a deploy drops zero WebSocket connections, because the sockets live in a different process. If you merge them, every deploy disconnects every chat user.
 - **Independent tuning.** Gunicorn wants worker recycling (`--max-requests`) to bound memory on report generation. Daphne wants long uptime and zero recycling.
 
 Same codebase, same settings, two entry points — `opstracking/wsgi.py` and `opstracking/asgi.py`.
@@ -154,16 +143,16 @@ Same codebase, same settings, two entry points — `opstracking/wsgi.py` and `op
 
 | Process | Binds | Managed by | Restart policy |
 |---|---|---|---|
-| Apache | `:80`, `:443` | cPanel | cPanel |
-| Gunicorn (DRF + pages) | `127.0.0.1:8001` | systemd | always |
-| Daphne (Channels/WS) | `127.0.0.1:8002` | systemd | always |
-| Celery worker `default` | — | systemd | always |
-| Celery worker `reports` | — | systemd | always |
-| Celery beat | — | systemd | always |
-| Redis | `127.0.0.1:6379` | systemd | always |
-| MySQL | `127.0.0.1:3306` | cPanel | cPanel |
+| Reverse proxy | `:80`, `:443` | host | always |
+| Gunicorn (DRF + pages) | `127.0.0.1:8001` | supervisor | always |
+| Daphne (Channels/WS) | `127.0.0.1:8002` | supervisor | always |
+| Celery worker `default` | — | supervisor | always |
+| Celery worker `reports` | — | supervisor | always |
+| Celery beat | — | supervisor | always |
+| Redis | `127.0.0.1:6379` | supervisor | always |
+| Database | `127.0.0.1:5432` / `:3306` | host | always |
 
-Nothing except Apache is reachable from the internet.
+Nothing except the reverse proxy is reachable from the internet.
 
 ---
 
@@ -212,7 +201,7 @@ whitenoise==6.8.*                  # optional; Apache can serve static directly
 sentry-sdk==2.*                    # optional but recommended
 ```
 
-System packages on the VPS: `redis`, `libmagic`, `mysql-devel` (for `mysqlclient`), `gcc`, `python3.12-devel`.
+System packages required on the host: `redis`, `libmagic`, `mysql-devel` (for `mysqlclient`), `gcc`, `python3.12-devel`.
 
 ---
 
@@ -221,7 +210,7 @@ System packages on the VPS: `redis`, `libmagic`, `mysql-devel` (for `mysqlclient
 Vertical slices. Each Django app owns its models, serializers, services, views, consumers and tasks. Cross-cutting code lives in `core/`. This is the OOP layering you had in the FastAPI plan (Router → Service → Repository → DB), mapped to Django idiom (ViewSet → Service → Manager/QuerySet → ORM).
 
 ```
-/home/opsuser/
+<app-user-home>/
 ├── app/                                  # ← git repo root (NOT in public_html)
 │   ├── manage.py
 │   ├── requirements.txt
@@ -458,7 +447,7 @@ Vertical slices. Each Django app owns its models, serializers, services, views, 
     └── .htaccess                         # deny everything else
 ```
 
-**Critical placement rule:** the only thing in `public_html/` is `static/`. Application code, `.env`, and `storage/` live one level up where Apache cannot reach them. If a misconfiguration ever exposes the docroot, it exposes CSS — not your database credentials or your employees' uploaded files.
+**Critical placement rule:** the only thing in the web root is `static/`. Application code, `.env`, and `storage/` live outside it, where the web server cannot reach them. If a misconfiguration ever exposes the document root, it exposes CSS — not your database credentials or your employees' uploaded files.
 
 ---
 
@@ -816,10 +805,10 @@ SESSION_SAVE_EVERY_REQUEST = True                 # sliding expiry
 
 CSRF_COOKIE_SECURE   = True
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_TRUSTED_ORIGINS = ["https://ops.yourdomain.com"]
+CSRF_TRUSTED_ORIGINS = ["https://<your-host>"]
 
 SECURE_SSL_REDIRECT       = True
-SECURE_PROXY_SSL_HEADER   = ("HTTP_X_FORWARDED_PROTO", "https")   # Apache sets this
+SECURE_PROXY_SSL_HEADER   = ("HTTP_X_FORWARDED_PROTO", "https")   # set by the proxy
 SECURE_HSTS_SECONDS       = 31536000
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS           = "DENY"
@@ -1070,7 +1059,7 @@ from apps.realtime.middleware import TicketAuthMiddleware
 from opstracking.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter({
-    "http": django_asgi_app,          # Daphne can serve HTTP too; Apache won't route it there
+    "http": django_asgi_app,          # Daphne can serve HTTP too; the proxy won't route it there
     "websocket": TicketAuthMiddleware(
         SessionMiddlewareStack(
             URLRouter(websocket_urlpatterns)
@@ -1693,7 +1682,7 @@ class FileService(BaseService):
 Non-negotiables in that function:
 - **Filename is a UUID.** The user's name is metadata only. Path traversal has nowhere to go.
 - **Stored outside `public_html`.** No URL can reach the bytes directly.
-- **Mode `0640`.** Apache's user cannot read it; only your app user can.
+- **Mode `0640`.** The web server's user cannot read it; only the app user can.
 - **SHA-256 recorded.** Free deduplication and a tamper check.
 
 ## 11.4 Authenticated download
@@ -1719,7 +1708,7 @@ class FileDownloadView(APIView):
 
 `can_read` for a chat attachment means: *is this user a participant in the conversation that this attachment's message belongs to?* Same principle as C-5, applied to bytes instead of rows.
 
-For throughput, enable `mod_xsendfile` (EasyApache 4 package `ea-apache24-mod_xsendfile`) and return `X-Sendfile` instead of streaming through Python. Django checks permissions; Apache pushes the bytes.
+For throughput, enable your web server's sendfile support and return `X-Sendfile` instead of streaming through Python. Django still checks permissions; the web server just moves the bytes.
 
 ## 11.5 Fix the feedback-image BLOB while you're here
 
@@ -1951,7 +1940,7 @@ class RealtimeClient {
 
 Four details that are easy to skip and expensive to skip:
 
-1. **Jitter on backoff.** If the VPS restarts, 150 browsers reconnect. Without jitter they arrive in the same 50 ms window and knock Daphne over on its first breath.
+1. **Jitter on backoff.** If the websocket process restarts, 150 browsers reconnect. Without jitter they arrive in the same 50 ms window and knock Daphne over on its first breath.
 2. **Ping/pong with a deadline.** A TCP connection can be dead while `readyState` still reads `OPEN` — mobile networks and captive portals do this routinely. Only an unanswered ping detects it.
 3. **Cursors + `resume`.** This is what makes a tunnel-induced 30-second gap invisible to the user.
 4. **`pending` queue.** A typing indicator sent while offline should be dropped; a `sub` should not. Queue, replay on open.
@@ -2062,351 +2051,188 @@ export const api = {
 ```
 
 ---
+# PART 14 — DEPLOYMENT
 
-# PART 14 — DEPLOYMENT ON GODADDY VPS + cPanel/WHM
+Written against requirements rather than a vendor. Anything that satisfies
+Part 0 will run this; the specifics below are the shape the deployment takes,
+whatever supplies it.
 
-No Nginx anywhere. cPanel's Apache is the only public-facing server.
+## 14.1 What you are deploying
 
-## 14.1 Provision
+Five long-running processes plus a reverse proxy:
 
-1. Buy **GoDaddy VPS, 2 vCPU / 4 GB minimum**, Linux, **AlmaLinux 9**, with the **cPanel/WHM** option.
-2. Root SSH in, harden: key-only auth, `PermitRootLogin prohibit-password`, fail2ban, cPanel firewall (CSF).
-3. WHM → create a cPanel account (`opsuser`) for your domain.
-4. WHM → **AutoSSL** → issue certificate for `ops.yourdomain.com`. WSS requires a valid cert.
+| Process | Binds | Restart policy |
+|---|---|---|
+| Reverse proxy (TLS termination) | `:80`, `:443` | always |
+| Gunicorn — DRF + pages (WSGI) | `127.0.0.1:8001` | always |
+| Daphne — WebSockets (ASGI) | `127.0.0.1:8002` | always |
+| Celery worker, `default` queue | — | always |
+| Celery worker, `reports` queue | — | always |
+| Celery beat scheduler | — | always |
+| Redis | `127.0.0.1:6379` | always |
+| PostgreSQL / MySQL | `127.0.0.1:5432` / `:3306` | always |
 
-## 14.2 EasyApache 4 modules
+**Nothing except the reverse proxy is reachable from the internet.**
 
-WHM → Software → **EasyApache 4** → Customize → Apache Modules. Enable:
+## 14.2 Layout on disk
 
-- `mod_proxy` · `mod_proxy_http` · **`mod_proxy_wstunnel`** · `mod_rewrite` · `mod_headers` · `mod_deflate` · `mod_expires`
-- optional: `mod_xsendfile` (fast authenticated downloads)
+The only thing under the web root is `static/`. Application code, `.env` and
+`storage/` live outside it.
 
-Or from the shell:
-
-```bash
-yum install -y ea-apache24-mod_proxy_wstunnel ea-apache24-mod_xsendfile
-/scripts/restartsrv_httpd
+```
+<app-user-home>/
+├── app/                  ← the git repo
+│   ├── manage.py
+│   └── .env              ← chmod 600, never committed
+├── .venv/
+├── storage/              ← uploads. NEVER under the web root.
+├── logs/
+└── <web-root>/
+    └── static/           ← collectstatic target ONLY
 ```
 
-## 14.3 System packages
+That placement rule is the whole point: if a misconfiguration ever exposes the
+document root, it exposes CSS — not database credentials and not employees'
+uploaded files.
+
+## 14.3 First deployment
 
 ```bash
-dnf install -y redis python3.12 python3.12-devel gcc \
-               mysql-devel file-devel libjpeg-turbo-devel zlib-devel
+git clone <repo> app && cd app
+python3.12 -m venv ../.venv
+../.venv/bin/pip install -U pip wheel
+../.venv/bin/pip install -r requirements.txt
 
-systemctl enable --now redis
+cp .env.example .env && chmod 600 .env && $EDITOR .env
+
+../.venv/bin/python manage.py migrate --settings=opstracking.settings.prod
+../.venv/bin/python manage.py collectstatic --noinput --settings=opstracking.settings.prod
+../.venv/bin/python manage.py bootstrap_storage --settings=opstracking.settings.prod
 ```
+
+Against an existing legacy database, set `LEGACY_TABLES_MANAGED=False` and use
+`migrate --fake-initial` so Django adopts the tables without issuing DDL. Run
+`scripts/migrate_password_hashes.py --apply` once.
+
+System packages: Redis, `libmagic`, a database client library, and a compiler
+if any dependency needs to build.
+
+## 14.4 Process supervision
+
+Use whatever the host provides — systemd, supervisord, a container
+orchestrator, a platform's process model. The commands are the same:
+
+```bash
+# HTTP (DRF + Jinja2 pages)
+gunicorn opstracking.wsgi:application \
+    --bind 127.0.0.1:8001 \
+    --workers 3 --threads 4 --worker-class gthread \
+    --timeout 120 --graceful-timeout 30 \
+    --max-requests 1000 --max-requests-jitter 100
+
+# WebSockets
+daphne -b 127.0.0.1 -p 8002 --proxy-headers opstracking.asgi:application
+
+# Background work
+celery -A opstracking worker -Q default -c 4 -l INFO --max-tasks-per-child=200
+celery -A opstracking worker -Q reports -c 2 -l INFO
+celery -A opstracking beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+```
+
+The two web processes are tuned differently on purpose. Gunicorn recycles
+workers (`--max-requests`) to bound memory growth during report generation.
+Daphne wants long uptime and no recycling, because every restart drops every
+open socket.
+
+## 14.5 Redis
+
+Bound to loopback, password-protected, never exposed:
 
 ```conf
-# /etc/redis/redis.conf
 bind 127.0.0.1 -::1
 protected-mode yes
-requirepass <LONG_RANDOM_STRING>
+requirepass <long random string>
 maxmemory 512mb
 maxmemory-policy allkeys-lru
 appendonly no
 ```
 
-```bash
-systemctl restart redis
-redis-cli -a '<PASSWORD>' ping     # → PONG
-```
+`allkeys-lru` is right here: everything Redis holds for this application —
+presence, cache, channel groups — is reconstructible. The durable record lives
+in the database.
 
-Redis bound to loopback with a password. It is never reachable from the internet.
+## 14.6 Reverse proxy
 
-## 14.4 Application layout & venv
+Three rules, and **the order matters** because proxies match first-wins:
 
-```bash
-su - opsuser
-mkdir -p ~/app ~/storage ~/logs ~/public_html/static
-cd ~/app && git clone <repo> .
+1. `/static/` — served from disk, never proxied. Far-future `Expires`;
+   filenames are content-hashed so a year-long cache is still correct.
+2. `/ws/` — proxied to `127.0.0.1:8002` **with the WebSocket upgrade
+   preserved** and a long timeout (3600s).
+3. Everything else — proxied to `127.0.0.1:8001`.
 
-python3.12 -m venv ~/venv
-source ~/venv/bin/activate
-pip install -U pip wheel
-pip install -r requirements.txt
+Set `X-Forwarded-Proto: https` so Django's `SECURE_PROXY_SSL_HEADER` sees the
+real scheme; without it, `request.is_secure()` is false behind the proxy and
+secure cookies are never set.
 
-cp .env.example .env && chmod 600 .env && vi .env
-
-python manage.py migrate --settings=opstracking.settings.prod
-python manage.py collectstatic --noinput --settings=opstracking.settings.prod
-python scripts/migrate_password_hashes.py        # one time only
-```
-
-```ini
-# ~/app/.env  (chmod 600)
-DJANGO_SETTINGS_MODULE=opstracking.settings.prod
-SECRET_KEY=<50+ random chars>
-ALLOWED_HOSTS=ops.yourdomain.com
-DB_NAME=opsuser_opstracking
-DB_USER=opsuser_app
-DB_PASSWORD=<strong>
-DB_HOST=127.0.0.1
-DB_PORT=3306
-REDIS_URL=redis://:<redispass>@127.0.0.1:6379
-PRIVATE_STORAGE_ROOT=/home/opsuser/storage
-STATIC_ROOT=/home/opsuser/public_html/static
-```
-
-## 14.5 systemd units
-
-```ini
-# /etc/systemd/system/opstracking-api.service
-[Unit]
-Description=OpsTracking API (Gunicorn/WSGI)
-After=network.target mysqld.service redis.service
-
-[Service]
-Type=notify
-User=opsuser
-Group=opsuser
-WorkingDirectory=/home/opsuser/app
-EnvironmentFile=/home/opsuser/app/.env
-ExecStart=/home/opsuser/venv/bin/gunicorn opstracking.wsgi:application \
-    --bind 127.0.0.1:8001 \
-    --workers 3 --threads 4 --worker-class gthread \
-    --timeout 120 --graceful-timeout 30 \
-    --max-requests 1000 --max-requests-jitter 100 \
-    --access-logfile /home/opsuser/logs/gunicorn.access.log \
-    --error-logfile  /home/opsuser/logs/gunicorn.error.log
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```ini
-# /etc/systemd/system/opstracking-ws.service
-[Unit]
-Description=OpsTracking WebSocket (Daphne/ASGI)
-After=network.target redis.service
-
-[Service]
-User=opsuser
-Group=opsuser
-WorkingDirectory=/home/opsuser/app
-EnvironmentFile=/home/opsuser/app/.env
-ExecStart=/home/opsuser/venv/bin/daphne \
-    -b 127.0.0.1 -p 8002 \
-    --proxy-headers \
-    --access-log /home/opsuser/logs/daphne.log \
-    opstracking.asgi:application
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```ini
-# /etc/systemd/system/opstracking-worker.service
-[Unit]
-Description=OpsTracking Celery worker (default)
-After=network.target redis.service mysqld.service
-
-[Service]
-User=opsuser
-WorkingDirectory=/home/opsuser/app
-EnvironmentFile=/home/opsuser/app/.env
-ExecStart=/home/opsuser/venv/bin/celery -A opstracking worker \
-    -Q default -c 4 -l INFO --max-tasks-per-child=200
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Duplicate as `opstracking-worker-reports.service` with `-Q reports -c 2`, and:
-
-```ini
-# /etc/systemd/system/opstracking-beat.service
-ExecStart=/home/opsuser/venv/bin/celery -A opstracking beat -l INFO \
-    --scheduler django_celery_beat.schedulers:DatabaseScheduler
-```
-
-```bash
-systemctl daemon-reload
-systemctl enable --now opstracking-api opstracking-ws \
-                       opstracking-worker opstracking-worker-reports opstracking-beat
-systemctl status opstracking-ws
-```
-
-## 14.6 Apache reverse proxy — the WebSocket-critical part
-
-cPanel regenerates vhosts, so **never edit `httpd.conf` directly**. Use userdata includes.
-
-```bash
-mkdir -p /etc/apache2/conf.d/userdata/std/2_4/opsuser/ops.yourdomain.com
-mkdir -p /etc/apache2/conf.d/userdata/ssl/2_4/opsuser/ops.yourdomain.com
-```
-
-Write the same file to both paths as `opstracking.conf`:
-
-```apache
-# ── static served straight off disk (never proxied) ──
-Alias /static/ /home/opsuser/public_html/static/
-<Directory "/home/opsuser/public_html/static">
-    Require all granted
-    Options -Indexes
-    ExpiresActive On
-    ExpiresDefault "access plus 30 days"
-</Directory>
-
-ProxyPreserveHost On
-ProxyTimeout 3600
-RequestHeader set X-Forwarded-Proto "https" env=HTTPS
-
-# ── WEBSOCKET → Daphne :8002 ──────────────────────────
-# Apache 2.4.47+ can upgrade via mod_proxy_http:
-ProxyPass        /ws/  ws://127.0.0.1:8002/ws/  upgrade=websocket  timeout=3600
-ProxyPassReverse /ws/  ws://127.0.0.1:8002/ws/
-
-# Older Apache — use mod_proxy_wstunnel with a rewrite instead:
-#   RewriteEngine On
-#   RewriteCond %{HTTP:Upgrade} =websocket [NC]
-#   RewriteCond %{HTTP:Connection} upgrade [NC]
-#   RewriteRule ^/?ws/(.*)$ "ws://127.0.0.1:8002/ws/$1" [P,L]
-
-# ── EVERYTHING ELSE → Gunicorn :8001 ──────────────────
-ProxyPass        /static/  !
-ProxyPass        /         http://127.0.0.1:8001/
-ProxyPassReverse /         http://127.0.0.1:8001/
-```
-
-Apply:
-
-```bash
-/scripts/ensure_vhost_includes --user=opsuser
-/scripts/restartsrv_httpd
-```
-
-Order matters: `ProxyPass /ws/` must precede `ProxyPass /`, and `ProxyPass /static/ !` must precede it too. Apache matches first-wins.
-
-**Verify the upgrade actually happens:**
+Verify the upgrade actually happens — this is the single most common thing to
+get wrong:
 
 ```bash
 curl -i -N \
   -H "Connection: Upgrade" -H "Upgrade: websocket" \
   -H "Sec-WebSocket-Version: 13" \
   -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-  https://ops.yourdomain.com/ws/gateway/
+  https://<host>/ws/gateway/
 ```
 
-`HTTP/1.1 101 Switching Protocols` = working. `200`, `400` or `502` = the proxy is not upgrading; re-check module load and directive order.
+`HTTP/1.1 101 Switching Protocols` means it works. A `200`, `400` or `502`
+means the proxy is not upgrading: check the module is loaded and that the
+`/ws/` rule is matched before the catch-all.
 
-## 14.7 If your VPS runs LiteSpeed instead of Apache
+## 14.7 Subsequent deployments
 
-Some cPanel builds ship LiteSpeed. LSWS reads most Apache config but handles WebSockets through its own map:
+`scripts/deploy.sh` runs the sequence: pull, install, migrate, collectstatic,
+`check --deploy`, reload, health check. It takes the restart commands from
+`RELOAD_API_CMD`, `RESTART_WORKER_CMD` and `RESTART_WS_CMD`, so it adapts to
+whatever supervises the processes.
 
-**WHM → Plugins → LiteSpeed Web Server → Configuration → WebSocket Proxy → Add**
-- URI: `/ws/`
-- Address: `127.0.0.1:8002`
+Reload the HTTP process gracefully — in-flight requests finish and nobody sees
+a 502. Restart the WebSocket process **only when consumer code changed**: every
+restart disconnects every user at once. The client backs off with jitter so
+they do not all return in the same instant, but it is still churn worth
+avoiding.
 
-Then Graceful Restart. The rest of the vhost include works unchanged.
-
-## 14.8 Deploy script
+## 14.8 Backups
 
 ```bash
-#!/usr/bin/env bash
-# scripts/deploy.sh
-set -euo pipefail
-cd /home/opsuser/app
-source /home/opsuser/venv/bin/activate
-
-git pull --ff-only
-pip install -r requirements.txt --quiet
-python manage.py migrate --noinput --settings=opstracking.settings.prod
-python manage.py collectstatic --noinput --settings=opstracking.settings.prod
-
-sudo systemctl reload  opstracking-api          # graceful; no dropped requests
-sudo systemctl restart opstracking-worker opstracking-worker-reports opstracking-beat
-sudo systemctl restart opstracking-ws           # only when WS code changed
-
-sleep 3
-curl -fsS http://127.0.0.1:8001/health/ >/dev/null && echo "API  ok"
-curl -fsS http://127.0.0.1:8002/health/ >/dev/null && echo "WS   ok"
+./scripts/backup_db.sh    # nightly, via cron
 ```
 
-Restart `opstracking-ws` only when consumer code changed — every restart disconnects every user, and they will all reconnect at once.
+Dumps the database, mirrors `storage/`, prunes beyond the retention window.
 
-## 14.9 Backups
+Host-level snapshots protect the machine. They do not give you a point-in-time
+table restore when someone truncates the wrong thing at 4 pm. Keep both — and
+restore a backup into a scratch database on a schedule, because a backup you
+have never restored is a hypothesis, not a backup.
+
+## 14.9 Operational checks
 
 ```bash
-# crontab -e  (opsuser)
-0 2 * * * /home/opsuser/app/scripts/backup_db.sh
+./scripts/healthcheck.sh
 ```
 
-```bash
-mysqldump --single-transaction --quick --routines \
-  -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" | gzip \
-  > /home/opsuser/backups/db_$(date +\%F).sql.gz
-find /home/opsuser/backups -name 'db_*.gz' -mtime +14 -delete
-rsync -a /home/opsuser/storage/ /home/opsuser/backups/storage/
-```
+- `/health/` — liveness. Touches no dependency, so a Redis outage does not
+  cause the supervisor to restart a healthy web process.
+- `/ready/` — readiness. Checks the database and cache, returns 503 if either
+  is down.
 
-GoDaddy's snapshots protect the VM. They do not give you a point-in-time table restore when someone truncates the wrong thing at 4 pm. Keep both.
+Also confirm: all processes come back after a reboot; logs rotate and the disk
+does not fill; the TLS certificate renews.
 
 ---
 
-# PART 15 — IF YOU MUST STAY ON SHARED cPANEL
-
-Only if the VPS is genuinely blocked. Be clear-eyed about what you are shipping.
-
-## 15.1 What works
-
-Django + DRF + Jinja2 under Passenger WSGI, MySQL, cron. Roughly 85% of the application.
-
-```python
-# passenger_wsgi.py  (in the app root cPanel points to)
-import os, sys
-sys.path.insert(0, os.path.dirname(__file__))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "opstracking.settings.prod")
-from django.core.wsgi import get_wsgi_application
-application = get_wsgi_application()
-```
-
-Settings changes: `SESSION_ENGINE = "django.contrib.sessions.backends.db"`, `CACHES` → `DatabaseCache` (run `createcachetable`), remove `channels` and `celery` from `INSTALLED_APPS`.
-
-## 15.2 What does not work
-
-WebSockets. Redis. Celery. Server-Sent Events (Passenger buffers and reaps idle workers).
-
-## 15.3 The degraded fallback
-
-An adaptive long-poll against the same outbox table:
-
-```
-GET /api/v1/realtime/poll/?cursors={"chat.conv.41":9182,"user.E1042":8830}
-→ { events: [...], cursors: {...}, next_poll_ms: 4000 }
-```
-
-```javascript
-const INTERVAL = { focused: 4000, blurred: 20000, idle: 60000 };
-```
-
-`realtime-client.js` should expose the same `bus` interface for both transports, so the feature code (`chat.js`, `presence.js`) is transport-agnostic and moving to a VPS later is a one-line switch.
-
-## 15.4 The wall — do the arithmetic before you commit
-
-150 users × 1 poll / 4 s = **~37 requests/second**, sustained, all day. Shared cPanel accounts cap concurrent entry processes at roughly 20–40. You will hit `508 Resource Limit Reached` and it will affect the whole application, not just chat.
-
-Realistic ceiling: **~30 concurrent users at a 10-second poll**, with chat that feels sluggish and presence that is up to 10 seconds stale.
-
-## 15.5 The pragmatic middle
-
-Keep Django on shared cPanel; run **only** the realtime service on a small VPS (₹649/mo) as `rt.yourdomain.com`.
-
-- Shared Redis+Daphne box, Django posts events to it over an internal HTTPS webhook with a shared secret
-- Cookie domain `.yourdomain.com` so the session cookie reaches both hosts
-- `CSRF_TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS` must include both
-
-More moving parts than one VPS, and roughly the same money. Included for completeness; the single-VPS answer is better.
-
----
-
-# PART 16 — SECURITY FIX MATRIX
+# PART 15 — SECURITY FIX MATRIX
 
 How the architecture closes every issue from your testing report — structurally, not by patching.
 
@@ -2446,9 +2272,9 @@ How the architecture closes every issue from your testing report — structurall
 
 ---
 
-# PART 17 — PERFORMANCE
+# PART 16 — PERFORMANCE
 
-## 17.1 Ranked by impact
+## 16.1 Ranked by impact
 
 1. **Move Excel exports to Celery.** Removes 60–120 s worker locks. Biggest single win. (§12.3)
 2. **Add the missing indexes.** Report queries drop from seconds to tens of milliseconds. (§4.5)
@@ -2458,10 +2284,10 @@ How the architecture closes every issue from your testing report — structurall
 6. **Move feedback images out of MySQL BLOBs.** Shrinks backups and frees the buffer pool. (§11.5)
 7. **`select_related` / `prefetch_related` everywhere.** Django's N+1 is silent until it isn't.
 8. **`CONN_MAX_AGE = 60`.** Stop opening a MySQL connection per request.
-9. **Apache `mod_deflate` + far-future `Expires` on `/static/`.**
+9. **Compression + far-future `Expires` on `/static/` at the proxy.**
 10. **Hashed static filenames** via `ManifestStaticFilesStorage` so you can cache for a year and still ship changes.
 
-## 17.2 Capacity at your scale
+## 16.2 Capacity at your scale
 
 150 concurrent WebSocket connections is not a lot. One Daphne process handles several thousand. Do not shard, do not add a second WS node, do not reach for Kubernetes. The bottleneck will be MySQL on report queries, and the fix is indexes.
 
@@ -2487,25 +2313,51 @@ DATABASES = {
 
 ---
 
-# PART 18 — PHASED PLAN
+# PART 17 — PHASED PLAN
 
-| Phase | Deliverable | Duration | Gate |
-|---|---|---|---|
-| **0** | Provision VPS, cPanel, Apache modules, Redis, `systemd` skeleton. Deploy a `/health/` endpoint end to end. | 2–3 d | `curl` returns 101 on `/ws/` |
-| **1** | Django project, settings split, `core/` package, custom User, password-hash migration, session auth. | 4–5 d | Login/logout works; replayed cookie → 401 |
-| **2** | Legacy models (`managed=False`), verified against production data. | 3–4 d | Read-only parity vs Flask on all 14 tables |
-| **3** | Serializers + services + ViewSets for accounts, masters, tracking, breaks. **All security fixes land here.** | 7–10 d | C-1…C-6, H-2, H-3, H-4, H-6 tests pass |
-| **4** | Allocations, feedback, settings. Reports moved to Celery. | 5–7 d | Excel export returns 202 + notification |
-| **5** | Templates → Jinja2, static reorganised, `api.js`, `toast.js`. Every `alert()` gone. | 4–5 d | All screens render identically |
-| **6** | Channels: gateway consumer, tickets, `publish()`, outbox, `realtime-client.js`. | 5–7 d | Two browsers exchange a test event; kill wifi 30 s → resume replays |
-| **7** | Presence: service, consumer, reaper, UI dots. | 3–4 d | Break start flips the dot within 1 s across all clients |
-| **8** | Notifications: registry, service, consumer, bell UI, triggers. | 4–5 d | Allocation assign → toast on assignee's screen |
-| **9** | Chat: models, service, ViewSets, upload pipeline, chat UI. | 8–10 d | 1:1 + group + file share + read receipts + reconnect |
-| **10** | Hardening: rate limits, CSP, load test at 200 sockets, backups, runbook. | 4–5 d | Sign-off checklist below |
+| Phase | Deliverable | Gate |
+|---|---|---|
+| **0** | Provision the runtime: processes, Redis, database, reverse proxy. Deploy a `/health/` endpoint end to end. | `curl` returns 101 on `/ws/` |
+| **1** | Django project, settings split, `core/` package, custom User, password-hash migration, session auth. | Login/logout works; replayed cookie → 401 |
+| **2** | Legacy models (`managed=False`), verified against production data. | Read-only parity vs Flask on all 14 tables |
+| **3** | Serializers + services + ViewSets for accounts, masters, tracking, breaks. **All security fixes land here.** | C-1…C-6, H-2, H-3, H-4, H-6 tests pass |
+| **4** | Allocations, feedback, settings. Reports moved to Celery. | Excel export returns 202 + notification |
+| **5** | Templates → Jinja2, static reorganised, `api.js`, `toast.js`. Every `alert()` gone. | All screens render identically |
+| **6** | Channels: gateway consumer, tickets, `publish()`, outbox, `realtime-client.js`. | Two browsers exchange a test event; kill wifi 30 s → resume replays |
+| **7** | Presence: service, consumer, reaper, UI dots. | Break start flips the dot within 1 s across all clients |
+| **8** | Notifications: registry, service, consumer, bell UI, triggers. | Allocation assign → toast on assignee's screen |
+| **9** | Chat: models, service, ViewSets, upload pipeline, chat UI. | 1:1 + group + file share + read receipts + reconnect |
+| **10** | Hardening: rate limits, CSP, load test at 200 sockets, backups, runbook. | Sign-off checklist below |
 
-**Total: roughly 10–12 weeks** for one experienced Django developer. Phases 0–5 are the migration; 6–10 are the new capability. Ship phases 0–5 to production first and run it for a week before starting 6 — do not debug a framework migration and a WebSocket layer at the same time.
+Phases 0–5 are the migration; 6–10 are the new capability. Ship phases 0–5 and
+run them for a week before starting 6 — do not debug a framework migration and
+a WebSocket layer at the same time.
 
-## 18.1 Go-live checklist
+## 17.1 Current status
+
+The repository implements phases 1 and 3–8. Specifically:
+
+| Built | Where |
+|---|---|
+| Project skeleton, settings split, `core/` package | `opstracking/`, `core/` |
+| Custom user on the legacy table, session auth, hash migration | `apps/accounts/`, `scripts/migrate_password_hashes.py` |
+| Legacy models with preserved table names | `apps/*/models.py` |
+| Services, serializers and ViewSets for the business apps | `apps/accounts,masters,tracking,breaks,allocations,feedback,settings_app/` |
+| Reports moved to Celery, returning 202 | `apps/reports/` |
+| Jinja2 templates, `api.js`, `toast.js`, no `alert()` | `templates/`, `static/js/` |
+| Channels gateway, tickets, `publish()`, durable outbox, client | `apps/realtime/`, `static/js/realtime/` |
+| Presence: service, reaper, UI dots | `apps/presence/` |
+| Notifications: registry, service, bell UI, triggers | `apps/notifications/` |
+| Upload/download pipeline | `apps/files/` |
+
+**Deferred: phase 9 (chat).** `apps/chat/` holds the design decisions and the
+file layout, but nothing is implemented and the app is not wired in. See
+`apps/chat/README.md`.
+
+**Outstanding: phase 2 verification** against real production data, and phase
+10 hardening — a load test at 200 sockets, and a restore drill.
+
+## 17.2 Go-live checklist
 
 **Security**
 - [ ] `DEBUG = False`; `ALLOWED_HOSTS` explicit
@@ -2514,17 +2366,17 @@ DATABASES = {
 - [ ] Employee cannot read another employee's feedback → 403
 - [ ] Employee cannot `sub` to a conversation they're not in
 - [ ] Logout: old cookie → 401 **and** the open socket closes
-- [ ] `.env` is `0600` and outside `public_html`
-- [ ] `storage/` is outside `public_html`; direct URL → 404
+- [ ] `.env` is `0600` and outside the web root
+- [ ] `storage/` is outside the web root; a direct URL → 404
 - [ ] `.exe` renamed `.jpg` is rejected on upload
-- [ ] Redis has `requirepass` and binds loopback only
+- [ ] Redis has `requirepass` and binds to loopback only
 
 **Real-time**
 - [ ] `curl` upgrade test returns `101`
 - [ ] Message appears on the other browser in < 500 ms
 - [ ] Kill wifi for 30 s → reconnect replays missed messages exactly once
 - [ ] Two tabs → one message, not two (dedupe works)
-- [ ] Restart `opstracking-ws` → all clients reconnect within 30 s, staggered
+- [ ] Restart the websocket process → all clients reconnect within 30 s, staggered
 - [ ] Presence flips to `on_break` when a break starts
 - [ ] Force-quit browser → user shows offline within 45 s
 
@@ -2536,11 +2388,11 @@ DATABASES = {
 - [ ] DB error → generic message + request id; stack trace in log only
 
 **Operations**
-- [ ] All six `systemd` units `enabled` and survive `reboot`
+- [ ] All processes are supervised and survive a reboot
 - [ ] `deploy.sh` runs clean from a fresh clone
 - [ ] Nightly `mysqldump` verified by an actual restore into a scratch DB
 - [ ] Logs rotate (`logrotate`); disk does not fill
-- [ ] AutoSSL renewal confirmed
+- [ ] TLS certificate renewal confirmed
 
 ---
 
@@ -2562,20 +2414,3 @@ DATABASES = {
 The service layer — the part you actually designed — is unchanged. The framework swap is a rewrite of the transport shell around it.
 
 ---
-
-# APPENDIX B — VERIFICATION SOURCES
-
-| Claim | Source |
-|---|---|
-| GoDaddy cPanel supported components (Python ✓, cron ✓, no WebSocket/Redis entry) | GoDaddy Help — *Which components does my hosting support?* |
-| GoDaddy VPS: root access, KVM, AlmaLinux/Ubuntu/Debian, optional cPanel/WHM, pricing | GoDaddy — *VPS Hosting* product page |
-| cPanel "Setup Python App" = Phusion Passenger over WSGI | cPanel/CloudLinux deployment docs and multiple field reports |
-| Django has no native WebSocket support; Channels + ASGI + Uvicorn/Daphne + Redis required; Gunicorn cannot run ASGI | Django Channels documentation |
-| Django 5.2 is LTS (security support to Apr 2028); 6.0 is STS (to Apr 2027); 4.2 LTS ended Apr 2026 | djangoproject.com release notes & download page |
-| DRF 3.17.0 added official Django 6.0 support (Mar 2026) | DRF project discussion |
-
-Pricing and plan details change. Re-check the VPS page before purchase, and ask GoDaddy support to confirm in writing that your chosen plan permits long-running user processes on non-standard loopback ports.
-
----
-
-*End of document.*

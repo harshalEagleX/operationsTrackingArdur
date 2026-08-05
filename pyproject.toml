@@ -10,6 +10,7 @@ DJANGO_SETTINGS_MODULE = "opstracking.settings.test"
 python_files = ["test_*.py", "*_test.py"]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "slow: tests that hit the network or take more than a second",
     "realtime: tests that exercise Channels consumers",

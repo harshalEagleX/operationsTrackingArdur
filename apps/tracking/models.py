@@ -76,7 +76,11 @@ class WorkSession(models.Model):
     paused_by = models.CharField(max_length=20, blank=True, default="")
     paused_elapsed = models.FloatField(default=0, help_text="Total seconds spent paused")
 
-    allocation_id = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+    # null=True matches the existing column: NULL means "ad-hoc work, not
+    # against any allocation", which is different from an empty string.
+    allocation_id = models.CharField(  # noqa: DJ001
+        max_length=50, null=True, blank=True, db_index=True
+    )
     is_started = models.SmallIntegerField(
         choices=SessionState.choices, default=SessionState.ALLOCATED, db_index=True
     )

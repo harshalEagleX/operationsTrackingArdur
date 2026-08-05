@@ -116,7 +116,7 @@ def nightly_summary_email():
     """
     from apps.accounts.models import Employee
     from apps.notifications.services import NotificationService
-    from apps.reports.selectors import ReportFilters, ProductivitySelector
+    from apps.reports.selectors import ProductivitySelector, ReportFilters
     from core.timezone import today_ist
 
     filters = ReportFilters(date_from=today_ist(), date_to=today_ist())

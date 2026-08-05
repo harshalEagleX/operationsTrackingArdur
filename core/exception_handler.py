@@ -97,7 +97,7 @@ def _flatten(data) -> tuple[str, dict]:
         parts = []
         for field, errors in data.items():
             label = field.replace("_", " ").capitalize()
-            if isinstance(errors, (list, tuple)):
+            if isinstance(errors, (list | tuple)):
                 parts.append(f"{label}: {' '.join(str(e) for e in errors)}")
             elif isinstance(errors, dict):
                 nested, _ = _flatten(errors)
@@ -106,7 +106,7 @@ def _flatten(data) -> tuple[str, dict]:
                 parts.append(f"{label}: {errors}")
         return " ".join(parts), dict(data)
 
-    if isinstance(data, (list, tuple)):
+    if isinstance(data, (list | tuple)):
         return " ".join(str(e) for e in data), {}
 
     return str(data), {}

@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
-from django.db.models import Avg, Count, F, Q, Sum
+from django.db.models import Avg, Count, Q, Sum
 
 from apps.allocations.models import BatchAllocation
 from apps.breaks.models import BreakTime

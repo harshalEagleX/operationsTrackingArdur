@@ -46,7 +46,9 @@ class User(AbstractBaseUser):
     )
     # Written for one release cycle so any residual Flask-era code stays
     # consistent during cutover, then the column can be dropped.
-    session_id = models.CharField(max_length=64, null=True, blank=True)
+    # null=True matches the existing column, which distinguishes "no active
+    # session" (NULL) from "" — the Flask app relies on that during cutover.
+    session_id = models.CharField(max_length=64, null=True, blank=True)  # noqa: DJ001
     last_login = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "emp_id"
