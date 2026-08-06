@@ -1,31 +1,198 @@
-<section class="tab-panel" data-panel="allocations" role="tabpanel" hidden>
-  <div class="panel-toolbar">
-    <input type="search" id="allocation-search" placeholder="Search allocations"
-           aria-label="Search allocations">
-    <select id="allocation-status-filter" aria-label="Filter by status">
-      <option value="">All statuses</option>
-      <option value="pending">Pending</option>
-      <option value="in_progress">In progress</option>
-      <option value="completed">Completed</option>
-      <option value="on_hold">On hold</option>
-      <option value="cancelled">Cancelled</option>
-    </select>
-    <label class="checkbox">
-      <input type="checkbox" id="allocation-overdue-only"> Overdue only
-    </label>
-    <button type="button" class="btn btn-primary" id="add-allocation-btn">Allocate work</button>
-    <button type="button" class="btn" id="import-allocations-btn">Import sheet</button>
-  </div>
+<!-- Order Allocation Tab Component -->
+<div id="orderallocationcontent" class="orderallocationcontent">
+    <div id="orderallocation" class="orderallocationcontainer tab-content" style="display:none;">
+        <div class="employees-header">
+            <h2><i class="fas fa-tasks"></i> Order Allocation</h2>
+            <button id="toggleFormBtn" class="toggle-form-btn">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+        <div class="order-allocation-layout">
+            <!-- Form Section -->
+            <div id="orderAllocationFormContainer" class="order-allocation-form-container" style="display: none;">
+                <form id="orderallocationForm" novalidate>
+                    <div class="form-grid-container">
+                        <div class="form-group" style="display: none;">
+                            <label for="oa_project">Project:</label>
+                            <select id="oa_project" name="project" required disabled>
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
 
-  <table class="data-table" id="allocations-table">
-    <thead>
-      <tr>
-        <th>Allocation</th><th>Employee</th><th>Project</th>
-        <th>Quantity</th><th>Progress</th><th>Due</th><th>Status</th><th></th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+                        <div class="form-group">
+                            <label for="oa_clientCode">Client Code:</label>
+                            <select id="oa_clientCode" name="clientCode" required>
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
 
-  <p class="empty-state" hidden>No allocations match those filters.</p>
-</section>
+                        <div class="form-group">
+                            <label for="oa_workType">Work Type:</label>
+                            <select id="oa_workType" name="workType" required>
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_orderBatchId">Order ID:</label>
+                            <input type="text" id="oa_orderBatchId" name="orderBatchId" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_orderDetails">Order Type:</label>
+                            <select id="oa_orderDetails" name="orderDetails" required>
+                                <option value="Current_Owner">Current Owner</option>
+                                <option value="2owner">2 Owner</option>
+                                <option value="FullSearch">Full Search</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_ownerName">Owner Name:</label>
+                            <input type="text" id="oa_ownerName" name="ownerName" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_propertyAddress">Property Address:</label>
+                            <input type="text" id="oa_propertyAddress" name="propertyAddress" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_state">State:</label>
+                            <select id="oa_state" name="state" required disabled>
+                                <option value="">Select State</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_county">County:</label>
+                            <select id="oa_county" name="county" required disabled>
+                                <option value="">Select County</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_empIdName">Assign To:</label>
+                            <select id="oa_empIdName" name="empIdName" required>
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="display: none;">
+                            <label for="oa_receivedDate">Received Date:</label>
+                            <input type="datetime-local" id="oa_receivedDate" name="receivedDate">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_searchType">Fee Type:</label>
+                            <select id="oa_searchType" name="searchType" required>
+                                <option value="Free">Free</option>
+                                <option value="Paid">Paid</option>
+                                <option value="Ground">Ground Abstractor</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="vendor-rates-container" style="display: none;">
+                            <label>Vendor Rates:</label>
+                            <div class="vendor-rates-list">
+                                <!-- Vendor rates will be populated here -->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_fees">Fees:</label>
+                            <input type="number" id="oa_fees" name="fees" required readonly>
+                        </div>
+
+                        <div class="form-group margin-field" style="display: none;">
+                            <label for="oa_margin">Margin:</label>
+                            <input type="number" id="oa_margin" name="margin" step="0.01" min="0">
+                        </div>
+
+                        <div class="form-group" style="display: none;">
+                            <label for="oa_eta">ETA:</label>
+                            <input type="datetime-local" id="oa_eta" name="eta">
+                        </div>
+
+                        <div class="form-group" style="display: none;">
+                            <label for="oa_sla">Dispatch Date:</label>
+                            <input type="datetime-local" id="oa_sla" name="sla">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_remarks">Instructions:</label>
+                            <input id="oa_remarks" name="remarks" rows="3">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_document">Upload Order Form:</label>
+                            <input type="file" id="oa_document" name="documents[]" accept=".doc,.docx,.pdf" multiple>
+                        </div>
+
+                        <div class="form-group submit-group">
+                            <button type="submit" class="submit-btn">
+                                <i class="fas fa-save"></i> Submit
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Results Section -->
+            <div class="allocation-results-container">
+                <div class="allocation-results">
+                    <div class="allocation-header">
+                        <h3><i class="fas fa-list"></i> Allocated Orders</h3>
+                        <div class="allocation-search-container">
+                            <div class="search-wrapper">
+                                <input type="text" id="allocationSearchInput" class="allocation-search-input" placeholder="Global Search...">
+                                <i class="fas fa-times allocation-clear-search-icon" id="clearAllocationSearch"></i>
+                                <button class="allocation-refresh-btn-modern" id="refreshAllocationTable" title="Refresh Orders">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="allocation-table">
+                            <thead>
+                                <tr>
+                                    <th>Task ID</th>
+                                    <th>Client</th>
+                                    <th>Work Type</th>
+                                    <th>Batch ID</th>
+                                    <th>Owner Name</th>
+                                    <th>Property Address</th>
+                                    <th>State</th>
+                                    <th>County</th>
+                                    <th>Assigned To</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allocationResults">
+                                <!-- Results will be dynamically populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="allocation-pagination-bar" id="allocationPaginationBar" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; margin-top: 10px; flex-wrap: wrap; gap: 12px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div class="pagination-info" id="allocationPaginationInfo" style="font-size: 13px; color: #64748b; font-weight: 500;">
+                            Showing 0 to 0 of 0 entries
+                        </div>
+                        <div class="pagination-controls" style="display: flex; align-items: center; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #64748b;">
+                                <span>Show:</span>
+                                <select id="allocationPageSize" style="font-size: 13px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; outline: none; background: #fff;">
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                            <div id="allocationPaginationBtns" style="display: flex; gap: 4px; align-items: center;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

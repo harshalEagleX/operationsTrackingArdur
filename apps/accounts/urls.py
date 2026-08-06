@@ -9,6 +9,8 @@ from apps.accounts.views import (
     LogoutView,
     PasswordChangeView,
     PasswordResetView,
+    SignupView,
+    CheckEmployeeView,
 )
 
 app_name = "accounts"
@@ -19,6 +21,8 @@ router.register("login-history", LoginHistoryViewSet, basename="login-history")
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
+    path("signup/", SignupView.as_view(), name="signup"),
+    path("check-employee/", CheckEmployeeView.as_view(), name="check-employee"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("me/", CurrentUserView.as_view(), name="me"),
     path("password/change/", PasswordChangeView.as_view(), name="password-change"),

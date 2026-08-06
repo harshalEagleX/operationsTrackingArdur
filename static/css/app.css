@@ -280,3 +280,87 @@ button:focus-visible, a:focus-visible {
   .layout { flex-direction: column; }
   .sidebar { width: 100%; }
 }
+
+/* Summary Report Cards */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--gap);
+  margin-top: var(--gap);
+}
+
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  border-color: var(--primary);
+}
+
+.summary-card .card-header h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.summary-card .stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.summary-card .stat-row .label {
+  color: var(--text-muted);
+}
+
+.summary-card .stat-row .value {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.summary-card .stat-row .value.achieved { color: var(--success); }
+.summary-card .stat-row .value.missing { color: var(--danger); }
+
+.summary-card .progress-container {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.summary-card .progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.summary-card .progress {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.summary-card .progress.target-met { background: var(--success); }
+.summary-card .progress.target-near { background: var(--warning); }
+.summary-card .progress.target-behind { background: var(--danger); }
+
+.summary-card .progress-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 40px;
+  text-align: right;
+}

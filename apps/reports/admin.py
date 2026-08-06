@@ -11,7 +11,7 @@ class ReportJobAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "report_key", "export_format")
     search_fields = ("requested_by", "report_key")
-    date_hierarchy = "created_at"
+    # date_hierarchy = "created_at"
     readonly_fields = ("started_at", "finished_at", "row_count", "file")
 
     def has_add_permission(self, request):

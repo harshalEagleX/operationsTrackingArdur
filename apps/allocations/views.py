@@ -5,12 +5,13 @@ from __future__ import annotations
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
-from apps.allocations.models import BatchAllocation, OrderHistory
+from apps.allocations.models import BatchAllocation, OrderHistory, OrderRate
 from apps.allocations.serializers import (
     AllocationSerializer,
     AllocationStatusSerializer,
     AllocationWriteSerializer,
     OrderHistorySerializer,
+    OrderRateSerializer,
     ReassignSerializer,
 )
 from apps.allocations.services import AllocationService
@@ -31,6 +32,7 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
     search_fields = ["allocation_id", "order_id", "batch", "employee_id", "project"]
     ordering_fields = ["allocated_at", "due_at", "priority", "status"]
     ordering = ["-allocated_at"]
+    lookup_field = "allocation_id"
 
     def get_permissions(self):
         if self.action in ("create", "update", "partial_update", "destroy",
@@ -113,3 +115,36 @@ class OrderHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         if emp_id := self.request.query_params.get("emp_id"):
             queryset = queryset.filter(employee_id=emp_id)
         return queryset
+
+
+class OrderRateViewSet(EnvelopeMixin, viewsets.ReadOnlyModelViewSet):
+    """/api/v1/allocations/rates/ — vendor rates and slas."""
+    
+    serializer_class = OrderRateSerializer
+    permission_classes = [IsAuthenticatedEmployee]
+    search_fields = ["order_type", "state", "county"]
+
+    def get_queryset(self):
+        queryset = OrderRate.objects.all()
+        if order_type := self.request.query_params.get("order_type"):
+            queryset = queryset.filter(order_type=order_type)
+        if state := self.request.query_params.get("state"):
+            queryset = queryset.filter(state=state)
+        if county := self.request.query_params.get("county"):
+            queryset = queryset.filter(county=county)
+        return queryset
+
+    @action(detail=False, methods=["get"])
+    def order_types(self, request):
+        types = OrderRate.objects.exclude(order_type__isnull=True).exclude(order_type="").values_list("order_type", flat=True).distinct()
+        return self.ok(list(types) or ["Current Owner", "Two Owner", "Full Search", "Update Search", "Document Retrieval"])
+
+    @action(detail=False, methods=["get"], url_path="states/(?P<order_type>[^/.]+)")
+    def states(self, request, order_type=None):
+        states = OrderRate.objects.filter(order_type=order_type).exclude(state__isnull=True).exclude(state="").values_list("state", flat=True).distinct()
+        return self.ok(list(states))
+
+    @action(detail=False, methods=["get"], url_path="counties/(?P<order_type>[^/.]+)/(?P<state>[^/.]+)")
+    def counties(self, request, order_type=None, state=None):
+        counties = OrderRate.objects.filter(order_type=order_type, state=state).exclude(county__isnull=True).exclude(county="").values_list("county", flat=True).distinct()
+        return self.ok(list(counties))

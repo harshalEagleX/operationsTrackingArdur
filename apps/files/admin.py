@@ -11,7 +11,7 @@ class StoredFileAdmin(admin.ModelAdmin):
     )
     list_filter = ("context", "scan_status", "mime_type")
     search_fields = ("original_name", "owner_emp_id", "sha256")
-    date_hierarchy = "created_at"
+    # date_hierarchy = "created_at"
     readonly_fields = ("uuid", "sha256", "stored_path", "thumb_path", "size_bytes")
 
     def has_add_permission(self, request):

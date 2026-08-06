@@ -1,37 +1,402 @@
-<section class="tab-panel" data-panel="reports" role="tabpanel" hidden>
-  <form class="panel-toolbar" id="report-form">
-    <label class="field">
-      <span class="field-label">Report</span>
-      <select name="report_key" id="report-key" required></select>
-    </label>
-    <label class="field">
-      <span class="field-label">From</span>
-      <input type="date" name="date_from" id="report-from">
-    </label>
-    <label class="field">
-      <span class="field-label">To</span>
-      <input type="date" name="date_to" id="report-to">
-    </label>
+<!-- Reports Tab Component -->
+<div id="repcontent" class="repcontent">
+    <div id="reports" class="reportscontainer tab-content" style="display:block;">
+        <div class="reports-page-title">
+            <h2><i class="fas fa-chart-bar"></i> Employee Productivity Report</h2>
+            <div class="reports-toggle-btn">
+                <button class="toggle-btn">
+                    <span class="summary-btn active">Summary</span>
+                    <span class="report-btn">Report</span>
+                    <span class="graphs-btn">Graphs</span>
+                </button>
+            </div>
+        </div>
+        <div id="summaryTableSection" class="summary-section">
+            <div class="summary-grid">
+                <!-- Project cards dynamically injected by reports.js -->
+            </div>
+        </div>
+        <div id="reportsSection" class="reports-section">
+            <div class="reports-filter-card">
+                <div class="reports-filter-header">
+                    <div class="date-range-container">
+                        <label for="startDate">From:</label>
+                        <input type="date" id="startDate" class="reports-date-picker">
+                        <label for="endDate">To:</label>
+                        <input type="date" id="endDate" class="reports-date-picker">
+                    </div>
+                    <select id="projectFilter" class="reports-project-dropdown">
+                        <option value="">All Projects</option>
+                    </select>
+                    <select id="workLocationFilter" class="reports-work-location-dropdown">
+                        <option value="">All Work Locations</option>
+                    </select>
+                    <div class="search-container">
+                        <input type="text" id="searchField" class="reports-search-field" placeholder="Search...">
+                        <span id="clearSearch" class="clear-search">×</span>
+                    </div>
+                    <div id="lengthMenuContainer" class="length-menu-container"></div>
+                    <div class="download-container">
+                        <select id="downloadFormat" class="reports-download-dropdown">
+                            <option value="">Export</option>
+                            <option value="csv">CSV</option>
+                            <option value="excel">Excel</option>
+                        </select>
+                        <button id="downloadButton" title="Download" class="reports-download-button" aria-label="Download">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button id="refreshButton" title="Refresh" class="reports-refresh-button" aria-label="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="reports-table-container">
+                    <table id="reportsTable" class="reports-data-table">
+                        <thead>
+                            <tr>
+                                <th>Emp ID</th>
+                                <th>Emp Name</th>
+                                <th>Date</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Project</th>
+                                <th>Client Code</th>
+                                <th>WorkType</th>
+                                <th>Batch</th>
+                                <th>Work Units</th>
+                                <th>Total Time</th>
+                                <th>Average Time</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <button type="submit" class="btn btn-primary">Run</button>
+<!-- Shift Activity & Break Time Report -->
+<div id="breakscontent" class="breakscontent">
+    <div id="breakreports" class="breakreportscontainer tab-content" style="display:none;">
+        <div class="reports-page-title">
+            <h2><i class="fas fa-coffee"></i> Shift Activity & Break Time Report</h2>
+            <div class="break-filter-header">
+                <select class="break-entries-dropdown">
+                    <option value="10">Show 10 entries</option>
+                    <option value="50">Show 50 entries</option>
+                    <option value="100">Show 100 entries</option>
+                </select>
+                <input type="date" class="break-date-picker" id="breakReportDate">
+                <div class="break-search-container">
+                    <input type="text" class="break-search-field" placeholder="Search...">
+                    <i class="fas fa-times break-clear-search"></i>
+                </div>
+                <div class="break-export-container" style="display:flex; align-items:center; gap:6px;">
+                    <button class="break-export-button" title="Export"><i class="fas fa-file-export"></i></button>
+                    <select class="break-export-format" title="Format">
+                        <option value="csv">CSV</option>
+                        <option value="excel">Excel</option>
+                    </select>
+                </div>
+                <button class="break-refresh-button" onclick="fetchBreakReports()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
 
-    {#
-      Export returns 202 immediately and the file arrives as a notification
-      with a download link — the request never waits for a 50,000-row build.
-    #}
-    <button type="button" class="btn" data-export="xlsx">Export Excel</button>
-    <button type="button" class="btn" data-export="csv">Export CSV</button>
-  </form>
+        <table class="break-table">
+            <thead>
+                <tr>
+                    <th class="break-sortable">Emp ID</th>
+                    <th class="break-sortable">Emp Name</th>
+                    <th class="break-sortable">Break Type</th>
+                    <th class="break-sortable">Times Taken</th>
+                    <th class="break-sortable">Total Minutes</th>
+                    <th class="break-sortable">Allowed Minutes</th>
+                    <th class="break-sortable">Overruns</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
 
-  <div class="table-scroll">
-    <table class="data-table" id="report-table">
-      <thead><tr id="report-head"></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+<!-- Summary Report Tab -->
+<div id="summarycontent" class="summarycontent">
+    <div id="summaryreports" class="summaryreportscontainer tab-content" style="display:none;">
+        <div class="reports-page-title">
+            <h2><i class="fas fa-chart-pie"></i> Summary Report</h2>
+            <div class="date-range-filter">
+                <label for="summaryStartDate">From:</label>
+                <input type="date" id="summaryStartDate">
+                <label for="summaryEndDate">To:</label>
+                <input type="date" id="summaryEndDate">
+                <label for="projectSelect">Project:</label>
+                <select id="projectSelect"></select>
+            </div>
+        </div>
+        <div class="summary-filter-card">
+            <div class="chart-section">
+                <div class="top-charts-row">
+                    <div class="chart-container half-width">
+                        <div class="chart-wrapper">
+                            <canvas id="projectChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container half-width" style="display:none;">
+                        <div class="chart-wrapper">
+                            <canvas id="locationChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="bottom-chart-row">
+                    <div class="chart-container full-width">
+                        <div class="chart-wrapper">
+                            <canvas id="productivityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-  <p class="hint" id="report-truncated" hidden>
-    Showing the first 5,000 rows. Export to see the full result.
-  </p>
-  <p class="empty-state" hidden>Run a report to see results.</p>
-</section>
+<!-- Audit / Quality Feedback Submission Tab -->
+<div id="feedbackcontent" class="feedbackcontent">
+    <div id="feedback" class="feedbackcontainer tab-content" style="display:none;">
+        <div class="reports-page-title">
+            <h2><i class="fas fa-comment-dots"></i> Quality Feedback</h2>
+        </div>
+        <div id="feedbackformContainer" class="feedback-form-wrapper">
+            <form id="feedbackForm" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="project">Project:</label>
+                        <select id="project" name="project" required>
+                            <option value="">Select a project</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="empIdName">Employee:</label>
+                        <select id="empIdName" name="emp_id" multiple required>
+                            <option value="">Select employee(s)</option>
+                        </select>
+                    </div>
+                    <input type="hidden" id="empId" name="emp_id_hidden">
+                    <input type="hidden" id="empName" name="emp_name_hidden">
+                    <div class="form-group">
+                        <label for="clientCode">Client Code:</label>
+                        <select id="clientCode" name="client_code" required>
+                            <option value="">Select a client code</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="workType">Work Type:</label>
+                        <select id="workType" name="work_type" required>
+                            <option value="">Select a work type</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="orderBatchId">Order / Batch ID:</label>
+                        <input type="text" id="orderBatchId" name="order_batch_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackRecorded">Feedback Recorded:</label>
+                        <select id="feedbackRecorded" name="feedback_recorded">
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="processedDate">Processed Date:</label>
+                        <input type="date" id="processedDate" name="processed_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackReceivedDate">Feedback Received Date:</label>
+                        <input type="date" id="feedbackReceivedDate" name="feedback_received_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackReceivedMode">Feedback Mode:</label>
+                        <select id="feedbackReceivedMode" name="feedback_received_mode">
+                            <option value="email">Email</option>
+                            <option value="chat">Chat</option>
+                            <option value="verbal">Verbal</option>
+                            <option value="others">Others</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackProvidedBy">Provided By:</label>
+                        <input type="text" id="feedbackProvidedBy" name="feedback_provided_by" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackText">Feedback:</label>
+                        <textarea id="feedbackText" name="feedback" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="fields">Fields:</label>
+                        <input type="text" id="fields" name="fields">
+                    </div>
+                    <div class="form-group">
+                        <label for="severity">Severity:</label>
+                        <select id="severity" name="severity">
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                            <option value="null">Null</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="type">Type:</label>
+                        <select id="type" name="type">
+                            <option value="typoErrors">Typo Errors</option>
+                            <option value="missedToKey">Missed To Key</option>
+                            <option value="instructionsNotFollowed">Instructions Not Followed</option>
+                            <option value="misinterpretation">Misinterpretation</option>
+                            <option value="softwareIssue">Software Issue</option>
+                            <option value="wrongFeedback">Wrong Feedback</option>
+                            <option value="newFeedback">New Feedback</option>
+                            <option value="duplicateFeedback">Duplicate Feedback</option>
+                            <option value="repeatMistake">Repeat Mistake</option>
+                            <option value="errorpriortosopupdate">Error Prior to SOP Update</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="comments">Comments:</label>
+                        <textarea id="comments" name="comments"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="actionTaken">Action Taken:</label>
+                        <textarea id="actionTaken" name="action_taken"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">Status:</label>
+                        <select id="status" name="status">
+                            <option value="open">Open</option>
+                            <option value="close">Close</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="openDate">Open Date:</label>
+                        <input type="date" id="openDate" name="open_date">
+                    </div>
+                    <div class="form-group">
+                        <label for="closureDate">Closure Date:</label>
+                        <input type="date" id="closureDate" name="closure_date">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Screenshots:</label>
+                        <div id="dropZone" class="drop-zone">
+                            <p>Drop images here or click to upload</p>
+                            <input type="file" id="closureScreenshot" name="screenshots" multiple accept="image/*" style="display:none;">
+                        </div>
+                        <div id="previewContainer" class="preview-container"></div>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> Submit Feedback</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Report Tab -->
+<div id="auditcontent" class="auditcontent">
+    <div id="auditreports" class="auditreportscontainer tab-content" style="display:none;">
+        <div class="reports-page-title">
+            <h2><i class="fas fa-search"></i> Audit Report</h2>
+        </div>
+        <div class="audit-filter-card">
+            <div class="audit-filter-header">
+                <select class="audit-entries-dropdown">
+                    <option value="10">Show 10 entries</option>
+                    <option value="25">Show 25 entries</option>
+                    <option value="50">Show 50 entries</option>
+                    <option value="100">Show 100 entries</option>
+                </select>
+                <input type="date" id="auditDate">
+                <input type="date" id="auditStartDate">
+                <input type="date" id="auditEndDate">
+                <input type="text" class="audit-search-field" placeholder="Search...">
+                <span class="audit-clear-search" style="cursor:pointer;">&times;</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <select id="auditDownloadFormat" class="audit-download-dropdown">
+                        <option value="csv">CSV</option>
+                        <option value="excel">Excel</option>
+                    </select>
+                    <button id="auditDownloadButton" title="Download"><i class="fas fa-download"></i></button>
+                    <button class="audit-refresh-button" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </div>
+            
+            <div class="audit-filter-row">
+                <select id="auditProjectFilter">
+                    <option value="">All Projects</option>
+                </select>
+                <select id="auditWorkTypeFilter">
+                    <option value="">All Work Types</option>
+                </select>
+                <select id="auditEmployeeFilter">
+                    <option value="">All Employees</option>
+                </select>
+                <select id="auditFeedbackRecordedFilter">
+                    <option value="">All</option>
+                    <option value="yes">Recorded</option>
+                    <option value="no">Not Recorded</option>
+                </select>
+            </div>
+        </div>
+
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Employee</th>
+                    <th>Project</th>
+                    <th>Client Code</th>
+                    <th>Work Type</th>
+                    <th>Order/Batch ID</th>
+                    <th>Severity</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Feedback Recorded</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="audit-pagination">
+            <span id="auditStartEntry">0</span>–<span id="auditEndEntry">0</span> of <span id="auditTotalEntries">0</span>
+            <button id="auditPrevPage"><i class="fas fa-chevron-left"></i></button>
+            <span id="auditCurrentPage">1</span>
+            <button id="auditNextPage"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <!-- Audit Graphs Section -->
+        <div id="auditGraphSection" style="display:none;">
+            <div id="graphNoDataMsg" class="no-data-message" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Break Summary Details Modal (used by breakrep.js) -->
+<div id="breakSummaryDetailsModal" class="modal">
+    <div class="modal-content" style="max-width:700px;">
+        <span class="close-details-modal close-btn">&times;</span>
+        <h3 id="breakSummaryDetailsTitle">Details</h3>
+        <div id="breakSummaryDetailsTableContainer"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:10px;">
+            <span>
+                Showing <span id="breakStartEntry">0</span>–<span id="breakEndEntry">0</span>
+                of <span id="breakTotalEntries">0</span>
+            </span>
+            <span>
+                Page <span id="breakCurrentPage">1</span>
+                <button id="breakPrevPage"><i class="fas fa-chevron-left"></i></button>
+                <button id="breakNextPage"><i class="fas fa-chevron-right"></i></button>
+            </span>
+        </div>
+    </div>
+</div>

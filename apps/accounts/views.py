@@ -129,7 +129,7 @@ class EmployeeViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         if role := self.request.query_params.get("role"):
             queryset = queryset.filter(role=role)
         if project := self.request.query_params.get("project"):
-            queryset = queryset.filter(project=project)
+            queryset = queryset.filter(project__icontains=project)
         return queryset
 
     def perform_create(self, serializer):
@@ -171,3 +171,49 @@ class LoginHistoryViewSet(viewsets.ReadOnlyModelViewSet):
         if date_to := self.request.query_params.get("to"):
             queryset = queryset.filter(date__lte=date_to)
         return queryset
+
+
+class CheckEmployeeView(EnvelopeMixin, APIView):
+    """POST /api/v1/auth/check-employee/ — Used by signup page to autofill names."""
+
+    permission_classes = [AllowAnyPublic]
+    authentication_classes = []
+
+    def post(self, request):
+        from apps.accounts.serializers import CheckEmployeeSerializer
+        serializer = CheckEmployeeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        emp_id = serializer.validated_data["emp_id"]
+        
+        employee = Employee.objects.filter(employee_id=emp_id).first()
+        if employee:
+            return self.ok({"name": employee.name})
+        return self.error("Employee ID not found", status=404)
+
+
+class SignupView(EnvelopeMixin, APIView):
+    """POST /api/v1/auth/signup/"""
+
+    permission_classes = [AllowAnyPublic]
+    authentication_classes = []
+
+    def post(self, request):
+        from apps.accounts.serializers import SignupSerializer
+        from django.contrib.auth.hashers import make_password
+        
+        serializer = SignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        emp_id = serializer.validated_data["emp_id"]
+        name = serializer.validated_data["name"]
+        password = serializer.validated_data["password"]
+
+        if User.objects.filter(emp_id=emp_id).exists():
+            return self.error("Employee ID already exists", status=409)
+
+        User.objects.create(
+            emp_id=emp_id,
+            name=name,
+            password=make_password(password),
+            status="active"
+        )
+        return self.ok({"message": "User registered successfully"}, status=201)

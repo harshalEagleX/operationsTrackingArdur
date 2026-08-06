@@ -1,15 +1,59 @@
-<nav class="sidebar" aria-label="Main navigation">
-  <ul class="nav-list">
-    {% if current_user.is_supervisor %}
-      <li><a href="{{ url('pages:dashboard') }}" class="nav-link">Dashboard</a></li>
-    {% endif %}
-    <li><a href="{{ url('pages:userdashboard') }}" class="nav-link">My work</a></li>
-    {% if current_user.is_admin %}
-      <li><a href="{{ url('pages:settings') }}" class="nav-link">Settings</a></li>
-    {% endif %}
-  </ul>
-
-  {% if features.presence %}
-    {% include "components/presence_list.html" %}
-  {% endif %}
+<!-- Side Navigation Component -->
+<nav id="side-nav" class="side-nav collapsed">
+    <ul>
+        {% if current_user.is_supervisor %}
+        <li>
+            <a href="#master" onclick="toggleSubMaster(event)" title="Master Tab" class="side-nav-btn">
+                <i class="fas fa-database"></i> <span class="nav-text">Masters</span>
+            </a>
+            <ul id="subMaster" class="sub-master" style="display: none;">
+                <li><a href="#employees" onclick="showContent('employees')" class="side-nav-btn">
+                    <i class="fas fa-users"></i> <span class="nav-text">Employees</span>
+                </a></li>
+                <li><a href="#projects" onclick="showContent('projects')" class="side-nav-btn">
+                    <i class="fas fa-project-diagram"></i> <span class="nav-text">Projects</span>
+                </a></li>
+                <li><a href="#clientcodes" onclick="showContent('clientcodes')" class="side-nav-btn">
+                    <i class="fas fa-cubes"></i> <span class="nav-text">Client Code</span>
+                </a></li>
+                <li><a href="#worktypes" onclick="showContent('worktypes')" class="side-nav-btn">
+                    <i class="fas fa-tasks"></i> <span class="nav-text">Work Types</span>
+                </a></li>
+            </ul>
+        </li>
+        <li>
+            <a href="#mainreports" onclick="toggleSubReports(event)" title="Reports Tab" class="side-nav-btn">
+                <i class="fas fa-chart-bar"></i> <span class="nav-text">Reports</span>
+            </a>
+            <ul id="subReports" class="sub-reports" style="display: block;">
+                <li><a href="#reports" onclick="showContent('reports')" class="side-nav-btn sub-tab-active">
+                    <i class="fas fa-chart-line" title="Employee Productivity"></i>
+                    <span class="nav-text">Productivity</span>
+                </a></li>
+                <li><a href="#breakreports" onclick="showContent('breakreports')" class="side-nav-btn">
+                    <i class="fas fa-coffee" title="Breaks Report"></i>
+                    <span class="nav-text">Breaks Report</span>
+                </a></li>
+                <li><a href="#auditreports" onclick="showContent('auditreports')" class="side-nav-btn">
+                    <i class="fas fa-clipboard-check" title="Audit Reports"></i>
+                    <span class="nav-text">Audit Reports</span>
+                </a></li>
+                <li style="display: none;"><a href="#summaryreports" onclick="showContent('summaryreports')" class="side-nav-btn">
+                    <i class="fas fa-chart-pie" title="Summary Report"></i>
+                    <span class="nav-text">Summary Report</span>
+                </a></li>
+            </ul>
+        </li>
+        <li><a href="#feedback" onclick="showContent('feedback')" title="Feedback Tab" class="side-nav-btn"><i class="fas fa-comment-dots"></i> <span class="nav-text">Feedbacks</span></a></li>
+        <li><a href="#orderallocation" onclick="showContent('orderallocation')" title="Order Allocation Tab" class="side-nav-btn">
+            <i class="fas fa-tasks"></i> <span class="nav-text">Order Allocation</span>
+        </a></li>
+        {% endif %}
+        <li><a href="{{ url('pages:userdashboard') }}" class="side-nav-btn"><i title="Userdashboard Tab" class="fas fa-tachometer-alt"></i> <span class="nav-text">User Dashboard</span></a></li>
+        {% if current_user.is_admin %}
+        <li><a href="{{ url('pages:settings') }}" class="side-nav-btn"><i title="Settings Tab" class="fas fa-cogs"></i> <span class="nav-text">Settings</span></a></li>
+        {% endif %}
+    </ul>
 </nav>
+
+

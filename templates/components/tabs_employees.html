@@ -1,25 +1,120 @@
-<section class="tab-panel" data-panel="employees" role="tabpanel">
-  <div class="panel-toolbar">
-    <input type="search" id="employee-search" placeholder="Search employees"
-           aria-label="Search employees">
-    <select id="employee-role-filter" aria-label="Filter by role">
-      <option value="">All roles</option>
-      <option value="admin">Administrator</option>
-      <option value="supervisor">Supervisor</option>
-      <option value="employee">Employee</option>
-    </select>
-    <button type="button" class="btn btn-primary" id="add-employee-btn">Add employee</button>
-  </div>
+<!-- Employees Tab Component -->
+<div id="employees" class="empcontainer tab-content">
+    <div class="employees-header">
+        <h2><i class="fas fa-users"></i> Employees</h2>
+        <div class="actions-container">
+            <button id="empprevPage" title="Previous"><i class="fas fa-chevron-left"></i></button>
+            <span id="PageNumber">1 of 1</span>
+            <button id="empnextPage" title="Next"><i class="fas fa-chevron-right"></i></button>
+            <div class="search-container">
+                <input type="text" id="search" placeholder="Search Employees..." onkeyup="filterEmployees()">
+            </div>
+            <button id="manualButton" class="manual-btn" title="How to use the app">
+                <i class="fas fa-book-reader"></i>
+            </button>
+            <button id="addEmployeeButton" class="emp-add-btn" title="Add Employee">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>
 
-  <table class="data-table" id="employees-table">
-    <thead>
-      <tr>
-        <th>ID</th><th>Name</th><th>Role</th><th>Project</th>
-        <th>Shift</th><th>Status</th><th></th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <table id="employees-table" class="reports-data-table">
+        <thead>
+            <tr>
+                <th>Sr. No</th>
+                <th>Name</th>
+                <th>Employee ID</th>
+                <th>Role</th>
+                <th>Joining Date</th>
+                <th>Work Location</th>
+                <th>Shift Time</th>
+                <th>Projects</th>
+                <th>Client Code</th>
+                <th>Work Type</th>
+                <th>Status</th>
+                <th>Active/Inactive Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if employees %}
+                {% for employee in employees %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ employee.name }}</td>
+                    <td>{{ employee.employee_id }}</td>
+                    <td>{{ employee.role }}</td>
+                    <td>{{ employee.joining_date }}</td>
+                    <td>{{ employee.work_location }}</td>
+                    <td>{{ employee.shift_time }}</td>
+                    <td>
+                        <a href="#" title="View Projects" class="project-link" data-employee-id="{{ employee.employee_id }}">
+                            <i class="fas fa-project-diagram"></i> {{ employee.projects.split('|')|length if employee.projects else 0 }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="#" title="View Client Codes" class="empclient-code-link" data-employee-id="{{ employee.employee_id }}">
+                            <i class="fas fa-cubes"></i> {{ employee.client_code.split('|')|length if employee.client_code else 0 }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="#" title="View Work Types" class="work-type-link" data-employee-id="{{ employee.employee_id }}">
+                            <i class="fas fa-tasks"></i> {{ employee.work_type_count or 0 }}
+                        </a>
+                    </td>
+                    <td>
+                        <span class="status-badge {% if employee.status == 'Active' %}active{% else %}inactive{% endif %}">
+                            <i class="fas fa-circle"></i> {{ employee.status }}
+                        </span>
+                    </td>
+                    <td>{{ employee.active_inactive_date }}</td>
+                    <td>
+                        <button title="Edit Employee" class="edit-btn" data-id="{{ employee.employee_id }}">
+                            <img src="{{ static('icons/edit.png') }}" alt="Edit">
+                        </button>
+                        <button title="Delete Employee" class="delete-btn" data-id="{{ employee.employee_id }}">
+                            <img src="{{ static('icons/delete.png') }}" alt="Delete">
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="13" class="no-data">No employees found.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
 
-  <p class="empty-state" hidden>No employees match that search.</p>
-</section>
+<!-- Manual Modal -->
+<div id="manualModal" class="manual-modal hidden">
+    <div class="manual-modal-content">
+        <button class="manual-close" aria-label="Close manual">&times;</button>
+        <div class="manual-header">
+            <i class="fas fa-graduation-cap"></i>
+            <div>
+                <h3>OpsTracking Quick Start</h3>
+                <p>Follow these steps to configure the platform for the very first time.</p>
+            </div>
+        </div>
+        <ol class="manual-steps">
+            <li>
+                <h4>Define Work Types</h4>
+                <p>Open the <strong>Work Types</strong> tab and add Work Type you plan to add.</p>
+            </li>
+            <li>
+                <h4>Create Client Codes</h4>
+                <p>Switch to the <strong>Client Codes</strong> tab and add client codes.</p>
+            </li>
+            <li>
+                <h4>Configure Projects</h4>
+                <p>Move to the <strong>Projects</strong> tab, add a project name/ID.</p>
+            </li>
+            <li>
+                <h4>Onboard Employees</h4>
+                <p>Return to the <strong>Employees</strong> tab and click <em>Add Employee</em>.</p>
+            </li>
+        </ol>
+    </div>
+</div>

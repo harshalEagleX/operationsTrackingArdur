@@ -11,7 +11,7 @@ class NotificationAdmin(admin.ModelAdmin):
     )
     list_filter = ("notif_type", "priority")
     search_fields = ("recipient_emp_id", "title", "body")
-    date_hierarchy = "created_at"
+    # date_hierarchy = "created_at"
     ordering = ("-id",)
 
 

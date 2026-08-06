@@ -11,7 +11,7 @@ class BatchAllocationAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "priority", "project")
     search_fields = ("allocation_id", "order_id", "employee_id", "batch")
-    date_hierarchy = "allocated_at"
+    # date_hierarchy = "allocated_at"
     ordering = ("-allocated_at",)
 
 
@@ -21,7 +21,7 @@ class OrderHistoryAdmin(admin.ModelAdmin):
                     "performed_by", "created_at")
     list_filter = ("action",)
     search_fields = ("allocation_id", "order_id", "employee_id")
-    date_hierarchy = "created_at"
+    # date_hierarchy = "created_at"
     # An audit trail you can edit is not an audit trail.
     readonly_fields = [f.name for f in OrderHistory._meta.fields]
 

@@ -25,5 +25,4 @@ class LoginHistoryAdmin(admin.ModelAdmin):
     list_display = ("emp_id", "name", "login_time", "logout_time", "ip_address")
     list_filter = ("date",)
     search_fields = ("emp_id", "name")
-    date_hierarchy = "login_time"
     ordering = ("-login_time",)

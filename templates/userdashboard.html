@@ -1,106 +1,727 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard · OpsTracking</title>
+    <link rel="stylesheet" href="{{ static('styles/userdashboard.css') }}">
+    <link rel="stylesheet" href="{{ static('styles/allocations.css') }}">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .zoom-controls {
+            display: flex;
+            gap: 8px;
+            margin: 0 15px;
+        }
 
-{% block page_id %}userdashboard{% endblock %}
+        .zoom-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s;
+        }
 
-{% block content %}
-<header class="page-header">
-  <h1>My dashboard</h1>
-  <p class="page-subtitle">
-    {{ current_user.name }}
-    {% if current_user.project %} · {{ current_user.project }}{% endif %}
-  </p>
-</header>
+        .zoom-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
 
-{# ── work timer ─────────────────────────────────────────── #}
-<section class="panel" id="work-panel" aria-labelledby="work-heading">
-  <h2 id="work-heading">Work session</h2>
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+        }
 
-  <div id="work-idle" class="work-state">
-    <form id="start-session-form" class="inline-form">
-      <label class="field">
-        <span class="field-label">Project</span>
-        <select name="project" id="project" required></select>
-      </label>
-      <label class="field">
-        <span class="field-label">Work type</span>
-        <select name="work_type" id="work_type" required></select>
-      </label>
-      <label class="field">
-        <span class="field-label">Client code</span>
-        <select name="client_code" id="client_code"></select>
-      </label>
-      <label class="field">
-        <span class="field-label">Batch</span>
-        <input type="text" name="batch" id="batch" maxlength="100">
-      </label>
-      <button type="submit" class="btn btn-primary">Start work</button>
-    </form>
-  </div>
+        .modal-image-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.9);
+            cursor: default;
+        }
 
-  <div id="work-running" class="work-state" hidden>
-    {# The elapsed value is rendered from the server's clock, not the
-       browser's — see js/features/userdashboard-work.js #}
-    <p class="timer" id="work-timer" aria-live="off">00:00:00</p>
-    <p class="timer-meta" id="work-meta"></p>
-    <div class="button-row">
-      <button type="button" class="btn" id="pause-btn">Pause</button>
-      <button type="button" class="btn" id="resume-btn" hidden>Resume</button>
-      <button type="button" class="btn btn-primary" id="end-btn">End &amp; record units</button>
+        .modal-image-container img {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            cursor: zoom-in;
+            user-select: none;
+            -webkit-user-drag: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .modal-image-container img.grabbing {
+            cursor: grabbing !important;
+        }
+
+        .modal-image-container img.grab {
+            cursor: grab !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <h3><i class="fas fa-tachometer-alt"></i> User Dashboard</h3>
+        <div class="user-info">
+            <span id="user-name" class="user-name-btn" data-employee-id="{{ emp_id }}" title="Reset Password">
+                <i class="fas fa-user-circle"></i> 
+                {{ username }}
+                <i class="fas fa-key reset-indicator"></i>
+            </span>
+            <div id="user-menu" class="user-menu hidden">
+                <ul>
+                    <li><a href="#" id="open-reset-link"><i class="fas fa-key"></i> Reset Password</a></li>
+                </ul>
+            </div>
+            <button id="logout-btn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+    </header>
+
+    <!-- Reset Password Popup -->
+    <div id="reset-popup" class="reset-popup hidden">
+        <div class="reset-content">
+            <div class="reset-header">
+                <h3><i class="fas fa-key"></i> Reset Password</h3>
+                <button class="close-reset"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="reset-form" class="reset-body">
+                <div class="form-group">
+                    <label for="old-password"><i class="fas fa-lock"></i> Old Password</label>
+                    <div class="password-field">
+                        <input type="password" id="old-password" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="new-password"><i class="fas fa-lock"></i> New Password</label>
+                    <div class="password-field">
+                        <input type="password" id="new-password" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password"><i class="fas fa-lock"></i> Confirm Password</label>
+                    <div class="password-field">
+                        <input type="password" id="confirm-password" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="reset-actions">
+                    <button type="submit" class="btn-primary" id="reset-submit"><i class="fas fa-save"></i> Update</button>
+                    <button type="button" class="btn-secondary" id="reset-cancel"><i class="fas fa-times"></i> Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
-  </div>
-</section>
 
-{# ── breaks ─────────────────────────────────────────────── #}
-<section class="panel" id="break-panel" aria-labelledby="break-heading">
-  <h2 id="break-heading">Breaks</h2>
-  {# Buttons are built from /api/v1/breaks/types/ — allowances come from the
-     server and are displayed only, never submitted. #}
-  <div class="break-buttons" id="break-buttons"></div>
-  <div id="break-running" hidden>
-    <p class="timer" id="break-timer">00:00</p>
-    <p class="timer-meta" id="break-meta"></p>
-    <button type="button" class="btn btn-primary" id="end-break-btn">End break</button>
-  </div>
-</section>
+    <!-- Logout Confirmation Popup -->
+    <div id="logout-popup" class="popup hidden">
+        <div class="popup-content">
+            <h2 style="margin-bottom: 20px; font-size: 17px; text-align: center; color: #333;">Are you sure you want to logout?</h2>
+            <div>
+                <button id="confirm-logout" class="popup-btn">Yes</button>
+                <button id="cancel-logout" class="popup-btn">No</button>
+            </div>
+        </div>
+    </div>
 
-<nav class="tabs" role="tablist" aria-label="My records">
-  <button class="tab" role="tab" aria-selected="true"  data-tab="tasks">My tasks</button>
-  <button class="tab" role="tab" aria-selected="false" data-tab="sessions">Today's work</button>
-  <button class="tab" role="tab" aria-selected="false" data-tab="feedback">Feedback</button>
-</nav>
+    <!-- Side Navigation -->
+    <div id="sidenav" class="side-nav">
+        <ul class="nav-links">
+            <li>
+                <a href="{{ url('pages:dashboard') }}" class="side-nav-btn" {% if role == 'employee' %}style="display:none;"{% endif %}>   
+                    <i class="fas fa-user-cog"></i>
+                    <span class="nav-text">Admin Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" onclick="showContent('dashboard')" class="side-nav-btn">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" onclick="showContent('feedback')" class="side-nav-btn">
+                    <i class="fas fa-comment-dots"></i>
+                    <span class="nav-text">Feedbacks</span>
+                </a>
+            </li>
+            {% if emp_id in ['AT0176','AT0200','AT0207','AT0085','AT0212','AT0215','AT0238','AT0244','AT0241', 'AT0001','AT0250', 'AT0278'] %}
+            <li>
+                <a href="#" id="upload-task-tab" class="side-nav-btn">
+                    <i class="fas fa-upload"></i>
+                    <span class="nav-text">Upload Task</span>
+                </a>
+            </li>
+            {% endif %}
+            <!-- Chat Tab Hidden -->
+            <li style="display: none;">
+                <a href="#" id="chat-tab" class="side-nav-btn" style="position: relative;">
+                    <i class="fas fa-comments"></i> <span class="nav-text">Chat</span>
+                </a>
+            </li>
+            {% if emp_id in ['AT0051', 'AT0001', 'AT0005'] or role in ['admin', 'manager'] %}
+            <li>
+                <a href="{{ url('pages:settings') }}" class="side-nav-btn">
+                    <i title="Settings Tab" class="fas fa-cogs"></i> <span class="nav-text">Settings</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
 
-<div class="tab-panels">
-  <section class="tab-panel" data-panel="tasks" role="tabpanel">
-    <table class="data-table" id="tasks-table">
-      <thead><tr>
-        <th>Allocation</th><th>Project</th><th>Quantity</th>
-        <th>Progress</th><th>Due</th><th>Status</th><th></th>
-      </tr></thead>
-      <tbody></tbody>
-    </table>
-    <p class="empty-state" hidden>No tasks allocated to you right now.</p>
-  </section>
+    <main>
+        <div class="container">
+            <!-- Feedback Section -->
+            <section id="feedback-section" class="feedback-section" style="display: none;">
+                <div class="feedback-container">
+                    <!-- Left Section: Feedback Reports -->
+                    <div class="feedback-reports">
+                        <div class="feedback-header">
+                            <h2><i class="fas fa-comment-dots"></i> My Feedback Reports</h2>
+                            <div class="header-actions">
+                                <div class="feedback-date-range" style="display: flex; align-items: center; gap: 10px; margin-right: 18px;">
+                                    <label for="feedback-from-date" style="font-weight: 500; color: #333;">From</label>
+                                    <input type="date" id="feedback-from-date" style="padding: 4px 8px; border-radius: 5px; border: 1px solid #ccc;">
+                                    <label for="feedback-to-date" style="font-weight: 500; color: #333;">To</label>
+                                    <input type="date" id="feedback-to-date" style="padding: 4px 8px; border-radius: 5px; border: 1px solid #ccc;">
+                                </div>
+                                <div class="feedback-counts">
+                                    <span class="count-item" id="feedback-received-count" title="Feedback received by you this month">
+                                        <i class="fas fa-inbox"></i> Feedback Received: <span>0</span>
+                                    </span>
+                                    <span class="count-item" id="feedback-sent-count" title="Feedback provided by you this month">
+                                        <i class="fas fa-paper-plane"></i> Feedback Provided: <span>0</span>
+                                    </span>
+                                </div>
+                                <button id="newFeedbackBtn" class="new-feedback-btn" title="Add New Feedback">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="feedback-list">
+                            <table id="feedback-table" class="feedback-table">
+                                <thead>
+                                    <tr>
+                                        <th>Report ID</th>
+                                        <th>Project</th>
+                                        <th>Client Code</th>
+                                        <th>Work Type</th>
+                                        <th>Date</th>
+                                        <th>Severity</th>
+                                        <th>Status</th>
+                                        <th>Feedback</th>
+                                        <th>Action Taken</th>
+                                        <th>Comments</th>
+                                        <th>Fields</th>
+                                        <th>Acknowledged</th>
+                                        <th>Ack. Date</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Feedback entries will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-  <section class="tab-panel" data-panel="sessions" role="tabpanel" hidden>
-    <table class="data-table" id="sessions-table">
-      <thead><tr>
-        <th>Started</th><th>Project</th><th>Work type</th>
-        <th>Units</th><th>Time</th><th>Avg/unit</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table>
-    <p class="empty-state" hidden>No completed sessions today.</p>
-  </section>
+                    <!-- Right Section: Feedback Details -->
+                    <div class="feedback-detail-preview">
+                        <div class="detail-header">
+                            <div class="detail-nav-controls">
+                                <button class="back-to-reports">
+                                    <i class="fas fa-arrow-left"></i> Back to Reports
+                                </button>
+                                <div class="nav-buttons">
+                                    <button class="nav-btn prev-btn" title="Previous Report">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <span id="report-id-display" class="report-id-badge"></span>
+                                    <button class="nav-btn next-btn" title="Next Report">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <h2>
+                                <i class="fas fa-info-circle"></i> Feedback Information
+                            </h2>
+                        </div>
+                        <div class="feedback-preview-content">
+                            <div class="preview-details">
+                                <p class="no-details-text">Select a feedback report to view details</p>
+                                <div class="details-content" style="display: none;">
+                                    <!-- Details will be populated here -->
+                                </div>
+                                <div class="acknowledgment-section" style="display: none;">
+                                    <h3><i class="fas fa-check-circle"></i> Acknowledgment</h3>
+                                    <div class="acknowledgment-buttons">
+                                        <button id="ack-yes-btn" class="btn-ack">
+                                            <i class="fas fa-check"></i> Acknowledge
+                                        </button>
+                                        <button id="ack-no-btn" class="btn-ack">
+                                            <i class="fas fa-times"></i> Decline
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Acknowledgment Comment Popup -->
+                                <div id="ack-comment-popup" class="popup hidden">
+                                    <div class="popup-content">
+                                        <h3><i class="fas fa-comment"></i> Add Comment</h3>
+                                        <textarea id="ack-comment" placeholder="Enter your comment here..."></textarea>
+                                        <div class="popup-buttons">
+                                            <button id="submit-ack-comment" class="btn-ack">
+                                                <i class="fas fa-check"></i> Submit
+                                            </button>
+                                            <button id="cancel-ack-comment" class="btn-ack" style="background: #95a5a6;">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-  <section class="tab-panel" data-panel="feedback" role="tabpanel" hidden>
-    <div id="feedback-list"></div>
-    <p class="empty-state" hidden>No feedback recorded.</p>
-  </section>
-</div>
+                            <div class="preview-image-section">
+                                <h3><i class="fas fa-image"></i> Screenshots</h3>
+                                <div class="image-container">
+                                    <div class="image-grid" id="image-carousel">
+                                        <!-- Images will be populated here -->
+                                    </div>
+                                    <p class="no-image-text">Select a feedback report to view screenshots</p>
+                                    <div class="image-counter-badge">
+                                        <i class="fas fa-images"></i>
+                                        <span id="image-count">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-{% include "components/modals.html" %}
-{% endblock %}
+                    <!-- New Feedback Form Section -->
+                    <div id="newFeedbackSection" class="new-feedback-section" style="display: none;">
+                        <div class="new-feedback-header">
+                            <h2><i class="fas fa-plus-circle"></i> Feedback Form</h2>
+                            <button class="close-feedback-form">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <form id="newFeedbackForm" enctype="multipart/form-data">
+                            <div class="feedback-grid">
+                                <!-- Order/Batch ID -->
+                                <div class="feedback-field">
+                                    <label for="new_orderBatchId">
+                                        <i class="fas fa-hashtag"></i> Order/Batch ID:
+                                    </label>
+                                    <input type="text" id="new_orderBatchId" name="orderBatchId">
+                                </div>
 
-{% block scripts %}
-<script type="module" src="{{ static('js/user/userdashboard.js') }}"></script>
-{% endblock %}
+                                <!-- Feedback Recorded Dropdown -->
+                                <div class="feedback-field">
+                                    <label for="new_feedbackRecorded">
+                                        <i class="fas fa-clipboard-check"></i> Feedback Recorded:
+                                    </label>
+                                    <select id="new_feedbackRecorded" name="feedbackRecorded" required>
+                                        <option value="internalAudit" selected>Internal Audit</option>
+                                    </select>
+                                </div>
+
+                                <!-- Project Dropdown -->
+                                <div class="feedback-field">
+                                    <label for="new_project">
+                                        <i class="fas fa-project-diagram"></i> Project:
+                                    </label>
+                                    <select id="new_project" name="project" required>
+                                        <option value="">Select a project</option>
+                                    </select>
+                                </div>
+
+                                <!-- Employee ID and Name Combined -->
+                                <div class="feedback-field">
+                                    <label for="new_empIdName">
+                                        <i class="fas fa-id-badge"></i> Employee:
+                                    </label>
+                                    <select id="new_empIdName" name="empIdName" required>
+                                        <option value="">Select an employee</option>
+                                    </select>
+                                    <input type="hidden" id="new_empId" name="empId">
+                                    <input type="hidden" id="new_empName" name="empName">
+                                </div>
+
+                                <!-- Client Code -->
+                                <div class="feedback-field">
+                                    <label for="new_clientCode">
+                                        <i class="fas fa-building"></i> Client Code:
+                                    </label>
+                                    <select id="new_clientCode" name="clientCode" required>
+                                        <option value="">Select a client code</option>
+                                    </select>
+                                </div>
+
+                                <!-- Work Type -->
+                                <div class="feedback-field">
+                                    <label for="new_workType">
+                                        <i class="fas fa-tasks"></i> Work Type:
+                                    </label>
+                                    <select id="new_workType" name="workType" required>
+                                        <option value="">Select a work type</option>
+                                    </select>
+                                </div>
+
+                                <div class="feedback-field">
+                                    <label for="new_processedDate">
+                                        <i class="fas fa-calendar-alt"></i> Processed Date:
+                                    </label>
+                                    <input type="date" id="new_processedDate" name="processedDate" required>
+                                </div>
+
+                                <div class="feedback-field">
+                                    <label for="new_feedbackReceivedDate">
+                                        <i class="fas fa-calendar-check"></i> Feedback Received Date:
+                                    </label>
+                                    <input type="date" id="new_feedbackReceivedDate" name="feedbackReceivedDate" required>
+                                </div>
+
+                                <!-- Feedback Received Mode Dropdown -->
+                                <div class="feedback-field">
+                                    <label for="new_feedbackReceivedMode">
+                                        <i class="fas fa-comments"></i> Feedback Received Mode:
+                                    </label>
+                                    <select id="new_feedbackReceivedMode" name="feedbackReceivedMode" required>
+                                        <option value="others">Others</option>
+                                        <option value="email">Email</option>
+                                        <option value="chat">Chat</option>
+                                        <option value="verbal">Verbal</option>
+                                    </select>
+                                </div>
+                            
+                                <!-- Feedback Provided By -->
+                                <div class="feedback-field">
+                                    <label for="new_feedbackProvidedBy">
+                                        <i class="fas fa-user-tie"></i> Feedback Provided By:
+                                    </label>
+                                    <input type="text" id="new_feedbackProvidedBy" name="feedbackProvidedBy" required>
+                                </div>
+
+                                <!-- Feedback Fields -->
+                                <div class="feedback-field-full">
+                                    <label for="new_feedbackText">
+                                        <i class="fas fa-comment-dots"></i> Feedback:
+                                    </label>
+                                    <textarea id="new_feedbackText" name="feedback" rows="2" required></textarea>
+                                </div>
+
+                                <!-- Fields -->
+                                <div class="feedback-field">
+                                    <div id="new_fieldsContainer">
+                                        <label for="new_fields">
+                                            <i class="fas fa-hashtag"></i> Fields:
+                                        </label>
+                                        <input type="text" id="new_fields" name="fields">
+                                    </div>
+                                </div>
+
+                                <!-- Severity Dropdown -->
+                                <div class="feedback-field">
+                                    <label for="new_severity">
+                                        <i class="fas fa-exclamation-triangle"></i> Severity:
+                                    </label>
+                                    <select id="new_severity" name="severity" required>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="low">Low</option>
+                                    </select>
+                                </div>
+
+                                <!-- Type Dropdown -->
+                                <div class="feedback-field">
+                                    <label for="new_type">
+                                        <i class="fas fa-list"></i> Type:
+                                    </label>
+                                    <select id="new_type" name="type" required>
+                                        <option value="others">Others</option>
+                                        <option value="typoErrors">Typo Errors</option>
+                                        <option value="missedToKey">Missed to Key</option>
+                                        <option value="instructionsNotFollowed">Instructions not followed</option>
+                                        <option value="misinterpretation">Misinterpretation</option>
+                                        <option value="softwareIssue">Software Issue</option>
+                                        <option value="wrongFeedback">Wrong Feedback</option>
+                                        <option value="newFeedback">New Feedback</option>
+                                        <option value="duplicateFeedback">Duplicate Feedback</option>
+                                        <option value="repeatMistake">Repeat Mistake</option>
+                                        <option value="errorpriortosopupdate">Error Prior to SOP Update</option>
+                                    </select>
+                                </div>
+
+                                <!-- Comments -->
+                                <div class="feedback-field-full">
+                                    <label for="new_comments">
+                                        <i class="fas fa-comment"></i> Comments:
+                                    </label>
+                                    <textarea id="new_comments" name="comments" rows="2"></textarea>
+                                </div>
+
+                                <!-- Action Taken -->
+                                <div class="feedback-field-full">
+                                    <label for="new_actionTaken">
+                                        <i class="fas fa-check-circle"></i> Action Taken:
+                                    </label>
+                                    <input type="text" id="new_actionTaken" name="actionTaken">
+                                </div>
+
+                                <!-- Status Dropdown -->
+                                <div class="feedback-field">
+                                    <label for="new_status">
+                                        <i class="fas fa-info-circle"></i> Status:
+                                    </label>
+                                    <select id="new_status" name="status" required>
+                                        <option value="open">Open</option>
+                                        <option value="close">Close</option>
+                                    </select>
+                                </div>
+
+                                <!-- Open Date and Closure Date -->
+                                <div class="feedback-field">
+                                    <label for="new_openDate">
+                                        <i class="fas fa-calendar-plus"></i> Open Date:
+                                    </label>
+                                    <input type="date" id="new_openDate" name="openDate">
+                                </div>
+
+                                <div class="feedback-field">
+                                    <label for="new_closureDate">
+                                        <i class="fas fa-calendar-times"></i> Closure Date:
+                                    </label>
+                                    <input type="date" id="new_closureDate" name="closureDate">
+                                </div>
+
+                                <!-- Upload Screenshots -->
+                                <div class="feedback-field-full">
+                                    <label for="new_closureScreenshot">Closure Screenshots:</label>
+                                    <div id="new_dropZone" class="feedback-dropzone">
+                                        <p>Drag & Drop images here, click to select, or paste (Ctrl+V) images</p>
+                                        <input type="file" id="new_closureScreenshot" name="closureScreenshot" accept="image/*" multiple>
+                                    </div>
+                                    <div id="new_previewContainer" class="feedback-preview-container"></div>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <div class="feedback-field-full">
+                                    <button type="submit" class="feedback-submit-btn">
+                                        <i class="fas fa-paper-plane"></i> Submit
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Left Section (Dashboard + Breaks) -->
+            <div class="left-section">
+                <!-- Dashboard Content (Left Side) -->
+                <section class="dashboard-content">
+                    <h2 class="dashboard-header">
+                        <span><i class="fas fa-tachometer-alt"></i> My Space </span>
+                    </h2>
+            
+                    <form id="work-form">
+                        <div class="form-group">
+                            <select id="project-select" class="form-control">
+                                <option value="">Select Project</option>
+                                <!-- Options will be populated here -->
+                            </select>
+                        </div>
+            
+                        <div class="form-group">
+                            <select id="client-code-select" class="form-control" disabled>
+                                <option value="">Select Client Code</option>
+                                <!-- Options will be populated here -->
+                            </select>
+                        </div>
+            
+                        <div class="form-group">
+                            <select id="work-type-select" class="form-control" disabled>
+                                <option value="">Select Work Type</option>
+                                <!-- Options will be populated here -->
+                            </select>
+                        </div>
+            
+                        <input type="text" id="batch" name="batch" placeholder="Enter batch no or name" required>
+            
+                        <button type="button" id="start-btn" class="start-btn">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                    </form>
+            
+                    <div id="end-popup" class="popup hidden">
+                        <form id="end-form">
+                            <label for="work-units"><i class="fas fa-tasks"></i> Work Units:</label>
+                            <input type="number" id="work-units" name="work-units" min="1" required>
+                    
+                            <label for="pages" id="pages-label" style="display: none;"><i class="fas fa-file-alt"></i> Pages:</label>
+                            <input type="number" id="pages" name="pages" min="1" style="display: none;">
+                    
+                            <label for="review"><i class="fas fa-comment"></i> Review (Optional):</label>
+                            <textarea id="review" name="review" placeholder="Enter review"></textarea>
+                    
+                            <div class="button-group">
+                                <button type="submit" class="start-btn">
+                                    <i class="fas fa-check"></i> Submit
+                                </button>
+                                <button type="button" class="cancel-btn" id="end-popup-cancel">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            
+                <!-- Breaks Content Section (Below Dashboard) -->
+                <section class="breaks-content">
+                    <h2 class="breaks-header">
+                        <span><i class="fas fa-coffee"></i> Breaks</span>
+                        <span id="break-timer"><i class="fas fa-clock"></i> 00:00:00</span>
+                    </h2>
+            
+                    <div class="form-group">
+                        <select id="break-select" class="form-control">
+                            <option value="">Select Break Type</option>
+                            <!-- Options will be populated here -->
+                        </select>
+                    </div>
+            
+                    <button id="break-start-btn" class="start-btn" disabled>
+                        <i class="fas fa-play"></i> Start
+                    </button>
+            
+                    <!-- Break Reports Table Section -->
+                    <table id="break-report-table" class="break-table">
+                        <thead>
+                            <tr>
+                                <th>Break Type</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody id="break-report-body">
+                            <!-- Break entries will be dynamically inserted here -->
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+            
+            <!-- Break Exceeded Popup -->
+            <div id="breakpopup" class="breakpopup">
+                <div class="breakpopup-content">
+                    <h2><i class="fas fa-exclamation-triangle"></i> Break Exceeded</h2>
+                    <p>You exceeded the break time. Enter a reason:</p>
+                    <textarea id="break-reason" placeholder="Enter reason here..."></textarea>
+                    <div class="breakpopup-buttons">
+                        <button id="submit-reason">
+                            <i class="fas fa-check"></i> Submit
+                        </button>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Reports Section (Right Side) -->
+            <section class="reports-content">
+                <div class="reports-header">
+                    <h2><i class="fas fa-chart-line"></i> Task Productivity Summary</h2>
+                    <span id="timer" style="background: #2c3e50; color: #fff; padding: 8px 15px; border-radius: 20px; font-weight: 600; font-size: 1.1rem; display: none; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <i class="fas fa-clock" style="color: #e74c3c;"></i>
+                        <span class="time-value">00:00:00</span>
+                    </span>
+                    <div class="date-filter">
+                        {% if emp_id in ['AT0176','AT0200','AT0207','AT0085','AT0212','AT0215','AT0238','AT0244','AT0241', 'AT0001', 'AT0012', 'AT0250', 'AT0278'] %}
+                        <button id="paTasksBtn" class="btn btn-info" style="margin-right: 10px;">
+                            <i class="fas fa-tasks"></i> ProvenAir Tasks
+                        </button>
+                        {% endif %}
+                        <button id="pendingTasksBtn" class="btn btn-primary" style="margin-right: 10px;">
+                            <i class="fas fa-tasks"></i> OverDue Tasks <span id="pendingCount" class="badge badge-light" style="display: none;">0</span>
+                        </button>
+                        <input type="text" id="global-search-input" class="form-control" placeholder="Global Search..." style="width: 180px; margin-right: 10px;">
+                        <select id="client-code-filter" class="form-control" style="width: 160px; margin-right: 10px;">
+                            <option value="">All Client Codes</option>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                        <input type="date" id="date-filter" class="form-control" value="{{ current_date }}">
+                    </div>
+                </div>
+
+                <!-- Table to display work data -->
+                <table id="work-data-table" class="table">
+                    <thead>
+                        <tr>
+                            <th>DATE</th>
+                            <th>PROJECT</th>
+                            <th>CLIENT CODE</th>
+                            <th>WORK TYPE</th>
+                            <th>BATCH</th>
+                            <th>START TIME</th>
+                            <th>END TIME</th>
+                            <th>WORK UNITS</th>
+                            <th>TOTAL TIME</th>
+                            <th>AVERAGE TIME</th>
+                            <th>PAGES</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data will be populated here dynamically -->
+                    </tbody>
+                </table>
+            </section>
+        </div>
+        <div id="orderDetailsModal" class="oa_modal" style="display: none;">
+            <div class="oa_modal-content">
+                <span class="oa_close-modal">&times;</span>
+                <div id="orderDetailsContent"></div>
+            </div>
+        </div>
+        
+    </main>
+    
+    <!-- Core libraries -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Select2 library -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Custom scripts -->
+    <script src="{{ static('js/userdashboard/image-viewer.js') }}"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-feedback.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="{{ static('js/socket-client.js') }}"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-breaks.js') }}"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-work.js') }}"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-tasks.js') }}"></script>
+    <script src="{{ static('js/userdashboard/userdashboard.js') }}"></script>
+    
+</body>
+</html>

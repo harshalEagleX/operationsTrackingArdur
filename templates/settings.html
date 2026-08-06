@@ -1,59 +1,232 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - OpsTracking</title>
+    <link rel="stylesheet" href="{{ static('styles/settings.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ static('icons/ardurtech.png') }}" alt="Ardur Technologies" class="logo">
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url('pages:dashboard') }}" class="nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <button class="nav-item active" data-section="targets">
+                    <i class="fas fa-bullseye"></i>
+                    <span>Project Targets</span>
+                </button>
+                <button class="nav-item" data-section="sessions">
+                    <i class="fas fa-users"></i>
+                    <span>Active Sessions</span>
+                </button>
+                <button class="nav-item" data-section="users">
+                    <i class="fas fa-user-shield"></i>
+                    <span>Manage Users</span>
+                </button>
+                <button class="nav-item" data-section="system">
+                    <i class="fas fa-cog"></i>
+                    <span>System</span>
+                </button>
+            </nav>
+        </aside>
 
-{% block page_id %}settings{% endblock %}
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-left">
+                    <h2 id="pageTitle"><i class="fas fa-cog"></i> Settings</h2>
+                </div>
+                <div class="user-profile">
+                    <i class="fas fa-user-circle"></i>
+                    <span>{{ username }}</span>
+                </div>
+            </header>
 
-{% block content %}
-<header class="page-header">
-  <h1>Settings</h1>
-  <p class="page-subtitle">Application configuration and notification preferences</p>
-</header>
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Project Targets Section -->
+                <div id="targets" class="content-section active">
+                    <div class="section-header">
+                        <div class="header-info">
+                            <h2>Project Targets</h2>
+                            <p>Set and manage daily targets for each project</p>
+                        </div>
+                        <button class="new-target-btn" id="addTargetBtn">
+                            <i class="fas fa-plus"></i>
+                            New Target
+                        </button>
+                    </div>
 
-<nav class="tabs" role="tablist" aria-label="Settings sections">
-  <button class="tab" role="tab" aria-selected="true"  data-tab="application">Application</button>
-  <button class="tab" role="tab" aria-selected="false" data-tab="notifications">Notifications</button>
-  <button class="tab" role="tab" aria-selected="false" data-tab="account">My account</button>
-</nav>
+                    <div class="targets-grid">
+                        <!-- Cards will be populated dynamically via JavaScript -->
+                        <div class="empty-state initial-load">
+                            <i class="fas fa-spinner fa-spin fa-3x"></i>
+                            <p>Loading targets...</p>
+                        </div>
+                    </div>
+                </div>
 
-<div class="tab-panels">
-  <section class="tab-panel" data-panel="application" role="tabpanel">
-    <div id="settings-list"></div>
-  </section>
+                <!-- Active Sessions Section -->
+                <div id="sessions" class="content-section">
+                    <div class="section-header">
+                        <div class="header-info">
+                            <h2>Active Sessions</h2>
+                            <p>View and manage active user sessions</p>
+                        </div>
+                        <div class="session-filters">
+                            <input type="text" id="sessionSearch" placeholder="Search Employee...">
+                            <button class="btn-secondary" id="refreshSessions">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="sessions-list">
+                        <!-- Sessions will be populated dynamically -->
+                    </div>
+                </div>
 
-  <section class="tab-panel" data-panel="notifications" role="tabpanel" hidden>
-    <table class="data-table" id="notification-prefs">
-      <thead><tr><th>Notification</th><th>In app</th><th>Email</th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <p class="hint">
-      Some notifications cannot be turned off — SLA warnings and quality
-      feedback are not optional.
-    </p>
-  </section>
+                <!-- Manage Users Section -->
+                <div id="users" class="content-section">
+                    <div class="section-header">
+                        <div class="header-info">
+                            <h2>Manage Users</h2>
+                            <p>View and manage all user accounts</p>
+                        </div>
+                        <div class="session-filters">
+                            <input type="text" id="userSearch" placeholder="Search Employee...">
+                            <button class="btn-secondary" id="refreshUsers">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="users-list">
+                        <!-- Users will be populated dynamically -->
+                    </div>
+                </div>
 
-  <section class="tab-panel" data-panel="account" role="tabpanel" hidden>
-    <form id="password-form" class="stacked-form">
-      {{ csrf_input }}
-      <label class="field">
-        <span class="field-label">Current password</span>
-        <input type="password" name="current_password" required
-               autocomplete="current-password">
-      </label>
-      <label class="field">
-        <span class="field-label">New password</span>
-        <input type="password" name="new_password" required
-               autocomplete="new-password" minlength="8">
-      </label>
-      <label class="field">
-        <span class="field-label">Confirm new password</span>
-        <input type="password" name="confirm_password" required
-               autocomplete="new-password" minlength="8">
-      </label>
-      <button type="submit" class="btn btn-primary">Change password</button>
-    </form>
-  </section>
-</div>
-{% endblock %}
+                <!-- System Settings Section -->
+                <div id="system" class="content-section">
+                    <div class="section-header">
+                        <div class="header-info">
+                            <h2>System Settings</h2>
+                            <p>Manage system configuration and maintenance</p>
+                        </div>
+                    </div>
+                    <div class="system-actions">
+                        <button class="btn-secondary" id="clearCacheBtn">
+                            <i class="fas fa-broom"></i>
+                            Clear Cache
+                        </button>
+                        <button class="btn-secondary" id="exportDataBtn">
+                            <i class="fas fa-download"></i>
+                            Export Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 
-{% block scripts %}
-<script type="module" src="{{ static('js/features/settings.js') }}"></script>
-{% endblock %}
+    <!-- Set Target Modal -->
+    <div id="targetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Set Project Target</h2>
+                <button class="close-btn" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="targetForm">
+                    <div class="form-group">
+                        <label for="projectSelect">Project</label>
+                        <select id="projectSelect" name="project" required>
+                            <option value="">Select Project</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="targetValue">Daily Target</label>
+                        <input type="number" id="targetValue" name="target" min="1" required
+                               placeholder="Enter daily target value">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" id="cancelTargetBtn">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            Save Target
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Session Modal -->
+    <div id="resetSessionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Reset Session</h2>
+                <button class="close-btn" onclick="$('#resetSessionModal').fadeOut(300)" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-message"></div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="$('#resetSessionModal').fadeOut(300)">
+                        Cancel
+                    </button>
+                    <button class="btn-danger" id="confirmResetBtn">
+                        Reset Session
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Reset Password</h2>
+                <button class="close-btn" onclick="$('#resetPasswordModal').fadeOut(300)" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-message"></div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="$('#resetPasswordModal').fadeOut(300)">
+                        Cancel
+                    </button>
+                    <button class="btn-danger" id="confirmResetPasswordBtn">
+                        Reset Password
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ static('js/admin/settings.js') }}"></script>
+</body>
+</html>

@@ -50,6 +50,15 @@ class EmployeeSerializer(serializers.ModelSerializer):
     """Read shape for employee records."""
 
     has_login = serializers.SerializerMethodField()
+    project_names = serializers.SerializerMethodField()
+    client_code_names = serializers.SerializerMethodField()
+    work_type_names = serializers.SerializerMethodField()
+
+    # Legacy aliases for JS compatibility
+    joining_date = serializers.DateField(source="date_of_joining", read_only=True)
+    work_location = serializers.CharField(source="department", read_only=True)
+    projects = serializers.CharField(source="project", read_only=True)
+    shift_time = serializers.CharField(source="shift", read_only=True)
 
     class Meta:
         model = Employee
@@ -57,11 +66,29 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "id", "employee_id", "name", "email", "phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
             "status", "has_login", "created_at", "updated_at",
+            "client_code", "work_type", "active_inactive_date",
+            "joining_date", "work_location", "projects", "shift_time",
+            "project_names", "client_code_names", "work_type_names"
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "has_login"]
+        read_only_fields = fields
 
     def get_has_login(self, obj) -> bool:
         return User.objects.filter(emp_id=obj.employee_id).exists()
+
+    def get_project_names(self, obj) -> list[str]:
+        if not obj.project:
+            return []
+        p_ids = [p.strip() for p in (obj.project or "").split("|") if p.strip()]
+        if not p_ids:
+            return []
+        from apps.masters.models import Project
+        return list(Project.objects.filter(project_code__in=p_ids).values_list("project_name", flat=True))
+
+    def get_client_code_names(self, obj) -> list[str]:
+        return [c.strip() for c in obj.client_code.split("|") if c.strip()] if obj.client_code else []
+
+    def get_work_type_names(self, obj) -> list[str]:
+        return [w.strip() for w in obj.work_type.split("|") if w.strip()] if obj.work_type else []
 
 
 class EmployeeWriteSerializer(serializers.ModelSerializer):
@@ -80,13 +107,20 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         max_length=128, write_only=True, required=False, allow_blank=True
     )
+    
+    # Legacy aliases for JS compatibility
+    joining_date = serializers.DateField(source="date_of_joining", required=False, allow_null=True)
+    work_location = serializers.CharField(source="department", max_length=100, required=False, allow_blank=True)
+    projects = serializers.CharField(source="project", max_length=150, required=False, allow_blank=True)
+    shift_time = serializers.CharField(source="shift", max_length=50, required=False, allow_blank=True)
 
     class Meta:
         model = Employee
         fields = [
             "employee_id", "name", "email", "phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
-            "status", "password",
+            "status", "password", "client_code", "work_type", "active_inactive_date",
+            "joining_date", "work_location", "projects", "shift_time"
         ]
 
     def validate_employee_id(self, value: str) -> str:
@@ -143,3 +177,18 @@ class LoginHistorySerializer(serializers.ModelSerializer):
             "duration_seconds", "ip_address",
         ]
         read_only_fields = fields
+
+
+class CheckEmployeeSerializer(serializers.Serializer):
+    emp_id = serializers.CharField(max_length=20, validators=[validate_emp_id])
+
+
+class SignupSerializer(serializers.Serializer):
+    emp_id = serializers.CharField(max_length=20, validators=[validate_emp_id])
+    name = serializers.CharField(max_length=100, validators=[validate_non_blank])
+    password = serializers.CharField(max_length=128, write_only=True, trim_whitespace=False)
+
+    def validate_password(self, value: str) -> str:
+        if value:
+            validate_password(value)
+        return value

@@ -1,0 +1,11 @@
+/* ==========================================================================
+   ADMIN DASHBOARD MASTER STYLESHEET
+   Aggregates domain-specific modular stylesheets for clean maintainability
+   ========================================================================== */
+
+@import url('dashboard-core.css');
+@import url('masters.css');
+@import url('reports.css');
+@import url('allocations.css');
+@import url('audit.css');
+@import url('feedback.css');

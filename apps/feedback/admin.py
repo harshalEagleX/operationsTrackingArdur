@@ -18,6 +18,6 @@ class FeedbackAdmin(admin.ModelAdmin):
     )
     list_filter = ("feedback_type", "severity")
     search_fields = ("emp_id", "subject", "order_batch_id", "description")
-    date_hierarchy = "created_at"
+    # date_hierarchy = "created_at"
     inlines = [FeedbackImageInline]
     ordering = ("-created_at",)
