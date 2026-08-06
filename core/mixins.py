@@ -39,12 +39,49 @@ class EnvelopeMixin:
 
     Paginated responses already carry it (see core/pagination.py), so the
     frontend sees exactly one success shape and exactly one error shape.
+
+    ``ok()`` is the explicit way to build one. ``finalize_response()`` below
+    is the backstop: a ModelViewSet's default ``retrieve()``/``update()``/
+    ``partial_update()`` return ``Response(serializer.data)`` directly and
+    were never wrapped unless a view happened to override them — a real gap
+    found by testing every endpoint against the documented contract rather
+    than only the ones an existing test already called. Wrapping here once,
+    for every response that isn't already enveloped, is what actually makes
+    "one success shape" true instead of "true wherever someone remembered."
     """
 
     def ok(self, data=None, *, status: int = 200, meta: dict | None = None) -> Response:
         body = {"ok": True, "data": data}
         if meta:
             body["meta"] = meta
+        return Response(body, status=status)
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+
+        # Errors are already enveloped by core.exception_handler; paginated
+        # responses and anything built via ok()/error() already carry "ok".
+        # 204 (bare destroy) has no body — nothing to wrap.
+        if (
+            response.status_code < 400
+            and response.data is not None
+            and not (isinstance(response.data, dict) and "ok" in response.data)
+        ):
+            response.data = {"ok": True, "data": response.data}
+
+        return response
+
+    def error(
+        self, message: str, *, status: int = 400, code: str = "error", details: dict | None = None
+    ) -> Response:
+        """Wrap an error response in the standard envelope.
+
+        Prefer raising a ``core.exceptions.DomainError`` subclass from the
+        service layer — the exception handler builds this same envelope and
+        keeps the error path out of the view. This exists for the rare view
+        that must return an error without a service call to raise from.
+        """
+        body = {"ok": False, "error": {"code": code, "message": message, "details": details or {}}}
         return Response(body, status=status)
 
 

@@ -49,3 +49,30 @@ ignore = [
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "datetime.datetime.now".msg = "Use core.timezone.now_ist() — see architecture doc H-6."
 "datetime.datetime.utcnow".msg = "Use core.timezone.now_ist() — see architecture doc H-6."
+
+# ─────────────────────────── coverage ───────────────────────────
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/migrations/*",
+    # Scaffolded, not installed (INSTALLED_APPS, urls, FEATURE_CHAT all skip
+    # it) — see apps/chat/README.md. Testing dead code adds nothing.
+    "apps/chat/*",
+    # Process entrypoints: wiring, not logic. Exercised by actually running
+    # the process (see scripts/load_test/), not by unit tests.
+    "manage.py",
+    "opstracking/asgi.py",
+    "opstracking/wsgi.py",
+    "opstracking/celery.py",
+    # One-time cutover utility against the legacy Flask table — needs the
+    # real legacy bcrypt column to mean anything.
+    "scripts/migrate_password_hashes.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "def __repr__",
+    "pragma: no cover",
+]

@@ -14,6 +14,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 
 from apps.accounts.models import Employee, LoginHistory, User
@@ -95,6 +96,28 @@ class AuthService(BaseService):
         user.password = make_password(new_password)
         user.save(update_fields=["password"])
         self.log("password_changed", emp_id=user.emp_id)
+
+    def signup(self, emp_id: str, name: str, password: str) -> User:
+        """Self-service account creation for an employee HR has already added.
+
+        Deliberately does not create the ``Employee`` row — that stays an
+        admin/supervisor action via ``EmployeeService.create``. Without the
+        existence check below, anyone could invent an emp_id and sign in as
+        an "employee" with no real Employee record behind it.
+        """
+        employee = self.require_found(
+            Employee.objects.filter(employee_id=emp_id, status="active").first(),
+            "No active employee record found for that ID. Ask your supervisor to add you first.",
+        )
+
+        if User.objects.filter(emp_id=emp_id).exists():
+            raise ConflictError(f"An account for {emp_id} already exists. Try logging in instead.")
+
+        validate_password(password)
+        user = User.objects.create_user(emp_id=emp_id, password=password, name=name or employee.name)
+
+        self.log("signup", emp_id=emp_id)
+        return user
 
     def reset_password(self, emp_id: str, new_password: str) -> User:
         """Administrative reset — the admin check is the caller's job via

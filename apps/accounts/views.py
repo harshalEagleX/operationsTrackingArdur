@@ -150,7 +150,7 @@ class EmployeeViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         return self.ok(EmployeeSerializer(queryset, many=True).data)
 
 
-class LoginHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+class LoginHistoryViewSet(EnvelopeMixin, viewsets.ReadOnlyModelViewSet):
     """/api/v1/auth/login-history/
 
     Employees see their own rows; supervisors see everyone's. The scoping is
@@ -181,39 +181,30 @@ class CheckEmployeeView(EnvelopeMixin, APIView):
 
     def post(self, request):
         from apps.accounts.serializers import CheckEmployeeSerializer
+        from core.exceptions import NotFoundError
+
         serializer = CheckEmployeeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         emp_id = serializer.validated_data["emp_id"]
-        
-        employee = Employee.objects.filter(employee_id=emp_id).first()
-        if employee:
-            return self.ok({"name": employee.name})
-        return self.error("Employee ID not found", status=404)
+
+        employee = Employee.objects.filter(employee_id=emp_id, status="active").first()
+        if not employee:
+            raise NotFoundError("Employee ID not found.")
+        return self.ok({"name": employee.name})
 
 
 class SignupView(EnvelopeMixin, APIView):
-    """POST /api/v1/auth/signup/"""
+    """POST /api/v1/auth/signup/ — sets a password for an employee HR already added."""
 
     permission_classes = [AllowAnyPublic]
     authentication_classes = []
 
     def post(self, request):
         from apps.accounts.serializers import SignupSerializer
-        from django.contrib.auth.hashers import make_password
-        
+
         serializer = SignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        emp_id = serializer.validated_data["emp_id"]
-        name = serializer.validated_data["name"]
-        password = serializer.validated_data["password"]
 
-        if User.objects.filter(emp_id=emp_id).exists():
-            return self.error("Employee ID already exists", status=409)
-
-        User.objects.create(
-            emp_id=emp_id,
-            name=name,
-            password=make_password(password),
-            status="active"
-        )
-        return self.ok({"message": "User registered successfully"}, status=201)
+        user = AuthService().signup(**serializer.validated_data)
+        return self.ok({"emp_id": user.emp_id, "message": "Account created. You can log in now."},
+                        status=201)

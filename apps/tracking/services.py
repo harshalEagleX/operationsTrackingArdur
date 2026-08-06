@@ -11,7 +11,7 @@ the UI has buttons for them.
 
 from __future__ import annotations
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from apps.tracking.models import SessionState, Target, WorkSession
 from core.events import publish
@@ -49,17 +49,24 @@ class WorkSessionService(BaseService):
                 "You already have a work session running. End it before starting another."
             )
 
-        session = WorkSession.objects.create(
-            emp_id=actor.emp_id,
-            name=actor.display_name,
-            project=project,
-            work_type=work_type,
-            client_code=client_code,
-            batch=batch,
-            allocation_id=allocation_id,
-            start_time=now_ist(),
-            is_started=SessionState.RUNNING,
-        )
+        try:
+            session = WorkSession.objects.create(
+                emp_id=actor.emp_id,
+                name=actor.display_name,
+                project=project,
+                work_type=work_type,
+                client_code=client_code,
+                batch=batch,
+                allocation_id=allocation_id,
+                start_time=now_ist(),
+                is_started=SessionState.RUNNING,
+            )
+        except IntegrityError as exc:
+            # uq_one_open_session_per_emp caught a race the lock did not,
+            # because both transactions started before either had inserted.
+            raise ConflictError(
+                "You already have a work session running. End it before starting another."
+            ) from exc
 
         self.log("session_started", id=session.id, project=project)
         self.on_commit(lambda: self._announce(session, "work.session.started"))

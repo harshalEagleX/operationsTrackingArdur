@@ -11,7 +11,7 @@ from django.db import models
 from core.timezone import day_bounds, now_ist
 
 
-class SoftDeleteQuerySet(models.QuerySet):
+class SoftDeleteQuerySet(models.QuerySet):  # pragma: no cover — no concrete model uses this yet
     """For models with a nullable ``deleted_at``."""
 
     def alive(self):
@@ -24,7 +24,9 @@ class SoftDeleteQuerySet(models.QuerySet):
         return self.update(deleted_at=now_ist())
 
 
-class SoftDeleteManager(models.Manager.from_queryset(SoftDeleteQuerySet)):
+class SoftDeleteManager(  # pragma: no cover — no concrete model uses this yet
+    models.Manager.from_queryset(SoftDeleteQuerySet)
+):
     """Default manager that hides soft-deleted rows.
 
     Keep a second, unfiltered manager on the model (conventionally
@@ -71,7 +73,7 @@ class OwnedQuerySet(models.QuerySet):
         return self.for_employee(user.emp_id)
 
 
-class DateRangeQuerySet(models.QuerySet):
+class DateRangeQuerySet(models.QuerySet):  # pragma: no cover — no concrete model uses this yet
     """Half-open date filtering on a configurable column."""
 
     date_field = "created_at"

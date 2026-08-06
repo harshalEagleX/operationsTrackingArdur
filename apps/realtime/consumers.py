@@ -168,19 +168,35 @@ class GatewayConsumer(AsyncJsonWebsocketConsumer):
     # ── outbound (invoked by channel_layer.group_send) ───────
 
     async def fanout(self, message):
-        """Deliver a published event. Named to match core.events.publish."""
+        """Deliver a published event. Named to match core.events.publish().
+
+        core.events.publish() is the one call site allowed to touch
+        channel_layer directly (see its own docstring), and it always sends
+        the channel-layer message as {"type": "fanout", ...} regardless of
+        the *event* name inside the payload. A dedicated ``session_revoked``
+        consumer handler is therefore unreachable — Channels dispatches on
+        the outer message type, not the payload's ``type`` field — so that
+        special case is handled here instead, inside the one place every
+        published event actually arrives.
+        """
         if message.get("exclude") == self.emp_id:
             return
-        await self.send_json(message["payload"])
 
-    async def session_revoked(self, message):
+        payload = message["payload"]
+        if payload.get("type") == "session.revoked":
+            await self._close_if_session_revoked(payload.get("data") or {})
+            return
+
+        await self.send_json(payload)
+
+    async def _close_if_session_revoked(self, data: dict) -> None:
         """Close the socket when its session is signed out.
 
         The client treats 4401 as "go to /login", not "reconnect" — otherwise
         a signed-out tab reconnects forever against an endpoint that will
         never accept it.
         """
-        revoked_key = message.get("session_key")
+        revoked_key = data.get("session_key")
         if revoked_key in (None, "", self.session_key):
             logger.info("closing socket for %s: session revoked", self.emp_id)
             await self.close(code=CloseCode.UNAUTHENTICATED)

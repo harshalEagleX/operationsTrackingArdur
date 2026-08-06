@@ -20,6 +20,8 @@ PUBLIC_ALLOWLIST = {
     "/ready/",
     "/login/",
     "/api/v1/auth/login/",
+    "/api/v1/auth/signup/",
+    "/api/v1/auth/check-employee/",
 }
 
 # Not application routes.

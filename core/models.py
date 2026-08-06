@@ -24,7 +24,7 @@ def legacy_managed() -> bool:
     return settings.LEGACY_TABLES_MANAGED
 
 
-class TimeStampedModel(models.Model):
+class TimeStampedModel(models.Model):  # pragma: no cover — no concrete model inherits this yet
     """created_at / updated_at, both IST.
 
     Uses ``default=now_ist`` rather than ``auto_now_add`` so that an import
@@ -46,7 +46,7 @@ class TimeStampedModel(models.Model):
         super().save(*args, **kwargs)
 
 
-class SoftDeleteModel(models.Model):
+class SoftDeleteModel(models.Model):  # pragma: no cover — no concrete model inherits this yet
     """A nullable deleted_at plus the manager pair.
 
     Records referenced by reports are never hard-deleted — a work session that
@@ -73,7 +73,7 @@ class SoftDeleteModel(models.Model):
             self.save(update_fields=["deleted_at"])
 
 
-class ActorStampedModel(models.Model):
+class ActorStampedModel(models.Model):  # pragma: no cover — no concrete model inherits this yet
     """Who created and who last touched the row, by employee id.
 
     Stored as a plain CharField rather than an FK: the legacy tables key on

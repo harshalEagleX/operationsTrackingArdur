@@ -57,6 +57,13 @@ class TicketService:
 
         if payload is not None:
             cache.delete(key)
+            # The cache is the fast path, but the DB mirror exists so a
+            # different process (Daphne vs Gunicorn on a local-memory cache)
+            # can still redeem this ticket — and that means it must be
+            # marked redeemed here too, or that other process's fallback
+            # query still sees redeemed_at IS NULL and hands the same
+            # ticket out a second time.
+            self._mark_redeemed_in_db(token)
             return payload
 
         return self._redeem_from_db(token)
@@ -80,6 +87,16 @@ class TicketService:
             )
         except Exception:
             logger.warning("could not mirror ws ticket to database", exc_info=True)
+
+    def _mark_redeemed_in_db(self, token: str) -> None:
+        from apps.realtime.models import WebSocketTicket
+
+        try:
+            WebSocketTicket.objects.filter(token=token, redeemed_at__isnull=True).update(
+                redeemed_at=now_ist()
+            )
+        except Exception:
+            logger.warning("could not mark ws ticket redeemed in database mirror", exc_info=True)
 
     def _redeem_from_db(self, token: str) -> dict | None:
         from apps.realtime.models import WebSocketTicket

@@ -3,12 +3,24 @@
 from __future__ import annotations
 
 import pytest
+from django.core.cache import cache
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Employee, User
 from apps.masters.models import ClientCode, Project, WorkType
 
 PASSWORD = "test-password-123"
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """LocMemCache is a process-global dict, not tied to the per-test DB
+    transaction — without this, a cached() value (master data, app settings,
+    presence state) from one test leaks into the next and produces flaky
+    failures that have nothing to do with what that test actually exercises."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture

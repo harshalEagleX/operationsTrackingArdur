@@ -28,6 +28,11 @@ db.sqlite3-journal
 /storage/
 /logs/
 
+# ---- generated report exports ----
+*.xlsx
+*.xls
+*.xlsm
+
 # ---- test / lint ----
 .pytest_cache/
 .coverage
@@ -35,6 +40,9 @@ db.sqlite3-journal
 htmlcov/
 .ruff_cache/
 .mypy_cache/
+
+# ---- load test run output (HTML/CSV reports, regenerated per run) ----
+scripts/load_test/results/
 
 # ---- editors / os ----
 .vscode/

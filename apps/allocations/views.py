@@ -68,28 +68,40 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         self.service.cancel(instance, reason="Cancelled by supervisor")
 
     @action(detail=True, methods=["post"], url_path="status")
-    def set_status(self, request, pk=None):
+    def set_status(self, request, allocation_id=None):
+        """The URL kwarg is ``allocation_id`` (lookup_field above), not
+        ``pk`` — every detail action here takes that kwarg name, not the
+        DRF default, or the router 500s with a TypeError before the view
+        body ever runs."""
         serializer = AllocationStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        allocation = self.service.update_status(int(pk), **serializer.validated_data)
+        allocation = self.service.update_status(self.get_object().pk, **serializer.validated_data)
         return self.ok(AllocationSerializer(allocation).data)
 
     @action(detail=True, methods=["post"])
-    def reassign(self, request, pk=None):
+    def reassign(self, request, allocation_id=None):
         serializer = ReassignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        allocation = self.service.reassign(self.get_object(), **serializer.validated_data)
+        # ReassignSerializer's wire field is "employee_id" (consistent with
+        # AllocationWriteSerializer), but AllocationService.reassign() takes
+        # "new_employee_id" — map explicitly rather than **kwargs-splatting
+        # a mismatch into a TypeError.
+        allocation = self.service.reassign(
+            self.get_object(),
+            new_employee_id=serializer.validated_data["employee_id"],
+            employee_name=serializer.validated_data.get("employee_name", ""),
+        )
         return self.ok(AllocationSerializer(allocation).data)
 
     @action(detail=True, methods=["post"])
-    def cancel(self, request, pk=None):
+    def cancel(self, request, allocation_id=None):
         allocation = self.service.cancel(
             self.get_object(), reason=request.data.get("reason", "")
         )
         return self.ok(AllocationSerializer(allocation).data)
 
     @action(detail=True, methods=["get"])
-    def history(self, request, pk=None):
+    def history(self, request, allocation_id=None):
         allocation = self.get_object()
         rows = OrderHistory.objects.filter(allocation_id=allocation.allocation_id)
         return self.ok(OrderHistorySerializer(rows, many=True).data)
@@ -136,15 +148,34 @@ class OrderRateViewSet(EnvelopeMixin, viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"])
     def order_types(self, request):
-        types = OrderRate.objects.exclude(order_type__isnull=True).exclude(order_type="").values_list("order_type", flat=True).distinct()
-        return self.ok(list(types) or ["Current Owner", "Two Owner", "Full Search", "Update Search", "Document Retrieval"])
+        # OrderRate.Meta.ordering is ["order_type", "state", "county"] —
+        # without clearing it, Django pulls state/county into the SELECT to
+        # satisfy the implicit ORDER BY, and distinct() then dedupes on the
+        # (order_type, state, county) tuple instead of order_type alone. The
+        # same "Full Search" for two different counties would come back
+        # twice. order_by() with no args drops the default ordering.
+        types = (
+            OrderRate.objects.exclude(order_type__isnull=True).exclude(order_type="")
+            .order_by().values_list("order_type", flat=True).distinct()
+        )
+        return self.ok(
+            sorted(types) or ["Current Owner", "Two Owner", "Full Search", "Update Search", "Document Retrieval"]
+        )
 
     @action(detail=False, methods=["get"], url_path="states/(?P<order_type>[^/.]+)")
     def states(self, request, order_type=None):
-        states = OrderRate.objects.filter(order_type=order_type).exclude(state__isnull=True).exclude(state="").values_list("state", flat=True).distinct()
-        return self.ok(list(states))
+        states = (
+            OrderRate.objects.filter(order_type=order_type)
+            .exclude(state__isnull=True).exclude(state="")
+            .order_by().values_list("state", flat=True).distinct()
+        )
+        return self.ok(sorted(states))
 
     @action(detail=False, methods=["get"], url_path="counties/(?P<order_type>[^/.]+)/(?P<state>[^/.]+)")
     def counties(self, request, order_type=None, state=None):
-        counties = OrderRate.objects.filter(order_type=order_type, state=state).exclude(county__isnull=True).exclude(county="").values_list("county", flat=True).distinct()
-        return self.ok(list(counties))
+        counties = (
+            OrderRate.objects.filter(order_type=order_type, state=state)
+            .exclude(county__isnull=True).exclude(county="")
+            .order_by().values_list("county", flat=True).distinct()
+        )
+        return self.ok(sorted(counties))

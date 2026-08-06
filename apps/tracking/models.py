@@ -100,6 +100,19 @@ class WorkSession(models.Model):
             models.Index(fields=["is_started", "start_time"], name="ix_work_started"),
             models.Index(fields=["project", "start_time"], name="ix_work_project"),
         ]
+        constraints = [
+            # WorkSessionService.start_session() locks on the same condition
+            # before inserting, but that lock has nothing to hold when no row
+            # exists yet — two concurrent "Start work" clicks from a cold
+            # state both see "nothing open" and both insert. Only the
+            # database can settle that race; this is the same pattern
+            # BreakTime uses (uq_one_open_break_per_user).
+            models.UniqueConstraint(
+                fields=["emp_id"],
+                condition=models.Q(end_time__isnull=True, is_started=SessionState.RUNNING),
+                name="uq_one_open_session_per_emp",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.emp_id} · {self.work_type} · {self.start_time:%Y-%m-%d %H:%M}"

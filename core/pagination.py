@@ -49,7 +49,7 @@ class StandardPagination(PageNumberPagination):
         )
 
 
-class LargePagination(StandardPagination):
+class LargePagination(StandardPagination):  # pragma: no cover — no view sets this yet
     """For report tables that are read in bulk."""
 
     page_size = 200

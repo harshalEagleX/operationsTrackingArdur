@@ -241,56 +241,52 @@ class WorkTypesForClientCodeView(EnvelopeMixin, APIView):
         common = [w for w in cc_wts if w in user_wts] if user_wts else cc_wts
         return self.ok({'work_types': common})
 
-class EmpGetProjectsView(APIView):
+class EmpGetProjectsView(EnvelopeMixin, APIView):
     """GET /api/v1/masters/emp_get_projects/"""
     permission_classes = [IsAuthenticatedEmployee]
     def get(self, request):
-        from rest_framework.response import Response
-        return Response({"projects": active_projects()})
+        return self.ok({"projects": active_projects()})
 
-class EmpGetClientCodesView(APIView):
+class EmpGetClientCodesView(EnvelopeMixin, APIView):
     """POST /api/v1/masters/emp_get_client_codes/"""
     permission_classes = [IsAuthenticatedEmployee]
     def post(self, request):
-        from rest_framework.response import Response
         data = request.data
         projects = data.get("projects") or data.get("project_ids") or []
         if isinstance(projects, str):
             projects = [p.strip() for p in projects.split("|") if p.strip()]
-        
+
         from apps.masters.models import Project
         qs = Project.objects.filter(project_id__in=projects) | Project.objects.filter(project_name__in=projects)
-        
+
         codes_set = set()
         for p in qs:
             if p.client_code:
                 codes_set.update([c.strip() for c in p.client_code.split("|") if c.strip()])
-        return Response({"client_codes": sorted(list(codes_set))})
+        return self.ok({"client_codes": sorted(list(codes_set))})
 
-class EmpGetWorktypesView(APIView):
+class EmpGetWorktypesView(EnvelopeMixin, APIView):
     """POST /api/v1/masters/emp_get_worktypes/"""
     permission_classes = [IsAuthenticatedEmployee]
     def post(self, request):
-        from rest_framework.response import Response
         data = request.data
         client_codes = data.get("client_code") or data.get("client_codes") or []
         if isinstance(client_codes, str):
             client_codes = [c.strip() for c in client_codes.split(",") if c.strip()]
-            
+
         from apps.masters.models import ClientCode
         qs = ClientCode.objects.filter(client_code__in=client_codes)
-        
+
         wts_set = set()
         for c in qs:
             if c.worktypes:
                 wts_set.update([w.strip() for w in c.worktypes.split("|") if w.strip()])
-        return Response({"work_types": sorted(list(wts_set)), "worktypes": sorted(list(wts_set))})
+        return self.ok({"work_types": sorted(list(wts_set)), "worktypes": sorted(list(wts_set))})
 
-class EmpGetShiftsView(APIView):
+class EmpGetShiftsView(EnvelopeMixin, APIView):
     """GET /api/v1/masters/emp_get_shifts/"""
     permission_classes = [IsAuthenticatedEmployee]
     def get(self, request):
-        from rest_framework.response import Response
         from apps.masters.models import Shift
         shifts = Shift.objects.all().order_by("start_time")
         data = []
@@ -300,4 +296,4 @@ class EmpGetShiftsView(APIView):
                 "startedAt": s.start_time.strftime("%H:%M") if s.start_time else "",
                 "endedAt": s.end_time.strftime("%H:%M") if s.end_time else ""
             })
-        return Response(data)
+        return self.ok(data)
