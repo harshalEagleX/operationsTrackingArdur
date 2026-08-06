@@ -1,55 +1,484 @@
-{#
-  Shared dialogs. <dialog> gives focus trapping, Escape-to-close and the
-  backdrop for free — all things a hand-rolled div gets wrong.
-#}
+<!-- All Modals and Popups Component -->
 
-<dialog class="modal" id="confirm-modal">
-  <form method="dialog">
-    <h2 id="confirm-title">Are you sure?</h2>
-    <p id="confirm-message"></p>
-    <div class="button-row">
-      <button value="cancel" class="btn">Cancel</button>
-      <button value="confirm" class="btn btn-primary" id="confirm-ok">Confirm</button>
+<!-- Logout Confirmation Popup -->
+<div id="logout-popup" class="popup hidden">
+    <div class="popup-content">
+        <h2 style="margin-bottom: 20px; font-size: 17px; text-align: center; color: #333;">Are you sure you want to logout?</h2>
+        <div>
+            <button id="confirm-logout" class="popup-btn">Yes</button>
+            <button id="cancel-logout" class="popup-btn">No</button>
+        </div>
     </div>
-  </form>
-</dialog>
+</div>
 
-<dialog class="modal" id="end-session-modal">
-  <form method="dialog">
-    <h2>Record your work</h2>
-    <label class="field">
-      <span class="field-label">Work units completed</span>
-      <input type="number" name="work_units" id="end-work-units" min="0" required>
-    </label>
-    <label class="field">
-      <span class="field-label">Pages (optional)</span>
-      <input type="number" name="pages" id="end-pages" min="0">
-    </label>
-    <label class="field">
-      <span class="field-label">Notes (optional)</span>
-      <input type="text" name="review" id="end-review" maxlength="255">
-    </label>
-    {# No end_time field. The server timestamps the close. #}
-    <div class="button-row">
-      <button value="cancel" class="btn">Cancel</button>
-      <button value="confirm" class="btn btn-primary">Save &amp; end</button>
+<!-- Reset Password Popup -->
+<div id="reset-popup" class="reset-popup hidden">
+    <div class="reset-content">
+        <div class="reset-header">
+            <h3><i class="fas fa-key"></i> Reset Password</h3>
+            <button class="close-reset"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="reset-form" class="reset-body">
+            <div class="form-group">
+                <label for="old-password"><i class="fas fa-lock"></i> Old Password</label>
+                <div class="password-field">
+                    <input type="password" id="old-password" required autocomplete="current-password">
+                    <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="new-password"><i class="fas fa-lock"></i> New Password</label>
+                <div class="password-field">
+                    <input type="password" id="new-password" required minlength="6" autocomplete="new-password">
+                    <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="confirm-password"><i class="fas fa-lock"></i> Confirm Password</label>
+                <div class="password-field">
+                    <input type="password" id="confirm-password" required minlength="6" autocomplete="new-password">
+                    <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="reset-actions">
+                <button type="submit" class="btn-primary" id="reset-submit"><i class="fas fa-save"></i> Update</button>
+                <button type="button" class="btn-secondary" id="reset-cancel"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        </form>
     </div>
-  </form>
-</dialog>
+</div>
 
-<dialog class="modal modal-wide" id="record-modal">
-  <form method="dialog" id="record-form">
-    <h2 id="record-modal-title">Record</h2>
-    <div id="record-modal-fields"></div>
-    <div class="button-row">
-      <button value="cancel" class="btn">Cancel</button>
-      <button value="confirm" class="btn btn-primary">Save</button>
+<!-- Employee Modals -->
+<div id="projectModal" class="emppromodal">
+    <div class="emppromodal-content">
+        <span class="close">&times;</span>
+        <h2 id="projectModalHeader">Projects for Employee</h2>
+        <table id="projectTable" class="projectstable">
+            <thead>
+                <tr>
+                    <th>SR.NO.</th>
+                    <th>Project</th>
+                </tr>
+            </thead>
+            <tbody id="projectList"></tbody>
+        </table>
     </div>
-  </form>
-</dialog>
+</div>
 
-<dialog class="modal modal-wide" id="image-viewer">
-  <button type="button" class="modal-close" id="image-viewer-close"
-          aria-label="Close">×</button>
-  <img id="image-viewer-img" alt="">
-</dialog>
+<div id="clientCodeModal" class="empccmodal">
+    <div class="empccmodal-content">
+        <span class="close">&times;</span>
+        <h2 id="clientCodeModalHeader">Client Codes for Employee</h2>
+        <table id="clientCodeTable" class="clientcodestable">
+            <thead>
+                <tr>
+                    <th>SR.NO.</th>
+                    <th>Client Code</th>
+                </tr>
+            </thead>
+            <tbody id="clientCodeList"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="workTypeModal" class="wtmodal">
+    <div class="wtmodal-content">
+        <span class="wtclose">&times;</span>
+        <h2 id="workTypeModalHeader">Work Types for Employee</h2>
+        <table id="workTypeTable" class="worktypestable">
+            <thead>
+                <tr>
+                    <th>SR.NO.</th>
+                    <th>Work Type</th>
+                </tr>
+            </thead>
+            <tbody id="workTypeList"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="employeeModal" class="modal">
+    <div class="empmodal-content">
+        <span class="close-btn">&times;</span>
+        <h2><i class="fas fa-user-edit"></i> Edit Employee</h2>
+        <form id="editEmployeeForm">
+            <input type="hidden" id="employee-id">
+            <div class="form-grid">
+                <div class="form-column">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> Name:</label>
+                        <input type="text" id="employee-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-alt"></i> Joining Date:</label>
+                        <input type="date" id="employee-joining_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-project-diagram"></i> Projects:</label>
+                        <div class="emp-search-container">
+                            <input type="text" class="emp-search-field" id="edit-projects-search" placeholder="Search projects...">
+                            <button type="button" class="emp-clear-search"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="emp-select-actions">
+                            <button type="button" class="emp-select-all" data-target="edit-projects-list">Select All</button>
+                            <button type="button" class="emp-deselect-all" data-target="edit-projects-list">Deselect All</button>
+                        </div>
+                        <div class="emp-checkbox-container">
+                            <select id="employee-projects" multiple style="display: none;"></select>
+                            <div class="emp-checkbox-list" id="edit-projects-list"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-check"></i> Active/Inactive Date:</label>
+                        <input type="date" id="employee-active_inactive_date" required>
+                    </div>   
+                </div>
+                <div class="form-column">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> Employee ID:</label>
+                        <input type="text" id="employee-employee_id" required readonly>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> Work Location:</label>
+                        <select id="employee-work_location" required>
+                            <option value="Pune">Pune</option>
+                            <option value="Betul">Betul</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-code"></i> Client Code:</label>
+                        <div class="emp-search-container">
+                            <input type="text" class="emp-search-field" id="edit-client-codes-search" placeholder="Search client codes...">
+                            <button type="button" class="emp-clear-search"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="emp-select-actions">
+                            <button type="button" class="emp-select-all" data-target="edit-client-codes-list">Select All</button>
+                            <button type="button" class="emp-deselect-all" data-target="edit-client-codes-list">Deselect All</button>
+                        </div>
+                        <div class="emp-checkbox-container">
+                            <select id="employee-client_code" multiple style="display: none;"></select>
+                            <div class="emp-checkbox-list" id="edit-client-codes-list"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-check-circle"></i> Status:</label>
+                        <select id="employee-status" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-column">
+                    <div class="form-group">
+                        <label><i class="fas fa-user-tag"></i> Role:</label>
+                        <select id="employee-role" required>
+                            <option value="admin">Admin</option>
+                            <option value="employee">Employee</option>
+                            <option value="supervisor">Supervisor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-clock"></i> Shift Time:</label>
+                        <select id="employee-shift_time" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tasks"></i> Work Type:</label>
+                        <div class="emp-search-container">
+                            <input type="text" class="emp-search-field" id="edit-work-types-search" placeholder="Search work types...">
+                            <button type="button" class="emp-clear-search"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="emp-select-actions">
+                            <button type="button" class="emp-select-all" data-target="edit-work-types-list">Select All</button>
+                            <button type="button" class="emp-deselect-all" data-target="edit-work-types-list">Deselect All</button>
+                        </div>
+                        <div class="emp-checkbox-container">
+                            <select id="employee-work_type" multiple style="display: none;"></select>
+                            <div class="emp-checkbox-list" id="edit-work-types-list"></div>
+                        </div>
+                    </div>                           
+                </div>
+            </div>
+            <button type="submit" class="submit-btn"><i class="fas fa-save"></i> Update</button>
+        </form>
+    </div>
+</div>
+
+<div id="addEmployeeModal" class="modal">
+    <div class="empmodal-content">
+        <span class="close-btn">&times;</span>
+        <h2><i class="fas fa-user-plus"></i> Add Employee</h2>
+        <form id="addEmployeeForm">
+            <input type="hidden" id="new-employee-id">
+            <div class="form-grid">
+                <div class="form-column">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> Name:</label>
+                        <input type="text" id="new-employee-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-alt"></i> Joining Date:</label>
+                        <input type="date" id="new-employee-joining_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-project-diagram"></i> Projects:</label>
+                        <div class="emp-search-container">
+                            <input type="text" class="emp-search-field" id="add-projects-search" placeholder="Search projects...">
+                            <button type="button" class="emp-clear-search"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="emp-select-actions">
+                            <button type="button" class="emp-select-all" data-target="add-projects-list">Select All</button>
+                            <button type="button" class="emp-deselect-all" data-target="add-projects-list">Deselect All</button>
+                        </div>
+                        <div class="emp-checkbox-container">
+                            <select id="new-employee-projects" multiple style="display: none;"></select>
+                            <div class="emp-checkbox-list" id="add-projects-list"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-check-circle"></i> Status:</label>
+                        <select id="new-employee-status" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-column">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> Employee ID:</label>
+                        <input type="text" id="new-employee-employee_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> Work Location:</label>
+                        <select id="new-employee-work_location" required>
+                            <option value="Pune">Pune</option>
+                            <option value="Betul">Betul</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-code"></i> Client Code:</label>
+                        <div class="emp-search-container">
+                            <input type="text" class="emp-search-field" id="add-client-codes-search" placeholder="Search client codes...">
+                            <button type="button" class="emp-clear-search"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="emp-select-actions">
+                            <button type="button" class="emp-select-all" data-target="add-client-codes-list">Select All</button>
+                            <button type="button" class="emp-deselect-all" data-target="add-client-codes-list">Deselect All</button>
+                        </div>
+                        <div class="emp-checkbox-container">
+                            <select id="new-employee-client_code" multiple style="display: none;"></select>
+                            <div class="emp-checkbox-list" id="add-client-codes-list"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-check"></i> Active/Inactive Date:</label>
+                        <input type="date" id="new-employee-active_inactive_date" required>
+                    </div>
+                </div>
+                <div class="form-column">
+                    <div class="form-group">
+                        <label><i class="fas fa-user-tag"></i> Role:</label>
+                        <select id="new-employee-role" required>
+                            <option value="admin">Admin</option>
+                            <option value="employee">Employee</option>
+                            <option value="supervisor">Supervisor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-clock"></i> Shift Time:</label>
+                        <select id="new-employee-shift_time" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tasks"></i> Work Type:</label>
+                        <div class="emp-search-container">
+                            <input type="text" class="emp-search-field" id="add-work-types-search" placeholder="Search work types...">
+                            <button type="button" class="emp-clear-search"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="emp-select-actions">
+                            <button type="button" class="emp-select-all" data-target="add-work-types-list">Select All</button>
+                            <button type="button" class="emp-deselect-all" data-target="add-work-types-list">Deselect All</button>
+                        </div>
+                        <div class="emp-checkbox-container">
+                            <select id="new-employee-work_type" multiple style="display: none;"></select>
+                            <div class="emp-checkbox-list" id="add-work-types-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="submit-btn"><i class="fas fa-user-plus"></i> Add Employee</button>
+        </form>
+    </div>
+</div>
+
+<div id="confirmDeleteModal" class="deletemodal">
+    <div class="deletemodal-content">
+        <h2>Are you sure ?</h2>
+        <div>
+            <button id="confirmDeleteBtn">Confirm</button>
+            <button id="cancelDeleteBtn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Detail Modal -->
+<div id="auditDetailModal" class="auditmodal">
+    <div class="auditmodal-content audit-detail-modal">
+        <span class="auditclose-btn">&times;</span>
+        <h2><i class="fas fa-clipboard-check"></i> Feedback Details</h2>
+        <div class="audit-detail-content"></div>
+    </div>
+</div>
+
+<!-- Edit Feedback Modal -->
+<div id="auditEditModal" class="auditmodal">
+    <div class="auditmodal-content audit-edit-modal">
+        <span class="auditclose-btn">&times;</span>
+        <h2><i class="fas fa-edit"></i> Edit Feedback</h2>
+        <form id="editFeedbackForm" class="audit-edit-content">
+            <div class="detail-grid">
+                <input type="hidden" id="editFeedbackId">
+                <div class="detail-item">
+                    <label for="editOrderBatchId">Order/Batch ID:</label>
+                    <input type="text" id="editOrderBatchId" name="order_batch_id" required readonly>
+                </div>
+                <div class="detail-item">
+                    <label for="editFeedbackRecorded">Feedback Recorded:</label>
+                    <select id="editFeedbackRecorded" name="feedback_recorded" required>
+                        <option value="internalAudit">Internal Audit</option>
+                        <option value="external">External</option>
+                    </select>
+                </div>
+                <div class="detail-item">
+                    <label for="editEmpId">Employee ID:</label>
+                    <input type="text" id="editEmpId" name="emp_id" required readonly>
+                </div>
+                <div class="detail-item">
+                    <label for="editEmpName">Employee Name:</label>
+                    <input type="text" id="editEmpName" name="emp_name" required readonly>
+                </div>
+                <div class="detail-item">
+                    <label for="editProject">Project:</label>
+                    <input type="text" id="editProject" name="project" required readonly>
+                </div>
+                <div class="detail-item">
+                    <label for="editClientCode">Client Code:</label>
+                    <input type="text" id="editClientCode" name="client_code" required readonly>
+                </div>
+                <div class="detail-item">
+                    <label for="editWorkType">Work Type:</label>
+                    <input type="text" id="editWorkType" name="work_type" readonly>
+                </div>
+                <div class="detail-item">
+                    <label for="editProcessedDate">Processed Date:</label>
+                    <input type="date" id="editProcessedDate" name="processed_date" required>
+                </div>
+                <div class="detail-item">
+                    <label for="editFeedbackReceivedDate">Feedback Received Date:</label>
+                    <input type="date" id="editFeedbackReceivedDate" name="feedback_received_date" required>
+                </div>
+                <div class="detail-item">
+                    <label for="editFeedbackReceivedMode">Feedback Mode:</label>
+                    <select id="editFeedbackReceivedMode" name="feedback_received_mode" required>
+                        <option value="email">Email</option>
+                        <option value="chat">Chat</option>
+                        <option value="verbal">Verbal</option>
+                        <option value="others">Others</option>
+                    </select>
+                </div>
+                <div class="detail-item">
+                    <label for="editFeedbackProvidedBy">Provided By:</label>
+                    <input type="text" id="editFeedbackProvidedBy" name="feedback_provided_by" required>
+                </div>
+                <div class="detail-item">
+                    <label for="editFeedback">Feedback:</label>
+                    <textarea id="editFeedback" name="feedback" required></textarea>
+                </div>
+                <div class="detail-item">
+                    <label for="editSeverity">Severity:</label>
+                    <select id="editSeverity" name="severity" required>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                        <option value="null">Null</option>
+                    </select>
+                </div>
+                <div class="detail-item">
+                    <label for="editType">Type:</label>
+                    <select id="editType" name="type" required>
+                        <option value="typoErrors">Typo Errors</option>
+                        <option value="missedToKey">Missed To Key</option>
+                        <option value="instructionsNotFollowed">Instructions Not Followed</option>
+                        <option value="misinterpretation">Misinterpretation</option>
+                        <option value="softwareIssue">Software Issue</option>
+                        <option value="wrongFeedback">Wrong Feedback</option>
+                        <option value="newFeedback">New Feedback</option>
+                        <option value="duplicateFeedback">Duplicate Feedback</option>
+                        <option value="repeatMistake">Repeat Mistake</option>
+                        <option value="errorpriortosopupdate">Error Prior to SOP Update</option>
+                    </select>
+                </div>
+                <div class="detail-item">
+                    <label for="editComments">Comments:</label>
+                    <textarea id="editComments" name="comments"></textarea>
+                </div>
+                <div class="detail-item">
+                    <label for="editActionTaken">Action Taken:</label>
+                    <textarea id="editActionTaken" name="action_taken"></textarea>
+                </div>
+                <div class="detail-item">
+                    <label for="editStatus">Status:</label>
+                    <select id="editStatus" name="status" required>
+                        <option value="open">Open</option>
+                        <option value="close">Close</option>
+                    </select>
+                </div>
+                <div class="detail-item">
+                    <label for="editAcknowledgment">Acknowledgment:</label>
+                    <select id="editAcknowledgment" name="acknowledgment">
+                        <option value="">Pending</option>
+                        <option value="1">Yes</option>
+                        <option value="0">No</option>
+                    </select>
+                </div>
+                <div class="detail-item">
+                    <label for="editAcknowledgmentComment">Acknowledgment Comment:</label>
+                    <textarea id="editAcknowledgmentComment" name="acknowledgment_comment"></textarea>
+                </div>
+                <div class="detail-item full-width">
+                    <label for="editImages">Screenshots:</label>
+                    <input type="file" id="editImages" name="images" multiple accept="image/*">
+                    <div id="existingImages" class="image-gallery"></div>
+                </div>
+            </div>
+            <div class="audit-form-actions">
+                <button type="submit" class="audit-save-btn">Save Changes</button>
+                <button type="button" class="audit-cancel-btn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- End Work Session Popup -->
+<div class="end-popup" style="display: none;">
+    <div class="end-popup-content">
+        <h3>End Work Session</h3>
+        <label for="endWorkUnits">Work Units</label>
+        <input type="number" id="endWorkUnits" min="1" required>
+
+        <label for="endPages">Pages</label>
+        <input type="number" id="endPages" min="0">
+
+        <label for="endReview">Review</label>
+        <textarea id="endReview" placeholder="Enter review..." rows="3"></textarea>
+
+        <div class="end-popup-buttons">
+            <button class="end-popup-cancel">Cancel</button>
+            <button class="end-popup-submit">Submit</button>
+        </div>
+    </div>
+</div>

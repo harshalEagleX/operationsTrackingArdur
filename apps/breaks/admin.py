@@ -11,6 +11,6 @@ class BreakTimeAdmin(admin.ModelAdmin):
     )
     list_filter = ("break_type", "is_overrun")
     search_fields = ("user_id", "user_name")
-    date_hierarchy = "start_time"
+    # date_hierarchy = "start_time"
     ordering = ("-start_time",)
     readonly_fields = ("total_time", "is_overrun")

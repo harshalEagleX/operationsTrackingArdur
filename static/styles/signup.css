@@ -1,0 +1,244 @@
+@import url('https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700&display=swap');
+
+* { 
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Karla', sans-serif;
+} 
+
+body {
+    background: url('../icons/img1.jpg') no-repeat center center fixed; 
+    background-size: cover; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 40px 30px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#companyLogo {
+    width: 87%;
+    height: auto;
+    margin-bottom: 2px;
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.input-group i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    font-size: 1.1rem;
+    transition: color 0.3s ease;
+}
+
+input {
+    width: 100%;
+    padding: 12px 12px 12px 45px;
+    border: 2px solid #e1e1e1;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+    color: #333;
+}
+
+/* Password eye toggle for login/signup */
+.input-group.has-toggle input[type="password"],
+.input-group.has-toggle input[type="text"] {
+    padding-right: 44px;
+}
+.password-toggle {
+    position: absolute;
+    left: 300px;
+    top: 33%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 0px;
+    border-radius: 6px;
+}
+.password-toggle:hover {
+    background: #f2f4f7;
+    color: #333;
+}
+
+input:focus {
+    border-color: #4a90e2;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+input:focus + i {
+    color: #4a90e2;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4a90e2, #357abd);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+button:hover {
+    background: linear-gradient(135deg, #357abd, #2d6da3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+}
+
+button i {
+    font-size: 1.1rem;
+}
+
+p {
+    margin-top: 20px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+a {
+    color: #4a90e2;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #357abd;
+}
+
+/* Custom Alert Styles */
+.custom-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 400px;
+    animation: slideIn 0.3s ease;
+    z-index: 1000;
+    border-left: 4px solid;
+}
+
+.custom-alert.error {
+    border-left-color: #dc3545;
+}
+
+.custom-alert.success {
+    border-left-color: #28a745;
+}
+
+.custom-alert i {
+    font-size: 1.25rem;
+    padding-top: 2px;
+}
+
+.custom-alert.error i {
+    color: #dc3545;
+}
+
+.custom-alert.success i {
+    color: #28a745;
+}
+
+.custom-alert span {
+    color: #333;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.custom-alert .close-btn {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: auto;
+    height: auto;
+    margin: -8px -8px -8px 8px;
+    transition: color 0.3s ease;
+}
+
+.custom-alert .close-btn:hover {
+    color: #333;
+    background: none;
+    transform: none;
+    box-shadow: none;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.fade-out {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+@keyframes fadeOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@media (max-width: 500px) {
+    .container {
+        padding: 30px 20px;
+        margin: 20px;
+    }
+
+    .custom-alert {
+        left: 20px;
+        right: 20px;
+        max-width: none;
+    }
+}

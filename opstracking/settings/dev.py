@@ -23,9 +23,14 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=True)
 CELERY_TASK_EAGER_PROPAGATES = True
 
+# In development on Windows, use InMemory channel layer & cache for zero friction
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
 try:
     import django_extensions  # noqa: F401
 
     INSTALLED_APPS = [*INSTALLED_APPS, "django_extensions"]
 except ImportError:
     pass
+

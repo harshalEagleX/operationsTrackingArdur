@@ -74,6 +74,7 @@ LOCAL_APPS = [
     "apps.feedback",
     "apps.reports",
     "apps.settings_app",
+
     # ── platform ──
     "apps.files",
     "apps.realtime",
@@ -366,12 +367,14 @@ LOGGING = {
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
+APPEND_SLASH = False
 
 CONTENT_SECURITY_POLICY = (
-    "default-src 'self'; "
-    "script-src 'self'; "
-    "style-src 'self'; "
-    "img-src 'self' data: blob:; "
+    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.datatables.net; "
+    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; "
+    "img-src 'self' data: blob: https:; "
     "connect-src 'self' ws: wss:; "
     "object-src 'none'; "
     "base-uri 'self'; "

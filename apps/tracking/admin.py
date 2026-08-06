@@ -11,7 +11,7 @@ class WorkSessionAdmin(admin.ModelAdmin):
     )
     list_filter = ("is_started", "is_paused", "project", "work_type")
     search_fields = ("emp_id", "name", "project", "batch", "allocation_id")
-    date_hierarchy = "start_time"
+    # date_hierarchy = "start_time"
     ordering = ("-start_time",)
     readonly_fields = ("total_time", "average_time", "paused_elapsed")
 
@@ -24,4 +24,4 @@ class TargetAdmin(admin.ModelAdmin):
     )
     list_filter = ("target_date", "project")
     search_fields = ("emp_id", "project")
-    date_hierarchy = "target_date"
+    # date_hierarchy = "target_date"

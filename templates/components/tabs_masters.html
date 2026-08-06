@@ -1,26 +1,280 @@
-<section class="tab-panel" data-panel="masters" role="tabpanel" hidden>
-  <nav class="subtabs" role="tablist" aria-label="Master data type">
-    <button class="subtab" role="tab" aria-selected="true"  data-master="worktypes">Work types</button>
-    <button class="subtab" role="tab" aria-selected="false" data-master="projects">Projects</button>
-    <button class="subtab" role="tab" aria-selected="false" data-master="clientcodes">Client codes</button>
-    <button class="subtab" role="tab" aria-selected="false" data-master="shifts">Shifts</button>
-  </nav>
+<!-- Master Data Tabs & Modals Component -->
 
-  <div class="panel-toolbar">
-    <label class="checkbox">
-      <input type="checkbox" id="masters-active-only" checked>
-      Active only
-    </label>
-    {# Only rendered for admins; the API refuses the write regardless. #}
-    {% if current_user.is_admin %}
-      <button type="button" class="btn btn-primary" id="add-master-btn">Add</button>
-    {% endif %}
-  </div>
+<!-- Projects Tab -->
+<div id="procontent" class="procontent">
+    <div id="projects" class="procontainer tab-content">
+        <div class="projects-header">
+            <h2><i class="fas fa-project-diagram"></i> Projects</h2>
+            <div class="actions-container">
+                <button id="prevPage" title="Previous"><i class="fas fa-chevron-left"></i></button>
+                <span id="propageNumber">1 of 1</span>
+                <button id="nextPage" title="Next"><i class="fas fa-chevron-right"></i></button>
+                <div class="search-container">
+                    <input type="text" id="searchProject" placeholder="Search Projects..." onkeyup="filterProjects()">
+                </div>
+                <button id="filterButtonProject" title="Filter" class="filter-btn"><i class="fas fa-filter"></i></button>
+                <button id="addProjectButton" title="Add Project" class="project-add-btn"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+        <table id="projects-table" class="reports-data-table">
+            <thead>
+                <tr>
+                    <th>Sr. No</th>
+                    <th>Project ID</th>
+                    <th>Project Name</th>
+                    <th>Client Code</th>
+                    <th>Work Types</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
 
-  <table class="data-table" id="masters-table">
-    <thead><tr id="masters-head"></tr></thead>
-    <tbody></tbody>
-  </table>
+        <!-- Edit Project Modal -->
+        <div id="editProjectModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-edit"></i> Edit Project</h2>
+                <form id="editProjectForm">
+                    <input type="hidden" id="edit-project-id">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> Project ID:</label>
+                        <input type="text" id="edit-project_id" readonly required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-folder"></i> Project Name:</label>
+                        <input type="text" id="edit-project_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-code"></i> Client Code:</label>
+                        <div id="editClientCodesContainer" class="clientcodes-container"></div>
+                    </div>
+                    <button type="submit" class="submit-btn"><i class="fas fa-save"></i> Save Changes</button>
+                </form>
+            </div>
+        </div>
 
-  <p class="empty-state" hidden>Nothing here yet.</p>
-</section>
+        <!-- Confirm Delete Project Modal -->
+        <div id="confirmDeleteProjectModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-trash"></i> Confirm Delete</h2>
+                <p>Are you sure you want to delete this project?</p>
+                <div style="display:flex;gap:10px;justify-content:center;margin-top:15px;">
+                    <button id="confirmDeleteProjectBtn" class="submit-btn"><i class="fas fa-trash"></i> Delete</button>
+                    <button id="cancelDeleteProjectBtn" class="submit-btn" style="background:#888;">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Project Modal -->
+        <div id="addProjectModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-plus"></i> Add Project</h2>
+                <form id="addProjectForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> Project ID:</label>
+                        <input type="text" id="add-project_id" readonly required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-folder"></i> Project Name:</label>
+                        <input type="text" id="add-project_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-code"></i> Client Code:</label>
+                        <div id="clientCodesContainer" class="clientcodes-container"></div>
+                    </div>
+                    <button type="submit" class="submit-btn"><i class="fas fa-plus"></i> Add Project</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Client Codes Tab — SEPARATE from procontent so dashboard.js can find id="cccontent" -->
+<div id="cccontent" class="cccontent">
+    <div id="clientcodes" class="clientcode-container tab-content">
+        <div class="clientcode-header">
+            <h2><i class="fas fa-cubes"></i> Client Codes</h2>
+            <div class="actions-container">
+                <button id="ccprevPage" title="Previous"><i class="fas fa-chevron-left"></i></button>
+                <span id="ccpageNumber">1 of 1</span>
+                <button id="ccnextPage" title="Next"><i class="fas fa-chevron-right"></i></button>
+                <div class="search-container">
+                    <input type="text" id="ccSearch" placeholder="Search Client Codes..." onkeyup="filterClientCodes()">
+                </div>
+                <button id="addClientCodeButton" class="clientcode-add-btn" title="Add Client Code"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+        <table id="clientcodes-table" class="reports-data-table">
+            <thead>
+                <tr>
+                    <th>Sr. No</th>
+                    <th>CC ID</th>
+                    <th>Client Code</th>
+                    <th>Work Types</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <!-- Add Client Code Modal -->
+        <div id="addClientCodeModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-plus"></i> Add Client Code</h2>
+                <form id="addClientCodeForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> CC_ID:</label>
+                        <input type="text" id="add-cc_id" readonly required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-code"></i> Client Code:</label>
+                        <input type="text" id="add-cclient_code" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tasks"></i> Work Types:</label>
+                        <div id="addWorkTypesContainer" class="worktypes-container"></div>
+                    </div>
+                    <button type="submit" class="submit-btn"><i class="fas fa-plus"></i> Add Client Code</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Client Code Modal -->
+        <div id="clientcodeModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-edit"></i> Edit Client Code</h2>
+                <form id="editClientCodeForm">
+                    <input type="hidden" id="edit-cc-id">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> CC ID:</label>
+                        <input type="text" id="clientcode-cc_id" readonly required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-code"></i> Client Code:</label>
+                        <input type="text" id="clientcode-client_code" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tasks"></i> Work Types:</label>
+                        <div id="editWorkTypesContainer" class="worktypes-container"></div>
+                    </div>
+                    <button type="submit" class="submit-btn"><i class="fas fa-save"></i> Save Changes</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Confirm Delete Client Code Modal -->
+        <div id="confirmDeleteClientCodeModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-trash"></i> Confirm Delete</h2>
+                <p>Are you sure you want to delete this client code?</p>
+                <div style="display:flex;gap:10px;justify-content:center;margin-top:15px;">
+                    <button id="confirmDeleteClientCodeBtn" class="submit-btn"><i class="fas fa-trash"></i> Delete</button>
+                    <button id="cancelDeleteClientCodeBtn" class="submit-btn" style="background:#888;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Work Types Tab — SEPARATE from procontent so dashboard.js can find id="wtcontent" -->
+<div id="wtcontent" class="wtcontent">
+    <div id="worktypes" class="wtcontainer tab-content">
+        <div class="worktypes-header">
+            <h2><i class="fas fa-tasks"></i> Work Types</h2>
+            <div class="actions-container">
+                <button id="wtprevPage" title="Previous"><i class="fas fa-chevron-left"></i></button>
+                <span id="wtpageNumber">1 of 1</span>
+                <button id="wtnextPage" title="Next"><i class="fas fa-chevron-right"></i></button>
+                <div class="search-container">
+                    <input type="text" id="wtSearch" placeholder="Search Work Types..." onkeyup="filterWorkTypes()">
+                </div>
+                <button id="addWorktypeButton" class="worktype-add-btn" title="Add Work Type"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+        <table id="worktypes-table" class="reports-data-table">
+            <thead>
+                <tr>
+                    <th>Sr. No</th>
+                    <th>WT ID</th>
+                    <th>Work Type Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <!-- Add Work Type Modal -->
+        <div id="addWorktypeModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-plus"></i> Add Work Type</h2>
+                <form id="addWorktypeForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> Work Type ID:</label>
+                        <input type="text" id="add-wt_id" readonly required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tasks"></i> Work Type Name:</label>
+                        <input type="text" id="add-worktypename" required>
+                    </div>
+                    <button type="submit" class="submit-btn"><i class="fas fa-plus"></i> Add Work Type</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Work Type Modal -->
+        <div id="worktypeModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-edit"></i> Edit Work Type</h2>
+                <form id="editWorktypeForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> Work Type ID:</label>
+                        <input type="text" id="worktype-wt_id" readonly required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tasks"></i> Work Type Name:</label>
+                        <input type="text" id="worktype-worktypename" required>
+                    </div>
+                    <button type="submit" class="submit-btn"><i class="fas fa-save"></i> Save Changes</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Work Types Viewer Modal (used by clientcode.js) -->
+        <div id="workTypesModal" class="modal">
+            <div class="modal-content">
+                <span id="closeWorkTypesModal" class="close-btn">&times;</span>
+                <h2 id="workTypesHeader"><i class="fas fa-tasks"></i> Work Types</h2>
+                <table class="reports-data-table" style="margin-top:15px;">
+                    <thead>
+                        <tr>
+                            <th>Sr. No</th>
+                            <th>Work Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workTypesTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Confirm Delete Work Type Modal -->
+        <div id="confirmDeleteWorktypeModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2><i class="fas fa-trash"></i> Confirm Delete</h2>
+                <p>Are you sure you want to delete this work type?</p>
+                <div style="display:flex;gap:10px;justify-content:center;margin-top:15px;">
+                    <button id="confirmDeleteWorktypeBtn" class="submit-btn"><i class="fas fa-trash"></i> Delete</button>
+                    <button id="cancelDeleteWorktypeBtn" class="submit-btn" style="background:#888;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

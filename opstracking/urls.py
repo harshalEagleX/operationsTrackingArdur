@@ -20,6 +20,7 @@ urlpatterns = [
     path("ready/", ReadinessView.as_view(), name="ready"),
     path("admin/", admin.site.urls),
     path("api/v1/", include(("opstracking.api_urls", "api"), namespace="api")),
+
     path("", include("pages.urls")),
 ]
 

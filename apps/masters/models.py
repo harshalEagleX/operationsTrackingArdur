@@ -33,6 +33,7 @@ class MasterRecord(models.Model):
 
 class WorkType(MasterRecord):
     id = models.AutoField(primary_key=True)
+    wt_id = models.CharField(max_length=20, default="", blank=True)
     work_type = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True, default="")
     # Expected units per hour — the productivity reports compare against it.
@@ -50,9 +51,12 @@ class WorkType(MasterRecord):
 
 class Project(MasterRecord):
     id = models.AutoField(primary_key=True)
+    project_id = models.CharField(max_length=20, default="", blank=True)
     project_name = models.CharField(max_length=150, unique=True)
     project_code = models.CharField(max_length=50, blank=True, default="", db_index=True)
     client_name = models.CharField(max_length=150, blank=True, default="")
+    client_code = models.TextField(blank=True, default="")
+    worktypes = models.TextField(blank=True, default="")
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
 
@@ -67,9 +71,11 @@ class Project(MasterRecord):
 
 class ClientCode(MasterRecord):
     id = models.AutoField(primary_key=True)
+    cc_id = models.CharField(max_length=50, default="", blank=True)
     client_code = models.CharField(max_length=50, unique=True)
     client_name = models.CharField(max_length=150, blank=True, default="")
     project = models.CharField(max_length=150, blank=True, default="", db_index=True)
+    worktypes = models.TextField(blank=True, default="")
 
     class Meta:
         managed = legacy_managed()

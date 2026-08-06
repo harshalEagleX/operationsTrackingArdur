@@ -33,7 +33,7 @@ class WorkSessionSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_state(self, obj) -> str:
-        return SessionState(obj.is_started).label.lower()
+        return SessionState(int(obj.is_started)).label.lower()
 
 
 class StartSessionSerializer(serializers.Serializer):

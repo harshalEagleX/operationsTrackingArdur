@@ -134,11 +134,16 @@ class Employee(models.Model):
         max_length=20, choices=Role.choices, default=Role.EMPLOYEE, db_index=True
     )
     designation = models.CharField(max_length=100, blank=True, default="")
-    department = models.CharField(max_length=100, blank=True, default="")
-    project = models.CharField(max_length=150, blank=True, default="")
-    shift = models.CharField(max_length=50, blank=True, default="")
+    department = models.CharField(max_length=100, blank=True, default="", db_column="work_location")
+    project = models.CharField(max_length=150, blank=True, default="", db_column="projects")
+    shift = models.CharField(max_length=50, blank=True, default="", db_column="shift_time")
     reporting_to = models.CharField(max_length=20, blank=True, default="")
-    date_of_joining = models.DateField(null=True, blank=True)
+    date_of_joining = models.DateField(null=True, blank=True, db_column="joining_date")
+    
+    # Legacy fields heavily used by the app but missing from OOP rewrite
+    client_code = models.CharField(max_length=150, blank=True, default="")
+    work_type = models.CharField(max_length=150, blank=True, default="")
+    active_inactive_date = models.DateField(null=True, blank=True)
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.ACTIVE, db_index=True
     )

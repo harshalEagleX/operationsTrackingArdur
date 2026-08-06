@@ -1,0 +1,527 @@
+/* ==========================================================================
+   DASHBOARD CORE STYLESHEET
+   Universal styles, layout, navigation, header, sidebar & shared utilities
+   ========================================================================== */
+
+/* Universal Styling */
+@import url('https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700&display=swap');
+/* Import Font Awesome for icons */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Karla', sans-serif;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #888 #f0f0f0; /* Thumb & Track */
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.header {
+    background-color: #2c3e50; /* Matching the side-nav color */
+    color: white;
+    padding: 2px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-nav-btn {
+    font-size: 24px;
+    color: white;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.toggle-nav-btn:hover {
+    color: #1abc9c; /* Matching the hover color of side-nav */
+}
+
+/* #companyLogo {
+    width: 15%;
+    height: auto;
+    margin-left: -393px;
+} */
+
+.header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+}
+
+.header h3 i {
+    margin-right: 8px;
+    color: #1abc9c;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+#user-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#user-name i {
+    font-size: 20px;
+    color: #1abc9c; /* Matching the active color of side-nav */
+}
+
+button.logout-btn {
+    background: #dc3545 !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 5px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    width: auto !important;
+    margin: 0 !important;
+    transition: background-color 0.3s;
+}
+
+button.logout-btn i {
+    font-size: 16px;
+}
+
+button.logout-btn:hover {
+    background: #c82333 !important;
+}
+
+/* User menu (username click) */
+.user-menu {
+    position: absolute;
+    right: 100px;
+    top: 56px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    min-width: 180px;
+    z-index: 1001;
+}
+.user-menu.hidden { display: none; }
+.user-menu ul { list-style: none; margin: 0; padding: 8px 0; }
+.user-menu a { display: flex; align-items: center; gap: 8px; padding: 10px 14px; color: #1abc9c; text-decoration: none; }
+.user-menu a:hover { background: #f6f8fa; }
+
+/* Reset Password UI */
+.reset-popup {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    width: 360px;
+    z-index: 1000;
+}
+.reset-popup.hidden { display: none; }
+.reset-content { display: flex; flex-direction: column; }
+.reset-header { display:flex; align-items:center; justify-content:space-between; padding:20px; border-bottom:1px solid rgba(0,0,0,0.08); background:#f8f9fa; border-radius:16px 16px 0 0; }
+.reset-header h3 { font-size:18px; color:#2c3e50; margin:0; display:flex; gap:10px; align-items:center; }
+.close-reset { background:none; border:none; color:#95a5a6; cursor:pointer; padding:5px; border-radius:50%; }
+.close-reset:hover { background:#ecf0f1; color:#7f8c8d; }
+.reset-body { padding:20px; }
+.reset-body .form-group { margin-bottom: 14px; }
+.reset-body label { display:block; margin-bottom:6px; color:#2c3e50; font-weight:600; }
+.reset-body input[type="password"] { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; outline:none; transition:border .2s; }
+.reset-body input[type="password"]:focus { border-color:#1abc9c; }
+.reset-actions { display:flex; gap:10px; margin-top:10px; }
+.reset-actions .btn-primary { background:#1abc9c; color:#fff; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; }
+.reset-actions .btn-primary:hover { background:#16a085; }
+.reset-actions .btn-secondary { background:#e9ecef; color:#2c3e50; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; }
+.reset-actions .btn-secondary:hover { background:#dee2e6; }
+
+/* Replace attendance indicator styling */
+.reset-indicator { color:#1abc9c; font-size:14px; opacity:.9; animation: pulse-light 2s infinite; }
+
+/* Password field with eye toggle */
+.password-field { position: relative; display: flex; align-items: center; }
+.password-field input[type="password"],
+.password-field input[type="text"] { width:100%; padding-right: 42px; }
+.password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #7f8c8d; cursor: pointer; padding: 6px; border-radius: 6px; }
+.password-toggle:hover { background: #ecf0f1; color: #2c3e50; }
+.password-toggle .fa-eye-slash { color: #2c3e50; }
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+    transition: background 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Pagination Buttons */
+.pagination-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 15px;
+    z-index: 1000;
+}
+
+/* Responsive Adjustments */
+
+
+/************************************************SIDE NAV*********************************************/
+
+.side-nav {
+    position: fixed;
+    top: auto;
+    left: 0px;
+    width: 250px;
+    height: 100vh;
+    background-color: #2c3e50;
+    color: white;
+    transition: all 0.3s ease-in-out;
+    overflow-y: auto;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.side-nav.collapsed {
+    width: 60px;
+}
+
+.side-nav.collapsed:hover {
+    width: 250px;
+}
+
+.side-nav.collapsed .nav-text {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.side-nav.collapsed:hover .nav-text {
+    display: inline;
+    opacity: 1;
+}
+
+.side-nav.collapsed ul li a {
+    justify-content: center;
+}
+
+.side-nav.collapsed:hover ul li a {
+    justify-content: flex-start;
+}
+
+.side-nav.collapsed ul li a i {
+    margin-right: 0;
+}
+
+.side-nav.collapsed:hover ul li a i {
+    margin-right: 10px;
+}
+
+.side-nav.open {
+    left: 0;
+}
+
+.side-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.side-nav ul li {
+    padding: 5px;
+    margin: 5px 0;
+}
+
+.side-nav ul li a {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    transition: background-color 0.3s, color 0.3s;
+    border-radius: 5px;
+}
+
+.side-nav ul li a i {
+    margin-right: 10px;
+    font-size: 18px;
+}
+
+.side-nav ul li a:hover {
+    background-color: #34495e;
+    color: #1abc9c;
+}
+
+.side-nav-btn {
+    width: 100%;
+    padding: 15px;
+    background-color: #34495e;
+    border: none;
+    color: #ffffff;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.side-nav-btn:hover {
+    background-color: #2c3e50;
+}
+
+.side-nav-btn.active {
+    background-color: #1abc9c;
+    color: white;
+}
+
+/* Main tab styling */
+.side-nav-btn.main-tab-active {
+    background-color: #00bd9e;  /* Green color for main tabs */
+    color: white;
+}
+
+/* Sub-tab styling */
+.side-nav-btn.sub-tab-active {
+    background-color: #ffffff;  /* Orange color for sub-tabs */
+    color: #2c3e4f;
+}
+
+/* Sub-menu styling */
+.sub-master,
+.sub-reports {
+    padding-left: 20px;
+    list-style-type: none;
+    position: relative;
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    margin-left: 20px;
+    transition: all 0.3s ease-in-out;
+}
+
+.side-nav.collapsed .sub-master,
+.side-nav.collapsed .sub-reports {
+    padding-left: 0;
+    margin-left: 0;
+    border-left: none;
+}
+
+.side-nav.collapsed:hover .sub-master,
+.side-nav.collapsed:hover .sub-reports {
+    padding-left: 3px;
+    margin-left: 10px;
+    border-left: 2px solid rgb(255, 255, 255);
+}
+
+.sub-master li a,
+.sub-reports li a {
+    padding: 8px 15px;
+    font-size: 0.9em;
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Hide sub-menus when collapsed */
+.side-nav.collapsed .sub-master,
+.side-nav.collapsed .sub-reports {
+    display: none;
+}
+
+/* Show sub-menus on hover when collapsed */
+.side-nav.collapsed:hover .sub-master,
+.side-nav.collapsed:hover .sub-reports {
+    display: block;
+}
+
+/* Ensure text is visible in sub-menus on hover */
+.side-nav.collapsed:hover .sub-master .nav-text,
+.side-nav.collapsed:hover .sub-reports .nav-text {
+    display: inline;
+    opacity: 1;
+}
+
+.content {
+    margin-left: 50px;
+    transition: margin-left 0.3s ease-in-out;
+    padding: 0px;
+}
+
+.content.shifted { 
+    margin-left: 250px;
+}
+
+.wtcontent, .procontent, .cccontent, .repcontent, .feedbackcontent, .breakscontent, .summarycontent, .auditcontent, .orderallocationcontent {
+    margin-left: 0 !important;
+    padding: 0px;
+}
+
+.empcontainer, .wtcontainer, .procontainer,  .clientcode-container , .reportscontainer, .feedbackcontainer, .breakreportscontainer, .summaryreportscontainer, .auditreportscontainer, .orderallocationcontainer{
+    background-color: #fff;
+    padding: 20px;
+    height: 90vh;
+    border-radius: 8px; 
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow: auto;
+}
+
+
+
+/* ==========================================================================
+   SHARED UTILITIES & MISCELLANEOUS HELPERS
+   ========================================================================== */
+
+/****************************Other************************/
+
+.end-popup {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+
+.end-popup-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 300px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.end-popup-content h3 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #2c3e4f;
+}
+
+.end-popup-content label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+    color: #444;
+}
+
+.end-popup-content input,
+.end-popup-content textarea {
+    width: 100%;
+    padding: 6px 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.end-popup-buttons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 15px;
+}
+
+.end-popup-buttons button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    margin-left: 10px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.end-popup-cancel {
+    background-color: #ccc;
+    color: #333;
+}
+
+.end-popup-submit {
+    background-color: #2c3e4f;
+    color: #fff;
+}
+
+
+
+/* ==========================================================================
+   GLOBAL ANIMATIONS & TRANSITIONS
+   ========================================================================== */
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ==========================================================================
+   RESPONSIVE: @media (max-width: 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+    .pagination-buttons {
+        bottom: 10px;
+    }
+    
+    #prevPage, #nextPage {
+        font-size: 14px;
+        padding: 8px 15px;
+    }
+}

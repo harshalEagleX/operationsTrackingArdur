@@ -9,6 +9,7 @@ from apps.allocations.models import (
     BatchAllocation,
     OrderHistory,
     Priority,
+    OrderRate,
 )
 from core.validators import validate_emp_id
 
@@ -83,5 +84,15 @@ class OrderHistorySerializer(serializers.ModelSerializer):
             "id", "allocation_id", "order_id", "employee_id", "action",
             "from_status", "to_status", "quantity", "remarks",
             "performed_by", "created_at",
+        ]
+        read_only_fields = fields
+
+
+class OrderRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderRate
+        fields = [
+            "id", "order_type", "state", "stateabr", "county",
+            "vendor_rts", "eta_rts", "vendor_slt", "eta_slt", "remark",
         ]
         read_only_fields = fields

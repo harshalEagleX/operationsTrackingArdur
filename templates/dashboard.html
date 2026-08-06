@@ -1,47 +1,27 @@
 {% extends "base.html" %}
 
+{% block title %}Admin Dashboard · OpsTracking{% endblock %}
 {% block page_id %}dashboard{% endblock %}
 
 {% block content %}
-<header class="page-header">
-  <h1>Dashboard</h1>
-  <p class="page-subtitle">Floor status and reporting</p>
-</header>
-
-{# Populated by js/features/dashboard.js from /api/v1/reports/metrics/ #}
-<section class="metric-row" id="metrics" aria-label="Today's figures">
-  <article class="metric"><span class="metric-value" data-metric="active_now">–</span>
-    <span class="metric-label">Working now</span></article>
-  <article class="metric"><span class="metric-value" data-metric="on_break_now">–</span>
-    <span class="metric-label">On break</span></article>
-  <article class="metric"><span class="metric-value" data-metric="units_today">–</span>
-    <span class="metric-label">Units today</span></article>
-  <article class="metric"><span class="metric-value" data-metric="hours_today">–</span>
-    <span class="metric-label">Hours today</span></article>
-  <article class="metric"><span class="metric-value" data-metric="open_allocations">–</span>
-    <span class="metric-label">Open allocations</span></article>
-  <article class="metric metric-warning">
-    <span class="metric-value" data-metric="overdue_allocations">–</span>
-    <span class="metric-label">Overdue</span></article>
-</section>
-
-<nav class="tabs" role="tablist" aria-label="Dashboard sections">
-  <button class="tab" role="tab" aria-selected="true"  data-tab="employees">Employees</button>
-  <button class="tab" role="tab" aria-selected="false" data-tab="masters">Master data</button>
-  <button class="tab" role="tab" aria-selected="false" data-tab="allocations">Allocations</button>
-  <button class="tab" role="tab" aria-selected="false" data-tab="reports">Reports</button>
-</nav>
-
-<div class="tab-panels">
   {% include "components/tabs_employees.html" %}
   {% include "components/tabs_masters.html" %}
-  {% include "components/tabs_allocations.html" %}
   {% include "components/tabs_reports.html" %}
-</div>
-
-{% include "components/modals.html" %}
+  {% include "components/tabs_allocations.html" %}
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="{{ static('js/features/dashboard.js') }}"></script>
+  <!-- Admin scripts -->
+  <script src="{{ static('js/admin/config.js') }}?v=1"></script>
+  <script src="{{ static('js/admin/dashboard.js') }}"></script>
+  <script src="{{ static('js/admin/feedback.js') }}?v=2"></script>
+  <script src="{{ static('js/admin/breakrep.js') }}"></script>
+  <script src="{{ static('js/admin/worktypes.js') }}?v=1"></script>
+  <script src="{{ static('js/admin/projects.js') }}?v=1"></script>
+  <script src="{{ static('js/admin/reports.js') }}?v=2"></script>
+  <script src="{{ static('js/admin/clientcode.js') }}?v=1"></script>
+  <script src="{{ static('js/admin/summary.js') }}"></script>
+  <script src="{{ static('js/admin/auditrep.js') }}"></script>
+  <script src="{{ static('js/admin/orderallocation.js') }}"></script>
 {% endblock %}
+

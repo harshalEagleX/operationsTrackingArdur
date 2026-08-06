@@ -139,3 +139,26 @@ class OrderHistory(models.Model):
 
     def __str__(self) -> str:
         return f"{self.allocation_id}: {self.action} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class OrderRate(models.Model):
+    """Vendor rates and SLAs for order types across states and counties."""
+
+    id = models.AutoField(primary_key=True)
+    order_type = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    stateabr = models.CharField(max_length=100, blank=True, default="")
+    county = models.CharField(max_length=100)
+    vendor_rts = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    eta_rts = models.IntegerField(blank=True, null=True)
+    vendor_slt = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    eta_slt = models.IntegerField(blank=True, null=True)
+    remark = models.CharField(max_length=250, blank=True, default="")
+
+    class Meta:
+        managed = legacy_managed()
+        db_table = "ot_order_rates"
+        ordering = ["order_type", "state", "county"]
+
+    def __str__(self) -> str:
+        return f"{self.order_type} - {self.state} - {self.county}"

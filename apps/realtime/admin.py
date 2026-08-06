@@ -8,7 +8,7 @@ class OutboxEventAdmin(admin.ModelAdmin):
     list_display = ("id", "topic", "event_type", "created_at")
     list_filter = ("event_type",)
     search_fields = ("topic", "event_type")
-    date_hierarchy = "created_at"
+    # date_hierarchy = "created_at"
     readonly_fields = [f.name for f in OutboxEvent._meta.fields]
 
     def has_add_permission(self, request):

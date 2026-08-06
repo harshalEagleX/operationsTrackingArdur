@@ -51,6 +51,27 @@ class LoginPage(TemplateView):
         return context
 
 
+class SignupPage(TemplateView):
+    """GET /signup/ — registration page."""
+
+    template_name = "signup.html"
+
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect(_home_for(request.user))
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            base_context(
+                self.request,
+                page_title="Sign Up",
+            )
+        )
+        return context
+
+
 class HomeRedirect(LoginRequiredMixin, TemplateView):
     """GET / — send people to the right dashboard for their role."""
 
@@ -76,7 +97,17 @@ class UserDashboardPage(BasePage):
     """The employee's own screen: work timer, breaks, tasks, feedback."""
 
     template_name = "userdashboard.html"
-    page_title = "My dashboard"
+    page_title = "User Dashboard"
+
+    def get_context_data(self, **kwargs):
+        from datetime import date
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context["username"] = getattr(user, "name", "") or getattr(user, "emp_id", "") or str(user)
+        context["role"] = getattr(user, "role", "employee")
+        context["current_date"] = date.today().strftime("%Y-%m-%d")
+        context["emp_id"] = getattr(user, "emp_id", "")
+        return context
 
 
 class SettingsPage(BasePage):
@@ -89,6 +120,14 @@ class SettingsPage(BasePage):
         if request.user.is_authenticated and not request.user.is_admin:
             raise Http404
         return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context["username"] = getattr(user, "name", "") or getattr(user, "emp_id", "") or str(user)
+        context["role"] = getattr(user, "role", "admin")
+        context["emp_id"] = getattr(user, "emp_id", "")
+        return context
 
 
 class ChatPage(BasePage):

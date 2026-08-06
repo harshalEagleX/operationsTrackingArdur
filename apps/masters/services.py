@@ -163,7 +163,7 @@ def active_work_types() -> list[dict]:
 
 @cached("masters")
 def active_projects() -> list[dict]:
-    return list(Project.objects.active().values("id", "project_name", "project_code", "client_name"))
+    return list(Project.objects.active().values("id", "project_id", "project_name", "project_code", "client_name"))
 
 
 @cached("masters")

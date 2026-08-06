@@ -1,0 +1,1597 @@
+/* ==========================================================================
+   MASTERS MODULE STYLESHEET
+   Employees, Work Types, Client Codes, Projects & Master Modals
+   ========================================================================== */
+
+/****************************************************Emp, Worktype, Client Code, Project*************************************/
+
+/* Container Styling */
+#add-client-codes-container, #add-worktypes-container, #edit-client-codes-container, #edit-worktypes-container {
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    margin-bottom: 15px;
+    display: block;
+}
+
+/* For content inside the container */
+#add-client-codes-container > .client-code, #add-worktypes-container > .worktype, #edit-client-codes-container > .client-code, #edit-worktypes-container > .worktype {
+    background-color: #e0e0e0;
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+/* Add hover effect to the items inside the containers */
+#add-client-codes-container > .client-code:hover, #add-worktypes-container > .worktype:hover, #edit-client-codes-container > .client-code:hover, #edit-worktypes-container > .worktype:hover {
+    background-color: #b3b3b3;
+    cursor: pointer;
+}
+
+.worktypes-container {
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    margin-bottom: 15px;
+    /* Switch to grid for modern, tidy layout */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.worktypes-container > .worktype {
+    background-color: #e0e0e0;
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.worktypes-container > .worktype:hover {
+    background-color: #b3b3b3;
+    cursor: pointer;
+}
+
+/* Smart grid tiles for Add Client Code work types */
+#addClientCodeModal .worktypes-container label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+#addClientCodeModal .worktypes-container label:hover {
+    background: #f5f9f8;
+    border-color: #1abc9c33;
+    box-shadow: 0 1px 4px rgba(26, 188, 156, 0.12);
+}
+
+#addClientCodeModal .worktypes-container input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-right: 2px;
+    cursor: pointer;
+}
+
+/* Slightly denser grid on small screens */
+
+
+h1 {
+    text-align: center;
+    margin-top: -8px;
+    margin-bottom: -10px;
+    font-size: x-large;
+}
+
+table {
+    width: 100%;
+    white-space: nowrap;
+    border-collapse: collapse;
+}
+
+table th, table td {
+    padding: 6px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+table th {
+    background-color: #283655;
+    color: white;
+}
+
+table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Modal Styling */
+.deletemodal, .wtdeletemodal, .ccdeletemodal, .prodeletemodal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.deletemodal-content, .wtdeletemodal-content, .ccdeletemodal-content, .prodeletemodal-content {
+    background-color: #ffffff;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 300px;
+    width: 90%;
+    max-height: 80vh;
+    margin: auto;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.deletemodal-content h2, .wtdeletemodal-content h2, .ccdeletemodal-content h2, .prodeletemodal-content h2 {
+    margin: 0 0 16px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #333333;
+    text-align: center;
+}
+
+.deletemodal-content div, .wtdeletemodal-content div, .ccdeletemodal-content div, .prodeletemodal-content div {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.deletemodal-content button, .wtdeletemodal-content button, .ccdeletemodal-content button, .prodeletemodal-content button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#confirmDeleteBtn, #confirmDeleteWorktypeBtn, #confirmDeleteClientCodeBtn, #confirmDeleteProjectBtn {
+    background-color: #dc3545;
+    color: white;
+}
+
+#confirmDeleteBtn:hover, #confirmDeleteWorktypeBtn:hover, #confirmDeleteClientCodeBtn:hover, #confirmDeleteProjectBtn:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+}
+
+#cancelDeleteBtn, #cancelDeleteWorktypeBtn, #cancelDeleteClientCodeBtn, #cancelDeleteProjectBtn {
+    background-color: #6c757d;
+    color: white;
+}
+
+#cancelDeleteBtn:hover, #cancelDeleteWorktypeBtn:hover, #cancelDeleteClientCodeBtn:hover, #cancelDeleteProjectBtn:hover {
+    background-color: #5a6268;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.2);
+}
+
+button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.edit-btn, .delete-btn, .proedit-btn, .prodelete-btn, .wtedit-btn, .wtdelete-btn, .clientcodeedit-btn, .clientcodedelete-btn {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0px;
+    margin: 0 5px;
+}
+
+.edit-btn img, .delete-btn img, .proedit-btn img, .wtedit-btn img, .prodelete-btn img, .wtdelete-btn img, .clientcodedelete-btn img, .clientcodeedit-btn img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.edit-btn i, .delete-btn i, .proedit-btn i, .prodelete-btn i, .wtedit-btn i, .wtdelete-btn i, .clientcodeedit-btn i, .clientcodedelete-btn i {
+    font-size: 20px;
+    color: #007bff;
+}
+
+/* Modal Content */
+.empmodal-content, .modal-content {
+    position: fixed;
+    background: #ffffff;
+    border-radius: 10px;
+    max-width: 70%;
+    width: 90%;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease-in-out;
+    overflow-y: auto;
+    left: 22%;
+    max-height: 70vh;
+}
+
+/* Close Button */
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    color: #aaa;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close-btn:hover {
+    color: #2c3e50; /* Matching the header color */
+}
+
+/* Modal Header */
+.modal-content h2, .empmodal-content h2 {
+    font-size: 24px;
+    color: #2c3e50; /* Matching the header color */
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-content h2 i, .empmodal-content h2 i {
+    color: #1abc9c; /* Matching the active color of side-nav */
+}
+
+
+
+.emp-search-container {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.emp-search-field {
+    width: 100%;
+    padding: 8px 30px 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.emp-clear-search {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    font-size: 14px;
+    display: none;
+}
+
+.emp-clear-search:hover {
+    color: #666;
+}
+
+.emp-checkbox-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    position: relative;
+}
+
+.emp-checkbox-container select {
+    display: none !important;
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.emp-checkbox-list {
+    padding: 5px;
+    background: #fff;
+}
+
+/* Hide the native select dropdown */
+.emp-checkbox-container select option {
+    display: none;
+}
+
+/* Style for the checkbox items */
+.emp-checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    background: #fff;
+}
+
+.emp-checkbox-item:hover {
+    background-color: #f5f5f5;
+}
+
+/* Ensure no gray background appears */
+.emp-checkbox-container, 
+.emp-checkbox-list, 
+.emp-checkbox-item {
+    background-color: #fff !important;
+}
+
+/* Style for the search container */
+.emp-search-container {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.emp-search-field {
+    width: 100%;
+    padding: 8px 30px 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background: #fff;
+}
+
+/* Ensure proper spacing in the form group */
+.form-group .emp-checkbox-container {
+    margin-top: 5px;
+}
+
+.emp-checkbox-item input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #1abc9c;
+    border-radius: 3px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    position: relative;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.emp-checkbox-item input[type="checkbox"]:checked {
+    background-color: #1abc9c;
+    border-color: #1abc9c;
+}
+
+.emp-checkbox-item input[type="checkbox"]:checked::after {
+    content: '\2714';
+    font-size: 12px;
+    color: white;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.emp-checkbox-item input[type="checkbox"]:hover {
+    border-color: #16a085;
+}
+
+.emp-checkbox-item input[type="checkbox"]:checked:hover {
+    background-color: #16a085;
+    border-color: #16a085;
+}
+
+.emp-checkbox-item label {
+    cursor: pointer;
+    user-select: none;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.emp-checkbox-item:hover label {
+    color: #16a085;
+}
+
+.emp-checkbox-item.hidden {
+    display: none;
+}
+
+/* Scrollbar styles for the checkbox container */
+.emp-checkbox-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.emp-checkbox-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.emp-checkbox-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.emp-checkbox-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Show clear button when input has text */
+.emp-search-field:not(:placeholder-shown) + .emp-clear-search {
+    display: block;
+}
+
+/* Additional fixes for the select element */
+.emp-checkbox-container select {
+    display: none !important;
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+/* Ensure white background and no gray overlay */
+.emp-checkbox-container,
+.emp-checkbox-list,
+.emp-checkbox-item {
+    background-color: #fff !important;
+}
+
+.emp-select-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.emp-select-all,
+.emp-deselect-all {
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #1abc9c;
+    border-radius: 4px;
+    background: #fff;
+    color: #1abc9c;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.emp-select-all:hover,
+.emp-deselect-all:hover {
+    background: #1abc9c;
+    color: #fff;
+}
+
+.emp-select-all:active,
+.emp-deselect-all:active {
+    transform: scale(0.98);
+}
+
+/* Update checkbox container spacing */
+.emp-checkbox-container {
+    margin-top: 0;
+}
+
+/* Form Group */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50; /* Matching the header color */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.form-group label i {
+    color: #1abc9c; /* Matching the active color of side-nav */
+}
+
+.form-group input,
+.form-group select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.form-group select[multiple] {
+    height: 100px;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Submit Button */
+.submit-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #2c3e50; /* Matching the header color */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.submit-btn:hover {
+    background-color: #1abc9c; /* Matching the active color of side-nav */
+}
+
+/* Animation */
+@keyframes slideDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal h2 {
+    margin-top: auto;
+    font-size: 20px;
+    color: #333;
+    margin-bottom: auto;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+}
+
+label {
+    font-size: 14px;
+    font-weight: bold;
+    color: #555;
+}
+
+input[type="text"]:not(.reports-date-picker, .form-control, .reports-search-field, .peq-search-input, .break-date-picker, .break-search-field, .date-range-filter, .audit-search-container, .audit-search-field), 
+input[type="date"]:not(.reports-date-picker, .break-date-picker, .date-range-filter, .audit-date-picker), 
+select:not(.reports-date-picker, .form-select, .reports-project-dropdown, .reports-work-location-dropdown, .form-control, .break-entries-dropdown, .date-range-filter, .audit-entries-dropdown) {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #333;
+    background-color: #f9f9f9;
+    transition: border-color 0.3s ease;
+}
+
+input[type="text"]:focus, input[type="date"]:focus, select:focus {
+    border-color: #1abc9c; /* Matching the active color of side-nav */
+    outline: none;
+}
+
+button[type="submit"] {
+    padding: 11px 23px;
+    background-color: #1abc9c;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 15px;
+    width: 45%;
+    font-weight: bold;
+    cursor: pointer;
+    margin-inline: auto;
+    transition: background-color 0.3s;
+}
+
+button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+/* Responsive Design */
+
+
+/* General Styles for Headers */
+.employees-header, .worktypes-header, .projects-header, .clientcode-header, .reports-page-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Header Titles (h2) */
+.employees-header h2, .worktypes-header h2, .projects-header h2, .clientcode-header h2, .reports-page-title h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #2c3e50; /* Matching the header color */
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.employees-header h2 i, .worktypes-header h2 i, .projects-header h2 i, .clientcode-header h2 i, .reports-page-title h2 i {
+    font-size: 28px;
+    color: #1abc9c; /* Matching the active color of side-nav */
+}
+
+/* Actions Container */
+.actions-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Search Bar */
+#search, #searchWorktype, #searchProject, #searchClientCode {
+    border-radius: 8px;
+    width: 300px;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    background-color: #f8f9fa;
+    font-size: 14px;
+    color: #333;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#search:focus, #searchWorktype:focus, #searchProject:focus, #searchClientCode:focus {
+    border-color: #1abc9c; /* Matching the active color of side-nav */
+    outline: none;
+    box-shadow: 0 0 5px rgba(26, 188, 156, 0.3);
+}
+
+/* Page Navigation Buttons */
+#empprevPage, #empnextPage, #wtprevPage, #wtnextPage, #ccprevPage, #ccnextPage ,#prevPage, #nextPage {
+    background-color: #2c3e50; /* Matching the header color */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+#empprevPage:hover, #empnextPage:hover, #wtprevPage:hover, #wtnextPage:hover, #ccprevPage:hover, #ccnextPage:hover, #prevPage:hover, #nextPage:hover {
+    background-color: #1abc9c; /* Matching the active color of side-nav */
+}
+
+#empprevPage i, #empnextPage i, #wtprevPage i, #wtnextPage i, #ccprevPage i, #ccnextPage i {
+    font-size: 14px;
+}
+
+/* Page Number */
+#PageNumber, #propageNumber, #wtpageNumber, #ccpageNumber {
+    font-size: 14px;
+    color: #555;
+    font-weight: bold;
+    margin: 0 10px;
+}
+
+/* Filter and Add Buttons */
+.filter-btn, .manual-btn, .emp-add-btn, .worktype-add-btn, .project-add-btn, .clientcode-add-btn {
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background-color: #2c3e50; /* Matching the header color */
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.filter-btn i, .emp-add-btn i, .worktype-add-btn i, .project-add-btn i, .clientcode-add-btn i {
+    font-size: 16px;
+}
+
+.filter-btn:hover, .manual-btn:hover, .emp-add-btn:hover, .worktype-add-btn:hover, .project-add-btn:hover, .clientcode-add-btn:hover {
+    background-color: #1abc9c; /* Matching the active color of side-nav */
+}
+
+.manual-btn {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 15px rgba(32, 40, 62, 0.2);
+}
+
+.manual-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    padding: 20px;
+}
+
+.manual-modal:not(.hidden) {
+    display: flex;
+}
+
+.manual-modal-content {
+    background: #ffffff;
+    border-radius: 18px;
+    width: min(900px, 95vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 32px 36px;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+    animation: fadeIn 0.3s ease;
+    position: relative;
+}
+
+.manual-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    border: none;
+    background: none;
+    font-size: 28px;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.manual-close:hover {
+    color: #1abc9c;
+}
+
+.manual-header {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.manual-header i {
+    font-size: 36px;
+    color: #1abc9c;
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(26, 188, 156, 0.12);
+}
+
+.manual-header h3 {
+    margin: 0;
+    font-size: 24px;
+    color: #0f172a;
+}
+
+.manual-header p {
+    margin: 4px 0 0;
+    color: #475569;
+}
+
+.manual-steps {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.manual-steps li {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px 24px;
+    list-style-position: inside;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.manual-steps h4 {
+    margin: 0 0 8px;
+    color: #0f172a;
+}
+
+.manual-steps p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.5;
+}
+
+.manual-step-illustration {
+    margin-top: 14px;
+    padding: 16px;
+    border: 1px dashed #94a3b8;
+    border-radius: 12px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 14px;
+    background: #fff;
+}
+
+.manual-step-illustration img {
+    width: 100%;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+    border: 1px solid #e2e8f0;
+}
+
+.manual-footer {
+    margin-top: 28px;
+    padding: 18px 24px;
+    background: #ecfdf5;
+    border-radius: 12px;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+/* General Modal Styling */
+.wtmodal, .emppromodal, .empccmodal, .ppmodal, .modal, .ccmodal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.5); /* Black with opacity */
+    backdrop-filter: blur(5px); /* Adds a blur effect to the background */
+}
+
+/* Modal Content Styling */
+.wtmodal-content, .emppromodal-content, .empccmodal-content, .ppmodal-content, .ccmodal-content {
+    background-color: #fff;
+    margin: 0% auto; /* Center the modal */
+    padding: 25px;
+    border: none;
+    width: 50%; /* Adjust width as needed */
+    max-width: 600px; /* Maximum width for better readability */
+    border-radius: 12px; /* Rounded corners */
+    box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.2); /* Soft shadow for depth */
+    animation: fadeIn 0.3s ease-in-out; /* Smooth fade-in animation */
+}
+
+.wtclose {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.wtclose:hover,
+.wtclose:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+#workTypeModalHeader, #projectModalHeader, #clientCodeModalHeader {
+    margin-bottom: 20px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+}
+
+/* Table Styling */
+.worktype-table {
+    white-space: nowrap;
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.worktype-table th, .worktype-table td {
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.worktype-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.worktype-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Close Button */
+.ccclose-btn {
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+}
+
+.ccclose-btn:hover {
+    color: #ff0000;
+}
+
+/* Modal Header */
+#workTypesHeader {
+    margin-bottom: 20px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+}
+
+/* Work Types Table */
+#workTypesTable {
+    width: 100%;
+    border-collapse: collapse;
+    white-space: nowrap;
+    margin-top: 20px;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+}
+
+#workTypesTable thead {
+    background-color: #f4f4f4;
+}
+
+#workTypesTable th {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 2px solid #ddd;
+    font-weight: bold;
+}
+
+#workTypesTable td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+#workTypesTable tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Responsive Design */
+
+
+/* Fade-in Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.work-type-link, .project-link, .empclient-code-link {
+    color: #007bff;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.work-type-link:hover, .project-link:hover, .empclient-code-link:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+/* Make worktype-count look like a clickable hyperlink */
+.worktype-count, .project-count, .client-code-count {
+    color: #007bff;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.worktype-count:hover, .project-count:hover, .client-code-count:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+/* Base style for the client-code-link */
+.client-code-link {
+    color: #007bff;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Hover and focus states for better interactivity */
+.client-code-link:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+.worktypes-link {
+    color: #007bff;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.worktypes-link:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+/* Popup Styling */
+.popup {
+    display: flex; /* Start hidden */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 9999; /* Ensure it's on top of other content */
+}
+
+.popup.hidden {
+    display: none;
+}
+
+.popup-content {
+    background-color: #ffffff;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 100%;
+    width: 17%;
+    max-height: 80vh;
+    margin: auto;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.3sease-in-out;
+}
+
+.popup-content div {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+#confirm-logout {
+    background-color: #dc3545;
+    color: white;
+}
+
+#cancel-logout {
+    background-color: #6c757d;
+    color: white
+}
+
+.popup-content button {
+    padding: 10px 35px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.popup-btn:hover {
+    background: #0056b3;
+}
+
+/* Responsive adjustments */
+
+
+.client-header {
+    margin-top: 0px;
+    font-size: 16px;
+    font-weight: 500;
+    background-color: #007bff00;
+    color: #000;
+    padding: 0px 0px;
+    border-radius: 0px;
+    display: inline-block;
+}
+
+.worktype-container {
+    margin-top: 5px;
+    padding: 10px;
+    border-left: 3px solid #1abc9c;
+    background: #f8f9fa;
+    border-radius: 5px;
+    padding-left: 15px;
+}
+
+.worktype-item {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+}
+
+.worktype-item input {
+    margin-right: 8px;
+}
+
+.no-worktypes-msg {
+    color: gray;
+    font-style: italic;
+}
+
+.close-modal {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Close Button Styling */
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.close:hover,
+.close:focus {
+    color: #333;
+    text-decoration: none;
+}
+
+/* Modal Header Styling */
+.modal-header {
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Modal Body Styling */
+.modal-body {
+    padding: 15px 0;
+}
+
+/* Styling for form containers */
+.form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Styling for individual form fields */
+.form-container input, .form-container select, .form-container textarea {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.form-container select[multiple] {
+    height: auto;
+    padding: 5px;
+}
+
+/* Styling for project selection container */
+#new-employee-projects-container,
+#employee-projects-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#new-employee-projects,
+#employee-projects {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+/* Styling for client code selection container */
+#new-employee-client_code-container,
+#employee-client_code-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#new-employee-client_code,
+#employee-client_code {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+/* Styling for work type selection container */
+#new-employee-work_type-container,
+#employee-work_type-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#new-employee-work_type,
+#employee-work_type {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+/* Client Code Form Grid Styles */
+#clientcodeModal .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;  /* First column smaller, second column larger for work types */
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+#clientcodeModal .form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#clientcodeModal .checkbox-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    background: #f9f9f9;
+}
+
+#clientcodeModal .checkbox-container label {
+    display: block;
+    margin-bottom: 8px;
+    padding: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#clientcodeModal .checkbox-container label:hover {
+    background-color: #f0f0f0;
+}
+
+#clientcodeModal .checkbox-container input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Modal content adjustments for client code */
+#clientcodeModal .modal-content {
+    width: 80%;
+    max-width: 800px;
+    padding: 25px;
+}
+
+#clientcodeModal .submit-btn {
+    width: 100%;
+    max-width: 200px;
+    margin: 20px auto 0;
+    display: block;
+}
+
+/* Client Code Edit Modal Styles */
+.client-code-modal {
+    width: 90%;
+    max-width: 1000px;
+    padding: 30px;
+    border-radius: 12px;
+}
+
+.client-code-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+/* Left Section Styles */
+.client-code-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.client-code-info .form-group {
+    margin-bottom: 20px;
+}
+
+.client-code-info input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.client-code-info input:focus {
+    border-color: #1abc9c;
+    box-shadow: 0 0 0 3px rgba(26, 188, 156, 0.1);
+}
+
+.form-info {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.form-info p {
+    color: #6c757d;
+    font-size: 13px;
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Right Section Styles */
+.work-types-section {
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.work-types-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.search-box {
+    position: relative;
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.search-box i {
+    position: absolute;
+    left: 25px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #adb5bd;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px 10px 10px 35px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.checkbox-container {
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.checkbox-container label {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.checkbox-container label:hover {
+    background: #e9ecef;
+}
+
+.checkbox-container input[type="checkbox"] {
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+}
+
+/* Action Buttons */
+.form-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.form-actions button {
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.cancel-btn {
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+
+.cancel-btn:hover {
+    background: #e9ecef;
+}
+
+.clear-search-icon {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #999;
+    font-size: 18px;
+    display: none;
+}
+
+.clear-search-icon:hover {
+    color: #333;
+}
+
+/* Show clear icon when input has content */
+.search-box input:not(:placeholder-shown) + .clear-search-icon {
+    display: block;
+}
+
+/* Project Modal Styles */
+.project-modal {
+    max-width: 1000px;
+    width: 90%;
+}
+
+.project-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+/* Left Section Styles */
+.project-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+}
+
+/* Middle and Right Section Styles */
+.codes-section,
+.types-section {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.codes-container,
+.types-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* ==========================================================================
+   RESPONSIVE: @media (max-width: 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+    #addClientCodeModal .worktypes-container {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+
+    .modal-content {
+        padding: 15px;
+    }
+
+    button[type="submit"] {
+        font-size: 14px;
+    }
+
+    .popup-content {
+        padding: 16px;
+        max-width: 90%;
+    }
+
+    .popup-content h2 {
+        font-size: 18px;
+    }
+
+    .popup-content p {
+        font-size: 14px;
+    }
+
+    .popup-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+}
+
+/* ==========================================================================
+   RESPONSIVE: @media screen and (max-width: 768px)
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+    .ccmodal-content {
+        width: 90%;
+    }
+
+    #workTypesHeader {
+        font-size: 18px;
+    }
+
+    #workTypesTable th,
+    #workTypesTable td {
+        font-size: 14px;
+    }
+}
