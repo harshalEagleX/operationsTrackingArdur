@@ -76,6 +76,7 @@
     </style>
 </head>
 <body>
+    {{ csrf_input }}
 
     <!-- Header -->
     <header class="header">
@@ -714,14 +715,14 @@
     <!-- Select2 library -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <!-- Custom scripts -->
-    <script src="{{ static('js/userdashboard/image-viewer.js') }}"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-feedback.js') }}"></script>
+    <script src="{{ static('js/userdashboard/image-viewer.js') }}?v=2"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-feedback.js') }}?v=2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="{{ static('js/socket-client.js') }}"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-breaks.js') }}"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-work.js') }}"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-tasks.js') }}"></script>
-    <script src="{{ static('js/userdashboard/userdashboard.js') }}"></script>
+    <script src="{{ static('js/socket-client.js') }}?v=2"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-breaks.js') }}?v=2"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-work.js') }}?v=2"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-tasks.js') }}?v=2"></script>
+    <script src="{{ static('js/userdashboard/userdashboard.js') }}?v=2"></script>
     
 </body>
 </html>

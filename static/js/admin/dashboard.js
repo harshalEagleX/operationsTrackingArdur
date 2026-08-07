@@ -1,5 +1,5 @@
 // Initialize header user menu + reset popup on load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     if (window.__resetInit) return;
     window.__resetInit = true;
     const userNameBtn = document.getElementById('user-name');
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         };
         setupToggles();
-        resetForm.addEventListener('submit', function(e) {
+        resetForm.addEventListener('submit', function (e) {
             e.preventDefault();
             if (isSubmitting) return;
             const oldPassword = document.getElementById('old-password').value.trim();
@@ -82,40 +82,60 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
                 body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) { alert('Password updated successfully'); resetForm.reset(); resetPopup.classList.add('hidden'); }
-                else { alert(data.error || 'Failed to update password'); }
-            })
-            .catch(() => { alert('Error updating password'); })
-            .finally(() => { isSubmitting = false; submitBtn.disabled = false; submitBtn.innerHTML = originalHTML; });
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) { alert('Password updated successfully'); resetForm.reset(); resetPopup.classList.add('hidden'); }
+                    else { alert(data.error || 'Failed to update password'); }
+                })
+                .catch(() => { alert('Error updating password'); })
+                .finally(() => { isSubmitting = false; submitBtn.disabled = false; submitBtn.innerHTML = originalHTML; });
         });
     }
 });
 
-function showContent(tabName) {
+const VALID_TABS = [
+    'employees', 'projects', 'clientcodes', 'worktypes',
+    'reports', 'breakreports', 'auditreports', 'summaryreports',
+    'feedback', 'orderallocation'
+];
+
+function getTabFromHash() {
+    const hash = (window.location.hash || '').replace(/^#/, '').trim();
+    if (!hash) return null;
+    if (hash === 'master') return 'employees';
+    if (hash === 'mainreports') return 'reports';
+    if (VALID_TABS.includes(hash)) return hash;
+    return null;
+}
+
+function showContent(tabName, updateHash = true) {
     const userNameBtn = document.getElementById('user-name');
     const employeeId = userNameBtn ? userNameBtn.getAttribute('data-employee-id') : null;
 
     // Special handling for OA0001
     if (employeeId === 'OA0001') {
-        // Hide all tabs except Order Allocation
         document.querySelectorAll('.side-nav ul li').forEach(li => {
             if (!li.querySelector('a[href="#orderallocation"]')) {
                 li.style.display = 'none';
             }
         });
-        
-        // Only show Order Allocation content
+
         var tabs = document.getElementsByClassName("tab-content");
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].style.display = "none";
         }
-        document.getElementById('orderallocation').style.display = "block";
+        const oaTab = document.getElementById('orderallocation');
+        if (oaTab) oaTab.style.display = "block";
+        if (updateHash && window.location.hash !== '#orderallocation') {
+            history.replaceState(null, '', '#orderallocation');
+        }
         return;
     }
 
-    // Regular tab handling for other users
+    if (!tabName || !VALID_TABS.includes(tabName)) {
+        tabName = 'reports';
+    }
+
     // Hide all tab content
     var tabs = document.getElementsByClassName("tab-content");
     for (var i = 0; i < tabs.length; i++) {
@@ -126,12 +146,16 @@ function showContent(tabName) {
     var selectedTab = document.getElementById(tabName);
     if (selectedTab) {
         selectedTab.style.display = "block";
-        
+
         // If order allocation tab is opened, trigger data fetch
         if (tabName === 'orderallocation') {
-            // Check if fetchExistingOrders function exists in window scope
             if (typeof window.fetchExistingOrders === 'function') {
                 window.fetchExistingOrders();
+            }
+        }
+        if (tabName === 'employees') {
+            if (typeof window.fetchEmployees === 'function') {
+                window.fetchEmployees();
             }
         }
     }
@@ -148,7 +172,7 @@ function showContent(tabName) {
     if (activeLink) {
         // Check if this is a sub-tab
         const isSubTab = activeLink.closest('.sub-master') || activeLink.closest('.sub-reports');
-        
+
         if (isSubTab) {
             activeLink.classList.add('sub-tab-active');
             // Highlight parent tab
@@ -165,15 +189,16 @@ function showContent(tabName) {
     const subMaster = document.getElementById('subMaster');
     const subReports = document.getElementById('subReports');
 
-    // For Master sub-items
-    if (subMaster && ['employees', 'projects', 'clientcodes', 'worktypes'].includes(tabName)) {
-        subMaster.style.display = 'block';
+    if (subMaster) {
+        subMaster.style.display = ['employees', 'projects', 'clientcodes', 'worktypes'].includes(tabName) ? 'block' : 'none';
+    }
+    if (subReports) {
+        subReports.style.display = ['reports', 'breakreports', 'auditreports', 'summaryreports'].includes(tabName) ? 'block' : 'none';
     }
 
-    // For Reports sub-items
-    if (subReports && ['reports', 'breakreports', 'auditreports', 'summaryreports'].includes(tabName)) {
-        subReports.style.display = 'block';
-        subMaster.style.display = 'none';
+    // Keep URL hash in sync without scrolling the page
+    if (updateHash && window.location.hash !== '#' + tabName) {
+        history.replaceState(null, '', '#' + tabName);
     }
 }
 
@@ -182,7 +207,7 @@ function toggleSubMaster(event) {
     event.preventDefault();
     const subMaster = document.getElementById('subMaster');
     const masterLink = event.currentTarget;
-    
+
     if (subMaster.style.display === 'none' || subMaster.style.display === '') {
         subMaster.style.display = 'block';
         masterLink.classList.add('main-tab-active');
@@ -197,7 +222,7 @@ function toggleSubReports(event) {
     event.preventDefault();
     const subReports = document.getElementById('subReports');
     const reportsLink = event.currentTarget;
-    
+
     if (subReports.style.display === 'none' || subReports.style.display === '') {
         subReports.style.display = 'block';
         reportsLink.classList.add('main-tab-active');
@@ -221,27 +246,27 @@ document.addEventListener("DOMContentLoaded", function () {
                 li.style.display = 'none';
             }
         });
-        
-        // Show Order Allocation content immediately
-        showContent('orderallocation');
+        showContent('orderallocation', false);
     } else {
-        // Default behavior for other users - show reports
-        if (subReports) {
-            subReports.style.display = 'block';
-            const mainReportsLink = document.querySelector('a[href="#mainreports"]');
-            if (mainReportsLink) {
-                mainReportsLink.classList.add('main-tab-active');
-            }
-            showContent('reports');
-        }
+        // Restore tab from URL hash if available, otherwise default to reports
+        const initialTab = getTabFromHash() || 'reports';
+        showContent(initialTab, false);
     }
+
+    // Respond when user clicks back/forward or modifies the URL hash
+    window.addEventListener('hashchange', function () {
+        const activeTab = getTabFromHash();
+        if (activeTab) {
+            showContent(activeTab, false);
+        }
+    });
 
     // Get elements
     const logoutBtn = document.getElementById('logout-btn');
     const logoutPopup = document.getElementById('logout-popup');
     const confirmLogout = document.getElementById('confirm-logout');
     const cancelLogout = document.getElementById('cancel-logout');
-    
+
     // Get side navigation elements
     const sideNav = document.getElementById('side-nav');
     const content = document.getElementById('content');
@@ -291,11 +316,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Modified toggleSubMaster function
-    window.toggleSubMaster = function(event) {
+    window.toggleSubMaster = function (event) {
         event.preventDefault();
         const subMaster = document.getElementById('subMaster');
         const masterLink = event.currentTarget;
-        
+
         if (subMaster.style.display === 'none' || subMaster.style.display === '') {
             subMaster.style.display = 'block';
             masterLink.classList.add('main-tab-active');
@@ -307,11 +332,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Modified toggleSubReports function
-    window.toggleSubReports = function(event) {
+    window.toggleSubReports = function (event) {
         event.preventDefault();
         const subReports = document.getElementById('subReports');
         const reportsLink = event.currentTarget;
-        
+
         if (subReports.style.display === 'none' || subReports.style.display === '') {
             subReports.style.display = 'block';
             reportsLink.classList.add('main-tab-active');
@@ -349,7 +374,283 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    const addButton = document.getElementById("addEmployeeButton"); 
+    // --- Employee Table State & Initialization ---
+    window.allEmployees = [];
+    window.filteredEmployees = [];
+    window.currentEmployeePage = 1;
+    window.employeeRowsPerPage = 15;
+    window.employeeIdToDelete = null;
+
+    window.fetchEmployees = function() {
+        const tbody = document.querySelector("#employees-table tbody");
+        if (tbody) tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading employees...</td></tr>';
+        
+        fetch("/api/v1/auth/employees/", { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(resp => {
+                const data = resp.data || (Array.isArray(resp) ? resp : []);
+                window.allEmployees = Array.isArray(data) ? data : [];
+                if (typeof window.filterEmployees === 'function') {
+                    window.filterEmployees();
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching employees:", error);
+                if (tbody) tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:#ef4444;padding:20px;">Error loading employees: ${error.message}</td></tr>`;
+            });
+    };
+
+    window.renderEmployeesTable = function() {
+        const tbody = document.querySelector("#employees-table tbody");
+        const pageNumberSpan = document.getElementById("PageNumber");
+        const prevPageButton = document.getElementById("empprevPage");
+        const nextPageButton = document.getElementById("empnextPage");
+
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        const totalPages = Math.max(1, Math.ceil(window.filteredEmployees.length / window.employeeRowsPerPage));
+        if (pageNumberSpan) {
+            pageNumberSpan.textContent = `${window.filteredEmployees.length === 0 ? 0 : window.currentEmployeePage} of ${totalPages}`;
+        }
+        if (prevPageButton) prevPageButton.disabled = window.currentEmployeePage <= 1;
+        if (nextPageButton) nextPageButton.disabled = window.currentEmployeePage >= totalPages;
+
+        if (window.filteredEmployees.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="13" class="no-data-text" style="text-align:center;padding:24px;color:#888;">No employees found</td></tr>';
+            return;
+        }
+
+        const startIndex = (window.currentEmployeePage - 1) * window.employeeRowsPerPage;
+        const endIndex = Math.min(startIndex + window.employeeRowsPerPage, window.filteredEmployees.length);
+        const pageItems = window.filteredEmployees.slice(startIndex, endIndex);
+
+        pageItems.forEach((emp, index) => {
+            const tr = document.createElement("tr");
+            const statusClass = (emp.status || '').toLowerCase() === 'active' ? 'status-active' : 'status-inactive';
+            tr.innerHTML = `
+                <td>${startIndex + index + 1}</td>
+                <td><strong>${emp.name || '-'}</strong></td>
+                <td>${emp.employee_id || '-'}</td>
+                <td>${emp.role || '-'}</td>
+                <td>${emp.joining_date || emp.date_of_joining || '-'}</td>
+                <td>${emp.work_location || emp.department || '-'}</td>
+                <td>${emp.shift_time || emp.shift || '-'}</td>
+                <td><a href="#" class="project-link" data-employee-id="${emp.employee_id}">View Projects</a></td>
+                <td><a href="#" class="empclient-code-link" data-employee-id="${emp.employee_id}">View Client Codes</a></td>
+                <td><a href="#" class="work-type-link" data-employee-id="${emp.employee_id}">View Work Types</a></td>
+                <td><span class="${statusClass}">${emp.status || '-'}</span></td>
+                <td>${emp.active_inactive_date || '-'}</td>
+                <td class="action-buttons">
+                    <button class="edit-btn" data-id="${emp.employee_id}" title="Edit"><i class="fas fa-edit"></i></button>
+                    <button class="delete-btn" data-id="${emp.employee_id}" title="Delete"><i class="fas fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    };
+
+    // Pagination handlers
+    const prevPageButton = document.getElementById("empprevPage");
+    const nextPageButton = document.getElementById("empnextPage");
+    if (prevPageButton) {
+        prevPageButton.addEventListener("click", function () {
+            if (window.currentEmployeePage > 1) {
+                window.currentEmployeePage--;
+                window.renderEmployeesTable();
+            }
+        });
+    }
+    if (nextPageButton) {
+        nextPageButton.addEventListener("click", function () {
+            const totalPages = Math.ceil(window.filteredEmployees.length / window.employeeRowsPerPage);
+            if (window.currentEmployeePage < totalPages) {
+                window.currentEmployeePage++;
+                window.renderEmployeesTable();
+            }
+        });
+    }
+
+    // Initialize fetching when script loads
+    window.fetchEmployees();
+
+    // Event Delegation for Employee Table Actions
+    const employeesTable = document.getElementById("employees-table");
+    if (employeesTable) {
+        employeesTable.addEventListener("click", function (e) {
+            const projectLink = e.target.closest(".project-link");
+            const clientCodeLink = e.target.closest(".empclient-code-link");
+            const workTypeLink = e.target.closest(".work-type-link");
+            const editBtn = e.target.closest(".edit-btn");
+            const deleteBtn = e.target.closest(".delete-btn");
+
+            if (projectLink) {
+                e.preventDefault();
+                const employeeId = projectLink.getAttribute("data-employee-id");
+                fetch(`/api/v1/auth/employees/${employeeId}/`, { credentials: 'same-origin' })
+                    .then(response => response.json())
+                    .then(resp => {
+                        const data = resp.data || resp;
+                        if (data.project_names && data.project_names.length > 0) {
+                            const projectList = document.getElementById("projectList");
+                            projectList.innerHTML = "";
+                            data.project_names.forEach((project, index) => {
+                                const row = document.createElement("tr");
+                                row.innerHTML = `<td>${index + 1}</td><td>${project}</td>`;
+                                projectList.appendChild(row);
+                            });
+                            document.getElementById("projectModalHeader").textContent = `Projects for Employee ID: ${employeeId}`;
+                            document.getElementById("projectModal").style.display = "block";
+                            const closeModal = document.getElementById("projectModal").querySelector(".close");
+                            closeModal.addEventListener("click", () => {
+                                document.getElementById("projectModal").style.display = "none";
+                            }, { once: true });
+                        } else {
+                            alert("No projects found for this employee.");
+                        }
+                    })
+                    .catch(error => alert("An error occurred while fetching projects."));
+            } else if (clientCodeLink) {
+                e.preventDefault();
+                const employeeId = clientCodeLink.getAttribute("data-employee-id");
+                fetch(`/api/v1/auth/employees/${employeeId}/`, { credentials: 'same-origin' })
+                    .then(response => response.json())
+                    .then(resp => {
+                        const data = resp.data || resp;
+                        if (data.client_code_names && data.client_code_names.length > 0) {
+                            const clientCodeList = document.getElementById("clientCodeList");
+                            clientCodeList.innerHTML = "";
+                            data.client_code_names.forEach((code, index) => {
+                                const row = document.createElement("tr");
+                                row.innerHTML = `<td>${index + 1}</td><td>${code}</td>`;
+                                clientCodeList.appendChild(row);
+                            });
+                            document.getElementById("clientCodeModalHeader").textContent = `Client Codes for Employee ID: ${employeeId}`;
+                            document.getElementById("clientCodeModal").style.display = "block";
+                            const closeModal = document.getElementById("clientCodeModal").querySelector(".close");
+                            closeModal.addEventListener("click", () => {
+                                document.getElementById("clientCodeModal").style.display = "none";
+                            }, { once: true });
+                        } else {
+                            alert("No client codes found for this employee.");
+                        }
+                    })
+                    .catch(error => alert("An error occurred while fetching client codes."));
+            } else if (workTypeLink) {
+                e.preventDefault();
+                const employeeId = workTypeLink.getAttribute("data-employee-id");
+                fetch(`/api/v1/auth/employees/${employeeId}/`, { credentials: 'same-origin' })
+                    .then(response => response.json())
+                    .then(resp => {
+                        const data = resp.data || resp;
+                        if (data.work_type_names && data.work_type_names.length > 0) {
+                            const workTypeList = document.getElementById("workTypeList");
+                            workTypeList.innerHTML = "";
+                            data.work_type_names.forEach((workType, index) => {
+                                const row = document.createElement("tr");
+                                row.innerHTML = `<td>${index + 1}</td><td>${workType}</td>`;
+                                workTypeList.appendChild(row);
+                            });
+                            document.getElementById("workTypeModalHeader").textContent = `Work Types for Employee ID: ${employeeId}`;
+                            document.getElementById("workTypeModal").style.display = "block";
+                            const closeModal = document.getElementById("workTypeModal").querySelector(".wtclose");
+                            closeModal.addEventListener("click", () => {
+                                document.getElementById("workTypeModal").style.display = "none";
+                            }, { once: true });
+                        } else {
+                            alert("No work types found for this employee.");
+                        }
+                    })
+                    .catch(error => alert("An error occurred while fetching work types."));
+            } else if (editBtn) {
+                const employeeId = editBtn.getAttribute("data-id");
+                fetch(`/api/v1/auth/employees/${employeeId}/`, { credentials: 'same-origin' })
+                    .then(response => response.json())
+                    .then(resp => {
+                        const data = resp.data || resp;
+                        if (data.error) {
+                            alert(data.error.message || data.error);
+                        } else {
+                            document.getElementById("employee-id").value = data.id;
+                            document.getElementById("employee-name").value = data.name;
+                            document.getElementById("employee-employee_id").value = data.employee_id;
+                            document.getElementById("employee-role").value = data.role.toLowerCase(); // Map nicely
+                            document.getElementById("employee-joining_date").value = data.joining_date;
+                            document.getElementById("employee-work_location").value = data.work_location;
+                            document.getElementById("employee-active_inactive_date").value = data.active_inactive_date;
+                            
+                            // Make status dropdown tolerant
+                            const statusSel = document.getElementById("employee-status");
+                            if (statusSel) {
+                                Array.from(statusSel.options).forEach(opt => {
+                                    if(opt.value.toLowerCase() === (data.status || '').toLowerCase()) {
+                                        statusSel.value = opt.value;
+                                    }
+                                });
+                            }
+
+                            if (typeof window.fetchShifts === 'function') window.fetchShifts(data.shift_time);
+
+                            initialSelectedProjects = data.projects ? data.projects.split('|') : [];
+                            initialSelectedClientCodes = data.client_code ? data.client_code.split('|') : [];
+                            initialSelectedWorkTypes = data.work_type ? data.work_type.split('|') : [];
+
+                            if (typeof fetchProjectsForEdit === 'function') fetchProjectsForEdit(initialSelectedProjects);
+                            if (typeof fetchClientCodesForEdit === 'function') fetchClientCodesForEdit(initialSelectedProjects, initialSelectedClientCodes);
+                            if (typeof fetchWorkTypesForEdit === 'function') fetchWorkTypesForEdit(initialSelectedClientCodes, initialSelectedWorkTypes);
+
+                            document.getElementById("employeeModal").style.display = "flex";
+                        }
+                    })
+                    .catch(error => console.error("Error fetching employee data:", error));
+            } else if (deleteBtn) {
+                window.employeeIdToDelete = deleteBtn.getAttribute("data-id");
+                document.getElementById("confirmDeleteModal").style.display = "flex";
+            }
+        });
+    }
+
+    // Modal Close logic for edit modal
+    const employeeModal = document.getElementById("employeeModal");
+    const closeEmployeeModal = document.querySelector(".close-btn"); // the first one is actually add modal but there's multiple
+    // Let's bind directly to the specific close buttons
+    const empModalCloseBtn = employeeModal ? employeeModal.querySelector(".close-btn") : null;
+    if (empModalCloseBtn) {
+        empModalCloseBtn.addEventListener("click", () => {
+            employeeModal.style.display = "none";
+        });
+    }
+    
+    const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+    const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+    const confirmDeleteModal = document.getElementById("confirmDeleteModal");
+    
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener("click", () => {
+            confirmDeleteModal.style.display = "none";
+        });
+    }
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener("click", function () {
+            if (!window.employeeIdToDelete) return;
+            fetch(`/api/v1/auth/employees/${window.employeeIdToDelete}/`, {
+                method: "DELETE",
+                credentials: 'same-origin',
+                headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
+            })
+                .then(response => {
+                    if (response.ok) {
+                        window.fetchEmployees();
+                    } else {
+                        alert("Failed to delete employee.");
+                    }
+                    confirmDeleteModal.style.display = "none";
+                });
+        });
+    }
+
+
+    const addButton = document.getElementById("addEmployeeButton");
     const addModal = document.getElementById("addEmployeeModal");
     const editButtons = document.querySelectorAll(".edit-btn");
     const modal = document.getElementById("employeeModal");
@@ -360,146 +661,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const projectLinks = document.querySelectorAll(".project-link");
     const clientCodeLinks = document.querySelectorAll(".empclient-code-link");
 
-    const prevPageButton = document.getElementById("empprevPage");
-    const nextPageButton = document.getElementById("empnextPage");
-    const pageNumberSpan = document.getElementById("PageNumber");
 
-    let currentPage = 1;
-    const rowsPerPage = 15; // Number of rows per page
-    let rows = document.querySelectorAll("#employees-table tbody tr");
 
-    // Function to update pagination
-    function updatePagination() {
-        const totalPages = Math.ceil(rows.length / rowsPerPage);
-        pageNumberSpan.textContent = `${currentPage} of ${totalPages}`;
 
-        // Disable/Enable buttons based on current page
-        prevPageButton.disabled = currentPage === 1;
-        nextPageButton.disabled = currentPage === totalPages;
-
-        // Show/hide rows based on current page
-        rows.forEach((row, index) => {
-            row.style.display = (index >= (currentPage - 1) * rowsPerPage && index < currentPage * rowsPerPage) ? "" : "none";
-        });
-    }
-
-    // Event listener for previous page button
-    prevPageButton.addEventListener("click", function () {
-        if (currentPage > 1) {
-            currentPage--;
-            updatePagination();
-        }
-    });
-
-    // Event listener for next page button
-    nextPageButton.addEventListener("click", function () {
-        const totalPages = Math.ceil(rows.length / rowsPerPage);
-        if (currentPage < totalPages) {
-            currentPage++;
-            updatePagination();
-        }
-    });
-
-    // Initialize pagination
-    updatePagination();
-
-    projectLinks.forEach(link => {
-        link.addEventListener("click", function (e) {
-            e.preventDefault();
-            const employeeId = this.getAttribute("data-employee-id");
-            fetch(`/api/v1/auth/employees/${employeeId}/`, { credentials: 'same-origin' })
-                .then(response => response.json())
-                .then(resp => {
-                    const data = resp.data || resp;
-                    if (data.project_names && data.project_names.length > 0) {
-                        const projectList = document.getElementById("projectList");
-                        projectList.innerHTML = ""; // Clear existing content
-
-                        data.project_names.forEach((project, index) => {
-                            const row = document.createElement("tr");
-
-                            const serialNoCell = document.createElement("td");
-                            serialNoCell.textContent = index + 1;
-                            row.appendChild(serialNoCell);
-
-                            const projectCell = document.createElement("td");
-                            projectCell.textContent = project;
-                            row.appendChild(projectCell);
-
-                            projectList.appendChild(row);
-                        });
-
-                        const modalHeader = document.getElementById("projectModalHeader");
-                        modalHeader.textContent = `Projects for Employee ID: ${employeeId}`;
-
-                        const projectModal = document.getElementById("projectModal");
-                        projectModal.style.display = "block";
-
-                        const closeModal = projectModal.querySelector(".close");
-                        closeModal.addEventListener("click", function () {
-                            projectModal.style.display = "none";
-                        });
-                    } else {
-                        alert("No projects found for this employee.");
-                    }
-                })
-                .catch(error => {
-                    console.error("Error fetching projects:", error);
-                    alert("An error occurred while fetching projects.");
-                });
-        });
-    });
-
-    clientCodeLinks.forEach(link => {
-        link.addEventListener("click", function (e) {
-            e.preventDefault();
-            const employeeId = this.getAttribute("data-employee-id");
-            fetch(`/api/v1/auth/employees/${employeeId}/`, { credentials: 'same-origin' })
-                .then(response => response.json())
-                .then(resp => {
-                    const data = resp.data || resp;
-                    if (data.client_code_names && data.client_code_names.length > 0) {
-                        const clientCodeList = document.getElementById("clientCodeList");
-                        clientCodeList.innerHTML = ""; // Clear existing content
-
-                        data.client_code_names.forEach((code, index) => {
-                            const row = document.createElement("tr");
-
-                            const serialNoCell = document.createElement("td");
-                            serialNoCell.textContent = index + 1;
-                            row.appendChild(serialNoCell);
-
-                            const clientCodeCell = document.createElement("td");
-                            clientCodeCell.textContent = code;
-                            row.appendChild(clientCodeCell);
-
-                            clientCodeList.appendChild(row);
-                        });
-
-                        const modalHeader = document.getElementById("clientCodeModalHeader");
-                        modalHeader.textContent = `Client Codes for Employee ID: ${employeeId}`;
-
-                        const clientCodeModal = document.getElementById("clientCodeModal");
-                        clientCodeModal.style.display = "block";
-
-                        const closeModal = clientCodeModal.querySelector(".close");
-                        closeModal.addEventListener("click", function () {
-                            clientCodeModal.style.display = "none";
-                        });
-                    } else {
-                        alert("No client codes found for this employee.");
-                    }
-                })
-                .catch(error => {
-                    console.error("Error fetching client codes:", error);
-                    alert("An error occurred while fetching client codes.");
-                });
-        });
-    });
 
     // Fetch shifts when page loads
     fetchShifts();
-    
+
     // Open the Add Employee modal
     addButton.addEventListener("click", function () {
         addForm.reset();
@@ -513,60 +681,6 @@ document.addEventListener("DOMContentLoaded", function () {
         addModal.style.display = "none";
     });
 
-    const workTypeLinks = document.querySelectorAll(".work-type-link");
-
-    workTypeLinks.forEach(link => {
-        link.addEventListener("click", function (e) {
-            e.preventDefault();
-    
-            const employeeId = this.getAttribute("data-employee-id");
-            fetch(`/api/v1/auth/employees/${employeeId}/`, { credentials: 'same-origin' })
-                .then(response => response.json())
-                .then(resp => {
-                    const data = resp.data || resp;
-                    if (data.work_type_names && data.work_type_names.length > 0) {
-                        const workTypeList = document.getElementById("workTypeList");
-                        workTypeList.innerHTML = ""; // Clear existing content
-
-                        data.work_type_names.forEach((workType, index) => {
-                            const row = document.createElement("tr");
-
-                            const serialNoCell = document.createElement("td");
-                            serialNoCell.textContent = index + 1;
-                            row.appendChild(serialNoCell);
-
-                            const workTypeCell = document.createElement("td");
-                            workTypeCell.textContent = workType;
-                            row.appendChild(workTypeCell);
-
-                            workTypeList.appendChild(row);
-                        });
-
-                    // Update modal header with Employee ID
-                    const modalHeader = document.getElementById("workTypeModalHeader");
-                    modalHeader.textContent = `Work Types for Employee ID: ${employeeId}`;
-
-                    // Show the modal
-                    const wtmodal = document.getElementById("workTypeModal");
-                    wtmodal.style.display = "block";
-
-                    // Close the modal when the "X" button is clicked
-                    const closeModal = wtmodal.querySelector(".wtclose");
-                    closeModal.addEventListener("click", function () {
-                        wtmodal.style.display = "none";
-                    });
-                    
-                } else {
-                    alert("No work types found for this employee.");
-                }
-            })
-            .catch(error => {
-                console.error("Error fetching work types:", error);
-                alert("An error occurred while fetching work types.");
-            });
-
-        });
-    });
 
     // Fetch all projects
     function fetchProjects() {
@@ -600,26 +714,26 @@ document.addEventListener("DOMContentLoaded", function () {
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
             body: JSON.stringify({ project_ids: projectIds })
         })
-        .then(response => response.json())
-        .then(data => {
-            const clientCodeSelect = document.getElementById("new-employee-client_code");
-            clientCodeSelect.innerHTML = '';
-            
-            data.client_codes.forEach(clientCode => {
-                const option = document.createElement("option");
-                option.value = clientCode;
-                option.textContent = clientCode;
-                clientCodeSelect.appendChild(option);
-            });
+            .then(response => response.json())
+            .then(data => {
+                const clientCodeSelect = document.getElementById("new-employee-client_code");
+                clientCodeSelect.innerHTML = '';
 
-            // Setup checkboxes for add form
-            setupCheckboxList(
-                'new-employee-client_code',
-                'add-client-codes-list',
-                'add-client-codes-search'
-            )();
-        })
-        .catch(error => console.error('Error fetching client codes:', error));
+                data.client_codes.forEach(clientCode => {
+                    const option = document.createElement("option");
+                    option.value = clientCode;
+                    option.textContent = clientCode;
+                    clientCodeSelect.appendChild(option);
+                });
+
+                // Setup checkboxes for add form
+                setupCheckboxList(
+                    'new-employee-client_code',
+                    'add-client-codes-list',
+                    'add-client-codes-search'
+                )();
+            })
+            .catch(error => console.error('Error fetching client codes:', error));
     }
 
     // Fetch work types
@@ -629,26 +743,26 @@ document.addEventListener("DOMContentLoaded", function () {
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
             body: JSON.stringify({ client_codes: clientCodes })
         })
-        .then(response => response.json())
-        .then(data => {
-            const workTypeSelect = document.getElementById("new-employee-work_type");
-            workTypeSelect.innerHTML = '';
-            
-            data.work_types.forEach(workType => {
-                const option = document.createElement("option");
-                option.value = workType;
-                option.textContent = workType;
-                workTypeSelect.appendChild(option);
-            });
+            .then(response => response.json())
+            .then(data => {
+                const workTypeSelect = document.getElementById("new-employee-work_type");
+                workTypeSelect.innerHTML = '';
 
-            // Setup checkboxes for add form
-            setupCheckboxList(
-                'new-employee-work_type',
-                'add-work-types-list',
-                'add-work-types-search'
-            )();
-        })
-        .catch(error => console.error('Error fetching work types:', error));
+                data.work_types.forEach(workType => {
+                    const option = document.createElement("option");
+                    option.value = workType;
+                    option.textContent = workType;
+                    workTypeSelect.appendChild(option);
+                });
+
+                // Setup checkboxes for add form
+                setupCheckboxList(
+                    'new-employee-work_type',
+                    'add-work-types-list',
+                    'add-work-types-search'
+                )();
+            })
+            .catch(error => console.error('Error fetching work types:', error));
     }
 
     // Temporary object to store selected values
@@ -701,33 +815,33 @@ document.addEventListener("DOMContentLoaded", function () {
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
             body: JSON.stringify({ project_ids: selectedProjects })
         })
-        .then(response => response.json())
-        .then(data => {
-            const clientCodeSelect = document.getElementById("employee-client_code");
-            clientCodeSelect.innerHTML = '';
+            .then(response => response.json())
+            .then(data => {
+                const clientCodeSelect = document.getElementById("employee-client_code");
+                clientCodeSelect.innerHTML = '';
 
-            data.client_codes.forEach(clientCode => {
-                const option = document.createElement("option");
-                option.value = clientCode;
-                option.textContent = clientCode;
-                if (initialSelectedClientCodes.includes(clientCode) ||
-                    selectedClientCodes.includes(clientCode)) {
-                    option.selected = true;
-                }
-                clientCodeSelect.appendChild(option);
-            });
+                data.client_codes.forEach(clientCode => {
+                    const option = document.createElement("option");
+                    option.value = clientCode;
+                    option.textContent = clientCode;
+                    if (initialSelectedClientCodes.includes(clientCode) ||
+                        selectedClientCodes.includes(clientCode)) {
+                        option.selected = true;
+                    }
+                    clientCodeSelect.appendChild(option);
+                });
 
-            // Setup checkboxes for edit form - removed readonly
-            setupCheckboxList(
-                'employee-client_code',
-                'edit-client-codes-list',
-                'edit-client-codes-search',
-                false  // Changed from true to false to make it editable
-            )();
+                // Setup checkboxes for edit form - removed readonly
+                setupCheckboxList(
+                    'employee-client_code',
+                    'edit-client-codes-list',
+                    'edit-client-codes-search',
+                    false  // Changed from true to false to make it editable
+                )();
 
-            tempSelectedValues.clientCodes = Array.from(clientCodeSelect.selectedOptions).map(option => option.value);
-        })
-        .catch(error => console.error('Error fetching client codes:', error));
+                tempSelectedValues.clientCodes = Array.from(clientCodeSelect.selectedOptions).map(option => option.value);
+            })
+            .catch(error => console.error('Error fetching client codes:', error));
     }
 
     // Function to fetch and populate work types dropdown for edit form
@@ -737,33 +851,33 @@ document.addEventListener("DOMContentLoaded", function () {
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
             body: JSON.stringify({ client_codes: selectedClientCodes })
         })
-        .then(response => response.json())
-        .then(data => {
-            const workTypeSelect = document.getElementById("employee-work_type");
-            workTypeSelect.innerHTML = '';
+            .then(response => response.json())
+            .then(data => {
+                const workTypeSelect = document.getElementById("employee-work_type");
+                workTypeSelect.innerHTML = '';
 
-            data.work_types.forEach(workType => {
-                const option = document.createElement("option");
-                option.value = workType;
-                option.textContent = workType;
-                if (initialSelectedWorkTypes.includes(workType) ||
-                    selectedWorkTypes.includes(workType)) {
-                    option.selected = true;
-                }
-                workTypeSelect.appendChild(option);
-            });
+                data.work_types.forEach(workType => {
+                    const option = document.createElement("option");
+                    option.value = workType;
+                    option.textContent = workType;
+                    if (initialSelectedWorkTypes.includes(workType) ||
+                        selectedWorkTypes.includes(workType)) {
+                        option.selected = true;
+                    }
+                    workTypeSelect.appendChild(option);
+                });
 
-            // Setup checkboxes for edit form - removed readonly
-            setupCheckboxList(
-                'employee-work_type',
-                'edit-work-types-list',
-                'edit-work-types-search',
-                false  // Changed from true to false to make it editable
-            )();
+                // Setup checkboxes for edit form - removed readonly
+                setupCheckboxList(
+                    'employee-work_type',
+                    'edit-work-types-list',
+                    'edit-work-types-search',
+                    false  // Changed from true to false to make it editable
+                )();
 
-            tempSelectedValues.workTypes = Array.from(workTypeSelect.selectedOptions).map(option => option.value);
-        })
-        .catch(error => console.error('Error fetching work types:', error));
+                tempSelectedValues.workTypes = Array.from(workTypeSelect.selectedOptions).map(option => option.value);
+            })
+            .catch(error => console.error('Error fetching work types:', error));
     }
 
     // Event listener for project selection in edit form
@@ -793,7 +907,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Event listener for joining date change in add form
-    document.getElementById("new-employee-joining_date").addEventListener("change", function() {
+    document.getElementById("new-employee-joining_date").addEventListener("change", function () {
         document.getElementById("new-employee-active_inactive_date").value = this.value;
     });
 
@@ -802,7 +916,7 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
 
         const selectedWorkTypes = Array.from(document.getElementById("new-employee-work_type").selectedOptions)
-                                        .map(option => option.value).join('|');
+            .map(option => option.value).join('|');
         const newEmployeeData = {
             name: document.getElementById("new-employee-name").value,
             employee_id: document.getElementById("new-employee-employee_id").value,
@@ -811,9 +925,9 @@ document.addEventListener("DOMContentLoaded", function () {
             work_location: document.getElementById("new-employee-work_location").value,
             shift_time: document.getElementById("new-employee-shift_time").value,
             client_code: Array.from(document.getElementById("new-employee-client_code").selectedOptions)
-                              .map(option => option.value).join('|'),
+                .map(option => option.value).join('|'),
             projects: Array.from(document.getElementById("new-employee-projects").selectedOptions)
-                            .map(option => option.value).join('|'),
+                .map(option => option.value).join('|'),
             work_type: selectedWorkTypes,
             status: document.getElementById("new-employee-status").value,
             active_inactive_date: document.getElementById("new-employee-active_inactive_date").value
@@ -822,247 +936,169 @@ document.addEventListener("DOMContentLoaded", function () {
         fetch('/api/v1/auth/employees/', {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
                 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
             },
             body: JSON.stringify(newEmployeeData)
         })
-        .then(response => response.json())
-        .then(resp => {
-            if (!resp.error) {
-                alert('Employee added successfully');
-                addModal.style.display = "none";
-            } else {
-                alert(resp.error.message || 'Error adding employee');
-            }
-            location.reload();
-        })
-        .catch(error => console.error('Error adding employee:', error));
+            .then(response => response.json())
+            .then(resp => {
+                if (!resp.error) {
+                    alert('Employee added successfully');
+                    addModal.style.display = "none";
+                } else {
+                    alert(resp.error.message || 'Error adding employee');
+                }
+                if(typeof window.fetchEmployees === "function") window.fetchEmployees();
+            })
+            .catch(error => console.error("Error adding employee:", error));
     });
 
-    // Edit button logic
-    editButtons.forEach(button => {
-        button.addEventListener("click", function () {
-            const employeeId = button.getAttribute("data-id");
-
-            // Fetch employee details
-            fetch(`/api/v1/auth/employees/${employeeId}/`, { credentials: 'same-origin' })
-                .then(response => response.json())
-                .then(resp => {
-                    const data = resp.data || resp;
-                    if (data.error) {
-                        alert(data.error.message || data.error);
-                    } else {
-                        // Populate basic fields
-                        document.getElementById("employee-id").value = data.id;
-                        document.getElementById("employee-name").value = data.name;
-                        document.getElementById("employee-employee_id").value = data.employee_id;
-                        document.getElementById("employee-role").value = data.role;
-                        document.getElementById("employee-joining_date").value = data.joining_date;
-                        document.getElementById("employee-work_location").value = data.work_location;
-                        document.getElementById("employee-active_inactive_date").value = data.active_inactive_date;
-                        
-                        // Fetch shifts and preselect the value
-                        fetchShifts(data.shift_time);
-
-                        // Selected projects, client codes, and work types
-                        initialSelectedProjects = data.projects ? data.projects.split('|') : [];
-                        initialSelectedClientCodes = data.client_code ? data.client_code.split('|') : [];
-                        initialSelectedWorkTypes = data.work_type ? data.work_type.split('|') : [];
-
-                        // Fetch and populate dropdowns
-                        fetchProjectsForEdit(initialSelectedProjects);
-                        fetchClientCodesForEdit(initialSelectedProjects, initialSelectedClientCodes);
-                        fetchWorkTypesForEdit(initialSelectedClientCodes, initialSelectedWorkTypes);
-
-                        // Show the modal
-                        modal.style.display = "flex";
-                    }
-                })
-                .catch(error => console.error("Error fetching employee data:", error));
-        });
-    });
-    
-    // Close the modal when the "X" button is clicked
-    closeModal.addEventListener("click", function () {
-        modal.style.display = "none";
-    });
 
     form.addEventListener("submit", function (e) {
-    e.preventDefault();
+        e.preventDefault();
 
-   // Get form data
-const name = document.getElementById("employee-name").value;
-const employeeId = document.getElementById("employee-employee_id").value;
-const role = document.getElementById("employee-role").value;
-const joiningDate = document.getElementById("employee-joining_date").value;
-const workLocation = document.getElementById("employee-work_location").value;
-const shiftTime = document.getElementById("employee-shift_time").value;
-const status = document.getElementById("employee-status").value;
-const activeInactiveDate = document.getElementById("employee-active_inactive_date").value;
+        // Get form data
+        const name = document.getElementById("employee-name").value;
+        const employeeId = document.getElementById("employee-employee_id").value;
+        const role = document.getElementById("employee-role").value;
+        const joiningDate = document.getElementById("employee-joining_date").value;
+        const workLocation = document.getElementById("employee-work_location").value;
+        const shiftTime = document.getElementById("employee-shift_time").value;
+        const status = document.getElementById("employee-status").value;
+        const activeInactiveDate = document.getElementById("employee-active_inactive_date").value;
 
-// Collect selected client codes and join them with '|'
-const clientCodeSelect = document.getElementById("employee-client_code");
-const selectedClientCodes = Array.from(clientCodeSelect.selectedOptions).map(option => option.value).join('|');
+        // Collect selected client codes and join them with '|'
+        const clientCodeSelect = document.getElementById("employee-client_code");
+        const selectedClientCodes = Array.from(clientCodeSelect.selectedOptions).map(option => option.value).join('|');
 
-// Collect selected projects and join them with '|'
-const projectSelect = document.getElementById("employee-projects");
-const selectedProjects = Array.from(projectSelect.selectedOptions).map(option => option.value).join('|');
+        // Collect selected projects and join them with '|'
+        const projectSelect = document.getElementById("employee-projects");
+        const selectedProjects = Array.from(projectSelect.selectedOptions).map(option => option.value).join('|');
 
-// Collect selected work types and join them with '|'
-const workTypeSelect = document.getElementById("employee-work_type");
-const selectedWorkTypes = Array.from(workTypeSelect.selectedOptions).map(option => option.value).join('|');
+        // Collect selected work types and join them with '|'
+        const workTypeSelect = document.getElementById("employee-work_type");
+        const selectedWorkTypes = Array.from(workTypeSelect.selectedOptions).map(option => option.value).join('|');
 
-// Send the data in the POST request
-fetch(`/api/v1/auth/employees/${employeeId}/`, {
-    method: 'PATCH',
-    credentials: 'same-origin',
-    headers: {
-        'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
-        'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
-    },
-    body: JSON.stringify({
-        name: name,
-        employee_id: employeeId,
-        role: role,
-        joining_date: joiningDate,
-        work_location: workLocation,
-        shift_time: shiftTime,
-        client_code: selectedClientCodes, // Send the joined client codes
-        projects: selectedProjects, // Send the joined projects
-        work_type: selectedWorkTypes, // Send the joined work types
-        status: status,
-        active_inactive_date: activeInactiveDate,
-    }),
-})
-.then(response => response.json())
-.then(resp => {
-    if (resp.error) {
-        alert("Error updating employee data: " + resp.error.message);
-        return;
-    }
-    alert("Employee updated successfully!");
-    modal.style.display = "none";
-    // Optionally, refresh the employee data or table
-    location.reload();  // Reload to see updated employee data
-})
-.catch(error => {
-    alert("Error updating employee data.");
-    console.error("Error:", error);
-});
-});
-
-    // Delete button click handler
-const deleteButtons = document.querySelectorAll(".delete-btn");
-    deleteButtons.forEach(button => {
-        button.addEventListener("click", () => {
-            employeeIdToDelete = button.getAttribute("data-id");
-            confirmDeleteModal.style.display = "flex"; // Show the confirmation modal
-        });
-        cancelDeleteBtn.addEventListener("click", () => {
-            confirmDeleteModal.style.display = "none"; // Close the confirmation modal
-        });
-    });
-
-    // Handle Confirm Delete
-    confirmDeleteBtn.addEventListener("click", function () {
-        fetch(`/api/v1/auth/employees/${employeeIdToDelete}/`, {
-            method: "DELETE",
+        // Send the data in the POST request
+        fetch(`/api/v1/auth/employees/${employeeId}/`, {
+            method: 'PATCH',
             credentials: 'same-origin',
-            headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
+            headers: {
+                'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+            },
+            body: JSON.stringify({
+                name: name,
+                employee_id: employeeId,
+                role: role,
+                joining_date: joiningDate,
+                work_location: workLocation,
+                shift_time: shiftTime,
+                client_code: selectedClientCodes, // Send the joined client codes
+                projects: selectedProjects, // Send the joined projects
+                work_type: selectedWorkTypes, // Send the joined work types
+                status: status,
+                active_inactive_date: activeInactiveDate,
+            }),
         })
-        .then(response => response.json())
-        .then(resp => {
-            if (!resp.error) {
-                location.reload();  // Reload to see updated employee list
-            } else {
-                alert("Failed to delete employee.");
-            }
-            confirmDeleteModal.style.display = "none";  // Close the confirmation modal
-        });
-        
+            .then(response => response.json())
+            .then(resp => {
+                if (resp.error) {
+                    alert("Error updating employee data: " + resp.error.message);
+                    return;
+                }
+                alert("Employee updated successfully!");
+                modal.style.display = "none";
+                if(typeof window.fetchEmployees === "function") window.fetchEmployees();
+            })
+            .catch(error => {
+                alert("Error updating employee data.");
+                console.error("Error:", error);
+            });
     });
-    
+
+
     // Show popup when logout button is clicked
-logoutBtn.addEventListener('click', () => {
-    // Check for active work session before allowing logout
-    fetch('/api/v1/tracking/sessions/current/')
-                .then(response => response.json())
-        .then(res => {
-            const data = res.data || res;
-            if (data) {
-                alert('You have an active work session. Do you want to end it first?');
-                // Do not show logout popup, restrict logout
-                return;
-            } else {
+    logoutBtn.addEventListener('click', () => {
+        // Check for active work session before allowing logout
+        fetch('/api/v1/tracking/sessions/current/')
+            .then(response => response.json())
+            .then(res => {
+                const data = res.data || res;
+                if (data) {
+                    alert('You have an active work session. Do you want to end it first?');
+                    // Do not show logout popup, restrict logout
+                    return;
+                } else {
+                    logoutPopup.classList.remove('hidden');
+                }
+            })
+            .catch(error => {
+                // On error, fallback to showing the popup (or optionally block logout)
+                console.error('Error checking active work session:', error);
                 logoutPopup.classList.remove('hidden');
+            });
+    });
+
+    // Handle confirm logout
+    confirmLogout.addEventListener('click', () => {
+        fetch('/api/v1/auth/logout/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
             }
         })
-        .catch(error => {
-            // On error, fallback to showing the popup (or optionally block logout)
-            console.error('Error checking active work session:', error);
-            logoutPopup.classList.remove('hidden');
-        });
-});
-
-// Handle confirm logout
-confirmLogout.addEventListener('click', () => {
-    fetch('/api/v1/auth/logout/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
-        }
-    })
-    .then(response => {
-        if (response.ok) {
-            window.location.href = '/login'; // Redirect to login page
-        } else {
-            alert('Error logging out. Please try again.');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/login/'; // Redirect to login page
+                } else {
+                    alert('Error logging out. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
     });
-});
 
-// Close popup when cancel is clicked
-cancelLogout.addEventListener('click', () => {
-    logoutPopup.classList.add('hidden');
-});
+    // Close popup when cancel is clicked
+    cancelLogout.addEventListener('click', () => {
+        logoutPopup.classList.add('hidden');
+    });
 
 });
 
 function filterEmployees() {
-    var input = document.getElementById("search");
-    var filter = input.value.toLowerCase();
-    var table = document.getElementById("employees-table");
-    var rows = table.getElementsByTagName("tr");
-
-    // Loop through all rows (except the first row, which is the header)
-    for (var i = 1; i < rows.length; i++) {
-        var row = rows[i];
-        var cells = row.getElementsByTagName("td");
-        var matchFound = false;
-
-        // Loop through all cells and check if the search term matches any of the cell values
-        for (var j = 0; j < cells.length; j++) {
-            var cell = cells[j];
-            if (cell.innerText.toLowerCase().includes(filter)) {
-                matchFound = true;
-                break;
-            }
-        }
-
-        row.style.display = matchFound ? "" : "none";
+    const searchInput = document.getElementById("search");
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    
+    if (!query) {
+        window.filteredEmployees = [...window.allEmployees];
+    } else {
+        window.filteredEmployees = window.allEmployees.filter(emp => {
+            const name = (emp.name || "").toLowerCase();
+            const empId = (emp.employee_id || "").toLowerCase();
+            const role = (emp.role || "").toLowerCase();
+            const loc = (emp.work_location || emp.department || "").toLowerCase();
+            const status = (emp.status || "").toLowerCase();
+            const shift = (emp.shift_time || emp.shift || "").toLowerCase();
+            return name.includes(query) || empId.includes(query) || role.includes(query) || loc.includes(query) || status.includes(query) || shift.includes(query);
+        });
+    }
+    window.currentEmployeePage = 1;
+    if (typeof window.renderEmployeesTable === 'function') {
+        window.renderEmployeesTable();
     }
     
     // Show/hide clear button based on input value
-    const clearBtn = input.nextElementSibling;
+    const clearBtn = searchInput ? searchInput.nextElementSibling : null;
     if (clearBtn && clearBtn.classList.contains('clear-search')) {
-        clearBtn.style.display = input.value ? "block" : "none";
+        clearBtn.style.display = searchInput.value ? "block" : "none";
     }
 }
+window.filterEmployees = filterEmployees;
 
 function filterProjects() {
     var input = document.getElementById("searchProject");
@@ -1085,7 +1121,7 @@ function filterProjects() {
 
         row.style.display = matchFound ? "" : "none";
     }
-    
+
     // Show/hide clear button based on input value
     const clearBtn = input.nextElementSibling;
     if (clearBtn && clearBtn.classList.contains('clear-search')) {
@@ -1152,7 +1188,7 @@ function handleClearSearch(inputId) {
     if (input) {
         input.value = '';
         // Trigger the corresponding filter function
-        switch(inputId) {
+        switch (inputId) {
             case 'search':
                 filterEmployees();
                 break;
@@ -1170,9 +1206,9 @@ function handleClearSearch(inputId) {
 }
 
 // Add event listeners for search inputs when document loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const searchInputs = ['search', 'searchProject', 'searchClientCode', 'searchWorktype'];
-    
+
     searchInputs.forEach(inputId => {
         const input = document.getElementById(inputId);
         if (input) {
@@ -1186,9 +1222,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearBtn.onclick = () => handleClearSearch(inputId);
                 input.parentNode.insertBefore(clearBtn, input.nextSibling);
             }
-            
+
             // Add input event listener to show/hide clear button
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 const clearBtn = this.nextElementSibling;
                 if (clearBtn && clearBtn.classList.contains('clear-search')) {
                     clearBtn.style.display = this.value ? "block" : "none";
@@ -1198,30 +1234,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-window.onload = function() {
-    showContent('reports'); // Show Employee Productivity Report by default
-};
-
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const chatTab = document.getElementById('chat-tab');
-        if (chatTab) {
-            chatTab.addEventListener('click', function(e) {
-                e.preventDefault();
-                fetch('/chat_url')
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data && data.url) {
-                            window.open(data.url, '_blank');
-                        } else if (data && data.error) {
-                            alert(data.error);
-                        } else {
-                            alert('Unable to get chat URL');
-                        }
-                    })
-                    .catch(() => alert('Unable to get chat URL'));
-            });
-        }
-    });
+    if (chatTab) {
+        chatTab.addEventListener('click', function (e) {
+            e.preventDefault();
+            fetch('/chat_url')
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.url) {
+                        window.open(data.url, '_blank');
+                    } else if (data && data.error) {
+                        alert(data.error);
+                    } else {
+                        alert('Unable to get chat URL');
+                    }
+                })
+                .catch(() => alert('Unable to get chat URL'));
+        });
+    }
+});
 
 // Function to fetch and populate shifts
 function fetchShifts(preselectValue = null) {
@@ -1240,7 +1272,7 @@ function fetchShifts(preselectValue = null) {
 
             const editShiftSelect = document.getElementById("employee-shift_time");
             const addShiftSelect = document.getElementById("new-employee-shift_time");
-            
+
             // Clear existing options
             editShiftSelect.innerHTML = '';
             addShiftSelect.innerHTML = '';
@@ -1251,14 +1283,14 @@ function fetchShifts(preselectValue = null) {
             defaultOption.textContent = "Select a shift";
             editShiftSelect.appendChild(defaultOption.cloneNode(true));
             addShiftSelect.appendChild(defaultOption);
-            
+
             // Add shifts to both select elements
             data.forEach(shift => {
                 const editOption = document.createElement("option");
                 editOption.value = shift.shift;
                 editOption.textContent = `${shift.shift} (${shift.startedAt} - ${shift.endedAt})`;
                 editShiftSelect.appendChild(editOption);
-                
+
                 const addOption = document.createElement("option");
                 addOption.value = shift.shift;
                 addOption.textContent = `${shift.shift} (${shift.startedAt} - ${shift.endedAt})`;
@@ -1279,25 +1311,25 @@ function fetchShifts(preselectValue = null) {
                 { shift: 'Second Shift', startedAt: '16:00:00', endedAt: '01:00:00' },
                 { shift: 'Night Shift', startedAt: '19:00:00', endedAt: '06:00:00' }
             ];
-            
+
             const editShiftSelect = document.getElementById("employee-shift_time");
             const addShiftSelect = document.getElementById("new-employee-shift_time");
-            
+
             editShiftSelect.innerHTML = '';
             addShiftSelect.innerHTML = '';
-            
+
             const defaultOption = document.createElement("option");
             defaultOption.value = "";
             defaultOption.textContent = "Select a shift";
             editShiftSelect.appendChild(defaultOption.cloneNode(true));
             addShiftSelect.appendChild(defaultOption);
-            
+
             shifts.forEach(shift => {
                 const editOption = document.createElement("option");
                 editOption.value = shift.shift;
                 editOption.textContent = `${shift.shift} (${shift.startedAt} - ${shift.endedAt})`;
                 editShiftSelect.appendChild(editOption);
-                
+
                 const addOption = document.createElement("option");
                 addOption.value = shift.shift;
                 addOption.textContent = `${shift.shift} (${shift.startedAt} - ${shift.endedAt})`;
@@ -1315,7 +1347,7 @@ function setupCheckboxList(selectId, listId, searchId, isReadonly = false) {
     const list = document.getElementById(listId);
     const searchInput = document.getElementById(searchId);
     const clearSearch = document.querySelector(`#${searchId} + .emp-clear-search`);
-    
+
     // Add select all/deselect functionality
     const selectAllBtn = document.querySelector(`.emp-select-all[data-target="${listId}"]`);
     const deselectAllBtn = document.querySelector(`.emp-deselect-all[data-target="${listId}"]`);
@@ -1358,16 +1390,16 @@ function setupCheckboxList(selectId, listId, searchId, isReadonly = false) {
         Array.from(select.options).forEach(option => {
             const div = document.createElement('div');
             div.className = 'emp-checkbox-item';
-            
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.value = option.value;
             checkbox.checked = option.selected;
             checkbox.disabled = isReadonly;
-            
+
             const label = document.createElement('label');
             label.textContent = option.text;
-            
+
             div.appendChild(checkbox);
             div.appendChild(label);
             list.appendChild(div);
@@ -1384,7 +1416,7 @@ function setupCheckboxList(selectId, listId, searchId, isReadonly = false) {
     function filterCheckboxes() {
         const searchTerm = searchInput.value.toLowerCase();
         const items = list.getElementsByClassName('emp-checkbox-item');
-        
+
         Array.from(items).forEach(item => {
             const label = item.querySelector('label');
             const text = label.textContent.toLowerCase();

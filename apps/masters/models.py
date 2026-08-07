@@ -34,6 +34,7 @@ class MasterRecord(models.Model):
 class WorkType(MasterRecord):
     id = models.AutoField(primary_key=True)
     wt_id = models.CharField(max_length=20, default="", blank=True)
+    worktypename = models.CharField(max_length=100, default="")
     work_type = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True, default="")
     # Expected units per hour — the productivity reports compare against it.

@@ -71,3 +71,26 @@ def test_success_envelope_shape(as_employee):
     assert response.status_code == 200
     assert response.data["ok"] is True
     assert "data" in response.data
+
+
+def test_model_viewset_retrieve_and_update_enveloped(as_admin):
+    # Create project
+    create_resp = as_admin.post("/api/v1/masters/projects/", {"project_name": "Enveloped Project"})
+    assert create_resp.status_code == 201
+    assert create_resp.data["ok"] is True
+    project_id = create_resp.data["data"]["id"]
+
+    # Retrieve (GET by id) - tests retrieve() wrapping
+    get_resp = as_admin.get(f"/api/v1/masters/projects/{project_id}/")
+    assert get_resp.status_code == 200
+    assert get_resp.data["ok"] is True
+    assert get_resp.data["data"]["project_name"] == "Enveloped Project"
+
+    # Partial update (PATCH) - tests partial_update() wrapping
+    patch_resp = as_admin.patch(
+        f"/api/v1/masters/projects/{project_id}/", {"project_name": "Updated Enveloped Project"}
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.data["ok"] is True
+    assert patch_resp.data["data"]["project_name"] == "Updated Enveloped Project"
+

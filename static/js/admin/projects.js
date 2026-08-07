@@ -240,7 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function fetchProjects() {
-        fetch("/api/v1/masters/projects/", { credentials: 'same-origin' })
+        fetch("/api/v1/masters/projects/?active=true", { credentials: 'same-origin' })
             .then((response) => response.json())
             .then((resp) => {
                 projects = Array.isArray(resp) ? resp : (resp.results || resp.data || []);
@@ -504,9 +504,8 @@ document.addEventListener("DOMContentLoaded", () => {
             credentials: 'same-origin',
             headers: { "X-CSRFToken": (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "" },
         })
-            .then((response) => response.json())
-            .then((result) => {
-                if (!result.error) {
+            .then((response) => {
+                if (response.ok) {
                     MasterDataCache.invalidate('master_projects');
                     MasterDataCache.invalidate('oa_projects');
                     confirmDeleteProjectModal.style.display = "none";

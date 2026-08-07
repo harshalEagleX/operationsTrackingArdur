@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     function fetchClientCodes() {
-        fetch("/api/v1/masters/clientcodes/", { credentials: 'same-origin' })
+        fetch("/api/v1/masters/clientcodes/?active=true", { credentials: 'same-origin' })
             .then(response => response.json())
             .then(resp => {
                 const data = Array.isArray(resp) ? resp : (resp.results || resp.data || []);
@@ -374,9 +374,8 @@ document.addEventListener("DOMContentLoaded", () => {
             credentials: 'same-origin',
             headers: { "X-CSRFToken": (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "" },
         })
-            .then((response) => response.json())
-            .then((result) => {
-                if (!result.error) {
+            .then((response) => {
+                if (response.ok) {
                     MasterDataCache.invalidate('master_clientcodes');
                     confirmDeleteClientCodeModal.style.display = "none";
                     fetchClientCodes();

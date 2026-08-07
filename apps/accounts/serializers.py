@@ -101,8 +101,8 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
 
     employee_id = serializers.CharField(max_length=20, validators=[validate_emp_id])
     name = serializers.CharField(max_length=100, validators=[validate_non_blank])
-    role = serializers.ChoiceField(choices=Role.choices, default=Role.EMPLOYEE)
-    status = serializers.ChoiceField(choices=Status.choices, default=Status.ACTIVE)
+    role = serializers.CharField(max_length=20, default=Role.EMPLOYEE)
+    status = serializers.CharField(max_length=10, default=Status.ACTIVE)
     # Optional: set a login password at creation time.
     password = serializers.CharField(
         max_length=128, write_only=True, required=False, allow_blank=True
@@ -122,6 +122,18 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
             "status", "password", "client_code", "work_type", "active_inactive_date",
             "joining_date", "work_location", "projects", "shift_time"
         ]
+
+    def validate_role(self, value: str) -> str:
+        val = (value or "").strip().lower()
+        if val in [r.value for r in Role]:
+            return val
+        return value
+
+    def validate_status(self, value: str) -> str:
+        val = (value or "").strip().lower()
+        if val in [s.value for s in Status]:
+            return val
+        return value
 
     def validate_employee_id(self, value: str) -> str:
         qs = Employee.objects.filter(employee_id=value)

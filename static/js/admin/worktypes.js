@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     function fetchWorktypes() {
-        fetch("/api/v1/masters/worktypes/", { credentials: 'same-origin' })
+        fetch("/api/v1/masters/worktypes/?active=true", { credentials: 'same-origin' })
             .then(response => response.json())
             .then(resp => {
                 // DRF wraps results in {results:[...]} when paginated, or returns array directly
@@ -219,8 +219,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         notify('Work Type added successfully!', 'success');
                         fetchWorktypes();
                         if (localModal) localModal.style.display = "none";
-                    } else {
-                        notify('Error adding Work Type: ' + (data.error || 'Unknown error'), 'error');
+                        let errorMsg = 'Unknown error';
+                        if (data.error) {
+                            errorMsg = data.error.message || JSON.stringify(data.error);
+                        }
+                        notify('Error adding Work Type: ' + errorMsg, 'error');
                     }
                 })
                 .catch(() => {
@@ -245,11 +248,14 @@ document.addEventListener("DOMContentLoaded", () => {
             credentials: 'same-origin',
             headers: { "X-CSRFToken": (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "" },
         })
-            .then(response => response.json())
-            .then(() => {
-                MasterDataCache.invalidate('master_worktypes');
-                fetchWorktypes();
-                confirmDeleteModal.style.display = "none";
+            .then(response => {
+                if (response.ok) {
+                    MasterDataCache.invalidate('master_worktypes');
+                    fetchWorktypes();
+                    confirmDeleteModal.style.display = "none";
+                } else {
+                    notify('Error deleting Work Type.', 'error');
+                }
             });
     });
 

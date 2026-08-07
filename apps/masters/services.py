@@ -111,6 +111,16 @@ class WorkTypeService(MasterDataService):
     model = WorkType
     label = "work type"
 
+    def create(self, data: dict):
+        if "work_type" in data and "worktypename" not in data:
+            data["worktypename"] = data["work_type"]
+        return super().create(data)
+
+    def update(self, instance, data: dict):
+        if "work_type" in data and "worktypename" not in data:
+            data["worktypename"] = data["work_type"]
+        return super().update(instance, data)
+
     @property
     def references(self):
         from apps.tracking.models import WorkSession

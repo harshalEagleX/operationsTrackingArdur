@@ -113,7 +113,7 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         return self.ok(AllocationSerializer(queryset, many=True).data)
 
 
-class OrderHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+class OrderHistoryViewSet(EnvelopeMixin, viewsets.ReadOnlyModelViewSet):
     """/api/v1/allocations/history/ — the audit trail, supervisors only."""
 
     serializer_class = OrderHistorySerializer

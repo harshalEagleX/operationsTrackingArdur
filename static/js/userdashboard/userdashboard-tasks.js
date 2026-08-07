@@ -2083,7 +2083,10 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 await fetch(`/api/v1/allocations/${item.allocation_id}/status/`, {
                     method: 'POST',
-                    headers: {'Content-Type':'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''},
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
                     body: JSON.stringify({ status: 'in_progress' })
                 });
             } catch (e) {

@@ -560,9 +560,10 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.className = 'detailed-chart-modal';
         
         // Calculate project statistics
-        const projectData = window.lastDetailedData.filter(item => item.project_name === projectName);
+        const rawData = window.lastDetailedData || [];
+        const projectData = rawData.filter(item => (item.project_name === projectName || item.project === projectName));
         const totalEmployees = projectData.length;
-        const totalUnits = projectData.reduce((sum, item) => sum + parseInt(item.unit_cnt), 0);
+        const totalUnits = projectData.reduce((sum, item) => sum + (parseInt(item.unit_cnt || item.total_units || item.work_units || 0) || 0), 0);
         
         // Calculate dynamic height based on number of employees (minimum 400px, 30px per employee)
         const chartHeight = Math.max(400, totalEmployees * 30);
@@ -570,7 +571,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.innerHTML = `
             <div class="detailed-chart-content">
                 <div class="detailed-header">
-                    <h3>${projectName.toUpperCase()} - EMPLOYEE DETAILS</h3>
+                    <h3>${(projectName || '').toUpperCase()} - EMPLOYEE DETAILS</h3>
                     <div class="detailed-actions">
                         <button class="refresh-detailed-btn" title="Refresh Data">
                             <i class="fas fa-sync-alt"></i>
@@ -607,12 +608,13 @@ document.addEventListener('DOMContentLoaded', function() {
             fetchSummaryData()
                 .then(() => {
                     // Get fresh data for this project only
-                    const updatedProjectData = window.lastDetailedData.filter(item => item.project_name === projectName);
-                    updatedProjectData.sort((a, b) => b.unit_cnt - a.unit_cnt);
+                    const rawUpdated = window.lastDetailedData || [];
+                    const updatedProjectData = rawUpdated.filter(item => (item.project_name === projectName || item.project === projectName));
+                    updatedProjectData.sort((a, b) => (b.unit_cnt || b.total_units || 0) - (a.unit_cnt || a.total_units || 0));
 
                     // Update statistics
                     const updatedTotalEmployees = updatedProjectData.length;
-                    const updatedTotalUnits = updatedProjectData.reduce((sum, item) => sum + parseInt(item.unit_cnt), 0);
+                    const updatedTotalUnits = updatedProjectData.reduce((sum, item) => sum + (parseInt(item.unit_cnt || item.total_units || item.work_units || 0) || 0), 0);
 
                     // Update statistics display
                     modal.querySelector('.stat-item:first-child p').textContent = formatNumber(updatedTotalEmployees);
@@ -623,8 +625,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     modal.querySelector('.detailed-chart-container').style.height = `${newChartHeight}px`;
 
                     // Update chart
-                    detailedChart.data.labels = updatedProjectData.map(item => item.name.toUpperCase());
-                    detailedChart.data.datasets[0].data = updatedProjectData.map(item => item.unit_cnt);
+                    detailedChart.data.labels = updatedProjectData.map(item => (item.name || item.emp_id || '').toUpperCase());
+                    detailedChart.data.datasets[0].data = updatedProjectData.map(item => (item.unit_cnt || item.total_units || 0));
                     detailedChart.update();
                 })
                 .finally(() => {

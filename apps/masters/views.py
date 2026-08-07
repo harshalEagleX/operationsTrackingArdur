@@ -73,6 +73,7 @@ class BaseMasterViewSet(EnvelopeMixin, viewsets.ModelViewSet):
 class WorkTypeViewSet(BaseMasterViewSet):
     queryset = WorkType.objects.all()
     serializer_class = WorkTypeSerializer
+    lookup_field = "wt_id"
     search_fields = ["work_type", "description"]
     ordering_fields = ["work_type", "created_at"]
 
@@ -91,6 +92,7 @@ class WorkTypeViewSet(BaseMasterViewSet):
 class ProjectViewSet(BaseMasterViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
+    lookup_field = "project_id"
     search_fields = ["project_name", "project_code", "client_name"]
     ordering_fields = ["project_name", "start_date", "created_at"]
 
@@ -109,6 +111,7 @@ class ProjectViewSet(BaseMasterViewSet):
 class ClientCodeViewSet(BaseMasterViewSet):
     queryset = ClientCode.objects.all()
     serializer_class = ClientCodeSerializer
+    lookup_field = "cc_id"
     search_fields = ["client_code", "client_name", "project"]
     ordering_fields = ["client_code", "created_at"]
 
