@@ -100,11 +100,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             </label>
                         `;
                     });
-                    
+
                     // Update counts after populating
                     const isAddForm = container.id === 'add-client-codes-container';
                     updateActiveCounts(isAddForm);
-                    
+
                     // Add change event listener for client codes
                     container.addEventListener('change', (e) => {
                         if (e.target.type === 'checkbox') {
@@ -135,11 +135,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Create checkboxes dynamically
                 data.forEach(workType => {
-                    const isChecked = selectedWorkTypes.includes(workType.worktypename) ? "checked" : "";
+                    const isChecked = selectedWorkTypes.includes(workType.work_type) ? "checked" : "";
                     container.innerHTML += `
-                        <label>
-                            <input type="checkbox" value="${workType.worktypename}" ${isChecked}>
-                            ${workType.worktypename}
+                        <label class="checkbox-label">
+                            <input type="checkbox" value="${workType.work_type}" ${isChecked}>
+                            ${workType.work_type}
                         </label>
                     `;
                 });
@@ -159,55 +159,56 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             body: JSON.stringify({ client_codes: clientCodes }),
         })
-        .then((response) => response.json())
-        .then((worktypesByClient) => {
-            container.innerHTML = ""; // Clear container
-    
-            Object.entries(worktypesByClient).forEach(([clientCode, worktypes]) => {
-                const clientHeader = document.createElement("div");
-                clientHeader.classList.add("client-header");
-                clientHeader.textContent = `${clientCode}`;
-    
-                const worktypeContainer = document.createElement("div");
-                worktypeContainer.classList.add("worktype-container");
-    
-                if (worktypes.length > 0) {
-                    worktypes.forEach((worktype) => {
-                        const checkbox = document.createElement("input");
-                        checkbox.type = "checkbox";
-                        checkbox.value = worktype;
-                        checkbox.id = `worktype-${clientCode}-${worktype}`;
-                        // Only check if it's in selectedWorktypes (for initial load)
-                        checkbox.checked = selectedWorktypes.includes(worktype);
-    
-                        const label = document.createElement("label");
-                        label.htmlFor = checkbox.id;
-                        label.textContent = worktype;
-    
-                        const div = document.createElement("div");
-                        div.classList.add("worktype-item");
-                        div.appendChild(checkbox);
-                        div.appendChild(label);
-                        worktypeContainer.appendChild(div);
-                    });
-                } else {
-                    const noWorktypesMsg = document.createElement("p");
-                    noWorktypesMsg.textContent = "No work types available";
-                    noWorktypesMsg.classList.add("no-worktypes-msg");
-                    worktypeContainer.appendChild(noWorktypesMsg);
-                }
-    
-                container.appendChild(clientHeader);
-                container.appendChild(worktypeContainer);
+            .then((response) => response.json())
+            .then((resp) => {
+                const worktypesByClient = resp.data || resp;
+                container.innerHTML = ""; // Clear container
+
+                Object.entries(worktypesByClient).forEach(([clientCode, worktypes]) => {
+                    const clientHeader = document.createElement("div");
+                    clientHeader.classList.add("client-header");
+                    clientHeader.textContent = `${clientCode}`;
+
+                    const worktypeContainer = document.createElement("div");
+                    worktypeContainer.classList.add("worktype-container");
+
+                    if (worktypes.length > 0) {
+                        worktypes.forEach((worktype) => {
+                            const checkbox = document.createElement("input");
+                            checkbox.type = "checkbox";
+                            checkbox.value = worktype;
+                            checkbox.id = `worktype-${clientCode}-${worktype}`;
+                            // Only check if it's in selectedWorktypes (for initial load)
+                            checkbox.checked = selectedWorktypes.includes(worktype);
+
+                            const label = document.createElement("label");
+                            label.htmlFor = checkbox.id;
+                            label.textContent = worktype;
+
+                            const div = document.createElement("div");
+                            div.classList.add("worktype-item");
+                            div.appendChild(checkbox);
+                            div.appendChild(label);
+                            worktypeContainer.appendChild(div);
+                        });
+                    } else {
+                        const noWorktypesMsg = document.createElement("p");
+                        noWorktypesMsg.textContent = "No work types available";
+                        noWorktypesMsg.classList.add("no-worktypes-msg");
+                        worktypeContainer.appendChild(noWorktypesMsg);
+                    }
+
+                    container.appendChild(clientHeader);
+                    container.appendChild(worktypeContainer);
+                });
             });
-        });
     }
 
     function handleClientCodeChange(container, checkbox) {
         const isAddForm = container.id === 'add-client-codes-container';
         const workTypesContainer = document.getElementById(isAddForm ? 'add-worktypes-container' : 'edit-worktypes-container');
         const selectedClientCodes = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-        
+
         if (selectedClientCodes.length > 0) {
             // Get currently selected work types before fetching new ones
             const currentSelectedWorkTypes = Array.from(workTypesContainer.querySelectorAll('input[type="checkbox"]:checked'))
@@ -222,13 +223,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     workTypesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                         const clientCode = cb.id.split('-')[1];
                         const worktype = cb.value;
-                        
+
                         // Only check if it was previously selected AND from an existing client code
-                        const shouldBeChecked = currentSelectedWorkTypes.some(wt => 
-                            wt.value === worktype && 
+                        const shouldBeChecked = currentSelectedWorkTypes.some(wt =>
+                            wt.value === worktype &&
                             wt.clientCode === clientCode
                         );
-                        
+
                         cb.checked = shouldBeChecked;
                     });
                     updateActiveCounts(isAddForm);
@@ -322,7 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 event.preventDefault();
                 const clientCodesData = this.getAttribute("data-clientcodes");
                 const clientCodesArray = clientCodesData ? clientCodesData.split("|") : [];
-                
+
                 const projectName = this.closest('tr').querySelector('td:nth-child(3)').textContent;
 
                 let modalContent = `
@@ -463,12 +464,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Submit Edit Project form
     document.getElementById("editProjectForm").addEventListener("submit", (event) => {
         event.preventDefault();
-        const projectId = document.getElementById("project-project_id").value;
+        const projectId = document.getElementById("edit-project_id").value;
         const selectedClientCodes = Array.from(editClientCodeContainer.querySelectorAll("input[type='checkbox']:checked")).map((cb) => cb.value);
         const selectedWorktypes = Array.from(editWorktypesContainer.querySelectorAll("input[type='checkbox']:checked")).map((cb) => cb.value);
 
         const projectData = {
-            project_name: document.getElementById("project-project_name").value,
+            project_name: document.getElementById("edit-project_name").value,
             client_code: selectedClientCodes.join("|"),
             worktypes: selectedWorktypes.join("|"),
         };
@@ -488,7 +489,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     MasterDataCache.invalidate('master_projects');
                     MasterDataCache.invalidate('oa_projects');
                     notify('Project updated successfully!', 'success');
-                    document.getElementById('ppprojectModal').style.display = "none";
+                    document.getElementById('editProjectModal').style.display = "none";
                     fetchProjects();
                 } else {
                     notify('Error updating Project: ' + (data.error || 'Unknown error'), 'error');
@@ -531,7 +532,7 @@ document.addEventListener("DOMContentLoaded", () => {
             input.addEventListener('input', (e) => {
                 const container = e.target.closest('.form-group').querySelector('.checkbox-container');
                 const searchTerm = e.target.value.toLowerCase();
-                
+
                 const labels = container.querySelectorAll('label');
                 labels.forEach(label => {
                     const text = label.textContent.toLowerCase();
@@ -554,34 +555,43 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateActiveCounts(isAddForm = false) {
         const clientCodeContainer = isAddForm ? 'add-client-codes-container' : 'edit-client-codes-container';
         const workTypeContainer = isAddForm ? 'add-worktypes-container' : 'edit-worktypes-container';
-        
+
         const clientCodeCount = document.querySelectorAll(`#${clientCodeContainer} input[type="checkbox"]:checked`).length;
         const workTypeCount = document.querySelectorAll(`#${workTypeContainer} input[type="checkbox"]:checked`).length;
-        
+
         if (isAddForm) {
             // Update counts in add form
-            document.getElementById('add-active-clientcodes').textContent = clientCodeCount;
-            document.getElementById('add-active-project-worktypes').textContent = workTypeCount;
+            const accElem = document.getElementById('add-active-clientcodes');
+            if (accElem) accElem.textContent = clientCodeCount;
+            const awtElem = document.getElementById('add-active-project-worktypes');
+            if (awtElem) awtElem.textContent = workTypeCount;
         } else {
             // Update counts in edit form
-            document.getElementById('active-clientcodes').textContent = clientCodeCount;
-            document.getElementById('active-project-worktypes').textContent = workTypeCount;
+            const ccElem = document.getElementById('active-clientcodes');
+            if (ccElem) ccElem.textContent = clientCodeCount;
+            const wtElem = document.getElementById('active-project-worktypes');
+            if (wtElem) wtElem.textContent = workTypeCount;
         }
     }
 
     function handleEditClick(projectId) {
-        fetch(`/get_project/${projectId}`)
+        fetch(`/api/v1/masters/projects/${projectId}/`, { credentials: 'same-origin' })
             .then(response => response.json())
-            .then(data => {
-                // Set basic project info
-                document.getElementById('project-project_id').value = data.project_id;
-                document.getElementById('project-project_name').value = data.project_name;
-                document.getElementById('project-last-updated').textContent = data.last_updated;
+            .then(resp => {
+                const data = resp.data || resp;
+                if (data.error) {
+                    notify(data.error, 'error');
+                    return;
+                }
                 
+                // Set basic project info
+                document.getElementById('edit-project_id').value = data.project_id;
+                document.getElementById('edit-project_name').value = data.project_name;
+
                 // Store selected work types for reference
                 const selectedWorkTypes = data.worktypes ? data.worktypes.split('|') : [];
                 const selectedClientCodes = data.client_code ? data.client_code.split('|') : [];
-                
+
                 // First fetch client codes and pre-select them
                 fetchClientCodes(editClientCodeContainer, selectedClientCodes)
                     .then(() => {
@@ -591,18 +601,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     .then(() => {
                         // Update counts after everything is loaded
                         updateActiveCounts(false);
-                        
+
                         // Add change event listeners for checkbox containers
                         ['edit-client-codes-container', 'edit-worktypes-container'].forEach(containerId => {
                             document.getElementById(containerId).addEventListener('change', () => updateActiveCounts(false));
                         });
                     });
-                
+
                 // Initialize search functionality
                 initializeProjectSearch();
-                
+
                 // Show the modal
-                document.getElementById('ppprojectModal').style.display = 'block';
+                document.getElementById('editProjectModal').style.display = 'block';
             });
     }
 
@@ -615,7 +625,7 @@ document.addEventListener("DOMContentLoaded", () => {
             input.addEventListener('input', (e) => {
                 const container = e.target.closest('.form-group').querySelector('.checkbox-container');
                 const searchTerm = e.target.value.toLowerCase();
-                
+
                 const labels = container.querySelectorAll('label');
                 labels.forEach(label => {
                     const text = label.textContent.toLowerCase();
@@ -636,30 +646,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-    // Search functionality for filtering projects
-    function filterProjects() {
-        var input = document.getElementById("searchProject");
-        var filter = input.value.toLowerCase();
-        var table = document.getElementById("projects-table");
-        var rows = table.getElementsByTagName("tr");
+// Search functionality for filtering projects
+function filterProjects() {
+    var input = document.getElementById("searchProject");
+    var filter = input.value.toLowerCase();
+    var table = document.getElementById("projects-table");
+    var rows = table.getElementsByTagName("tr");
 
-        for (var i = 1; i < rows.length; i++) {
-            var row = rows[i];
-            var cells = row.getElementsByTagName("td");
-            var matchFound = false;
+    for (var i = 1; i < rows.length; i++) {
+        var row = rows[i];
+        var cells = row.getElementsByTagName("td");
+        var matchFound = false;
 
-            for (var j = 0; j < cells.length; j++) {
-                var cell = cells[j];
-                if (cell.innerText.toLowerCase().includes(filter)) {
-                    matchFound = true;
-                    break;
-                }
-            }
-
-            if (matchFound) {
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
+        for (var j = 0; j < cells.length; j++) {
+            var cell = cells[j];
+            if (cell.innerText.toLowerCase().includes(filter)) {
+                matchFound = true;
+                break;
             }
         }
+
+        if (matchFound) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
     }
+}

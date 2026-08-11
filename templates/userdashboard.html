@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +11,203 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <!-- Toast CSS for Notifications -->
+    <link rel="stylesheet" href="{{ static('css/toast.css') }}">
+
     <style>
+        /* ── Allocated Orders panel ────────────────────────────── */
+        .allocated-orders-section {
+            margin: 18px 0 0 0;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+            overflow: hidden;
+        }
+
+        .allocated-orders-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            background: linear-gradient(90deg, #1a1f36 0%, #2d3561 100%);
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .allocated-orders-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #allocated-orders-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 10px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 6px;
+            animation: pulse-badge 1.5s infinite;
+        }
+
+        @keyframes pulse-badge {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.15);
+            }
+        }
+
+        #allocated-orders-toggle-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        #allocated-orders-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        #allocated-orders-panel {
+            display: block;
+        }
+
+        #allocated-orders-panel table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        #allocated-orders-panel thead tr {
+            background: #f1f4f9;
+        }
+
+        #allocated-orders-panel th {
+            padding: 10px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e4ef;
+            white-space: nowrap;
+        }
+
+        #allocated-orders-panel td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #f0f0f5;
+            color: #444;
+        }
+
+        #allocated-orders-panel tbody tr:hover {
+            background: #f7f9ff;
+        }
+
+        .alloc-row-overdue td {
+            background: #fff3f3 !important;
+        }
+
+        .alloc-status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .alloc-status-badge.badge-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .alloc-status-badge.badge-inprogress {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .alloc-status-badge.badge-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alloc-status-badge.badge-onhold {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .alloc-status-badge.badge-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .alloc-id {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #1a5276;
+        }
+
+        .alloc-start-btn,
+        .alloc-complete-btn {
+            background: #27ae60;
+            border: none;
+            color: #fff;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+
+        .alloc-start-btn:hover:not(:disabled),
+        .alloc-complete-btn:hover:not(:disabled) {
+            background: #1e8449;
+        }
+
+        .alloc-start-btn:disabled,
+        .alloc-complete-btn:disabled {
+            background: #b2bec3;
+            cursor: default;
+        }
+
+        #allocated-orders-empty {
+            text-align: center;
+            padding: 22px;
+            color: #888;
+            font-style: italic;
+        }
+
+        #allocated-orders-spinner {
+            display: none;
+            margin: 12px auto;
+            text-align: center;
+            color: #888;
+        }
+
+        /* ── End allocated orders panel ── */
+
         .zoom-controls {
             display: flex;
             gap: 8px;
@@ -73,17 +270,136 @@
         .modal-image-container img.grab {
             cursor: grab !important;
         }
+
+        /* ── Notification centre ───────────────────────────────── */
+        .notification-center {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            z-index: 9999;
+            width: min(360px, 90vw);
+            max-height: 70vh;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #dde1eb;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+        }
+
+        .nc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: #222;
+        }
+
+        .nc-header h2 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .nc-footer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            border-top: 1px solid #eee;
+        }
+
+        .nc-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nc-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f2f2f5;
+            font-size: 0.85rem;
+            color: #333;
+        }
+
+        .nc-item:last-child {
+            border-bottom: 0;
+        }
+
+        .nc-clickable {
+            cursor: pointer;
+        }
+
+        .nc-clickable:hover {
+            background: #f7f9ff;
+        }
+
+        .nc-unread {
+            border-left: 3px solid #3498db;
+        }
+
+        .nc-title {
+            margin: 0 0 2px;
+            font-weight: 500;
+            font-size: 0.88rem;
+            color: #111;
+        }
+
+        .nc-body {
+            margin: 2px 0;
+            color: #555;
+            font-size: 0.82rem;
+        }
+
+        .nc-time {
+            font-size: 0.75rem;
+            color: #999;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-style: italic;
+            margin: 0;
+        }
+
+        /* ── End notification centre ── */
     </style>
 </head>
+
 <body>
     {{ csrf_input }}
+
+    <script id="bootstrap-data" type="application/json">
+    {{ {
+        "user": current_user,
+        "features": features,
+        "wsUrl": ws_url,
+        "apiBase": api_base
+    } | tojson }}
+    </script>
 
     <!-- Header -->
     <header class="header">
         <h3><i class="fas fa-tachometer-alt"></i> User Dashboard</h3>
         <div class="user-info">
+            <div class="bell-wrapper" style="position:relative; display:inline-block; margin-right:15px;">
+                <button type="button" class="bell-btn" id="bell-btn" aria-label="Notifications" aria-expanded="false"
+                    style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem; position: relative;">
+                    <i class="fas fa-bell"></i>
+                    <span id="bell-badge" hidden style="position:absolute; top:-6px; right:-8px;
+                                 min-width:18px; height:18px; padding:0 4px;
+                                 background:#e74c3c; color:#fff;
+                                 border-radius:10px; font-size:0.7rem;
+                                 font-weight:700; line-height:18px;
+                                 text-align:center; pointer-events:none;">0</span>
+                </button>
+                {% include 'components/notification_center.html' %}
+            </div>
             <span id="user-name" class="user-name-btn" data-employee-id="{{ emp_id }}" title="Reset Password">
-                <i class="fas fa-user-circle"></i> 
+                <i class="fas fa-user-circle"></i>
                 {{ username }}
                 <i class="fas fa-key reset-indicator"></i>
             </span>
@@ -132,8 +448,10 @@
                     </div>
                 </div>
                 <div class="reset-actions">
-                    <button type="submit" class="btn-primary" id="reset-submit"><i class="fas fa-save"></i> Update</button>
-                    <button type="button" class="btn-secondary" id="reset-cancel"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="submit" class="btn-primary" id="reset-submit"><i class="fas fa-save"></i>
+                        Update</button>
+                    <button type="button" class="btn-secondary" id="reset-cancel"><i class="fas fa-times"></i>
+                        Cancel</button>
                 </div>
             </form>
         </div>
@@ -142,7 +460,8 @@
     <!-- Logout Confirmation Popup -->
     <div id="logout-popup" class="popup hidden">
         <div class="popup-content">
-            <h2 style="margin-bottom: 20px; font-size: 17px; text-align: center; color: #333;">Are you sure you want to logout?</h2>
+            <h2 style="margin-bottom: 20px; font-size: 17px; text-align: center; color: #333;">Are you sure you want to
+                logout?</h2>
             <div>
                 <button id="confirm-logout" class="popup-btn">Yes</button>
                 <button id="cancel-logout" class="popup-btn">No</button>
@@ -154,7 +473,8 @@
     <div id="sidenav" class="side-nav">
         <ul class="nav-links">
             <li>
-                <a href="{{ url('pages:dashboard') }}" class="side-nav-btn" {% if role == 'employee' %}style="display:none;"{% endif %}>   
+                <a href="{{ url('pages:dashboard') }}" class="side-nav-btn" {% if role=='employee'
+                    %}style="display:none;" {% endif %}>
                     <i class="fas fa-user-cog"></i>
                     <span class="nav-text">Admin Dashboard</span>
                 </a>
@@ -171,7 +491,8 @@
                     <span class="nav-text">Feedbacks</span>
                 </a>
             </li>
-            {% if emp_id in ['AT0176','AT0200','AT0207','AT0085','AT0212','AT0215','AT0238','AT0244','AT0241', 'AT0001','AT0250', 'AT0278'] %}
+            {% if emp_id in ['AT0176','AT0200','AT0207','AT0085','AT0212','AT0215','AT0238','AT0244','AT0241',
+            'AT0001','AT0250', 'AT0278'] %}
             <li>
                 <a href="#" id="upload-task-tab" class="side-nav-btn">
                     <i class="fas fa-upload"></i>
@@ -205,17 +526,22 @@
                         <div class="feedback-header">
                             <h2><i class="fas fa-comment-dots"></i> My Feedback Reports</h2>
                             <div class="header-actions">
-                                <div class="feedback-date-range" style="display: flex; align-items: center; gap: 10px; margin-right: 18px;">
+                                <div class="feedback-date-range"
+                                    style="display: flex; align-items: center; gap: 10px; margin-right: 18px;">
                                     <label for="feedback-from-date" style="font-weight: 500; color: #333;">From</label>
-                                    <input type="date" id="feedback-from-date" style="padding: 4px 8px; border-radius: 5px; border: 1px solid #ccc;">
+                                    <input type="date" id="feedback-from-date"
+                                        style="padding: 4px 8px; border-radius: 5px; border: 1px solid #ccc;">
                                     <label for="feedback-to-date" style="font-weight: 500; color: #333;">To</label>
-                                    <input type="date" id="feedback-to-date" style="padding: 4px 8px; border-radius: 5px; border: 1px solid #ccc;">
+                                    <input type="date" id="feedback-to-date"
+                                        style="padding: 4px 8px; border-radius: 5px; border: 1px solid #ccc;">
                                 </div>
                                 <div class="feedback-counts">
-                                    <span class="count-item" id="feedback-received-count" title="Feedback received by you this month">
+                                    <span class="count-item" id="feedback-received-count"
+                                        title="Feedback received by you this month">
                                         <i class="fas fa-inbox"></i> Feedback Received: <span>0</span>
                                     </span>
-                                    <span class="count-item" id="feedback-sent-count" title="Feedback provided by you this month">
+                                    <span class="count-item" id="feedback-sent-count"
+                                        title="Feedback provided by you this month">
                                         <i class="fas fa-paper-plane"></i> Feedback Provided: <span>0</span>
                                     </span>
                                 </div>
@@ -289,7 +615,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Acknowledgment Comment Popup -->
                                 <div id="ack-comment-popup" class="popup hidden">
                                     <div class="popup-content">
@@ -299,7 +625,8 @@
                                             <button id="submit-ack-comment" class="btn-ack">
                                                 <i class="fas fa-check"></i> Submit
                                             </button>
-                                            <button id="cancel-ack-comment" class="btn-ack" style="background: #95a5a6;">
+                                            <button id="cancel-ack-comment" class="btn-ack"
+                                                style="background: #95a5a6;">
                                                 <i class="fas fa-times"></i> Cancel
                                             </button>
                                         </div>
@@ -404,7 +731,8 @@
                                     <label for="new_feedbackReceivedDate">
                                         <i class="fas fa-calendar-check"></i> Feedback Received Date:
                                     </label>
-                                    <input type="date" id="new_feedbackReceivedDate" name="feedbackReceivedDate" required>
+                                    <input type="date" id="new_feedbackReceivedDate" name="feedbackReceivedDate"
+                                        required>
                                 </div>
 
                                 <!-- Feedback Received Mode Dropdown -->
@@ -419,7 +747,7 @@
                                         <option value="verbal">Verbal</option>
                                     </select>
                                 </div>
-                            
+
                                 <!-- Feedback Provided By -->
                                 <div class="feedback-field">
                                     <label for="new_feedbackProvidedBy">
@@ -525,7 +853,8 @@
                                     <label for="new_closureScreenshot">Closure Screenshots:</label>
                                     <div id="new_dropZone" class="feedback-dropzone">
                                         <p>Drag & Drop images here, click to select, or paste (Ctrl+V) images</p>
-                                        <input type="file" id="new_closureScreenshot" name="closureScreenshot" accept="image/*" multiple>
+                                        <input type="file" id="new_closureScreenshot" name="closureScreenshot"
+                                            accept="image/*" multiple>
                                     </div>
                                     <div id="new_previewContainer" class="feedback-preview-container"></div>
                                 </div>
@@ -549,7 +878,7 @@
                     <h2 class="dashboard-header">
                         <span><i class="fas fa-tachometer-alt"></i> My Space </span>
                     </h2>
-            
+
                     <form id="work-form">
                         <div class="form-group">
                             <select id="project-select" class="form-control">
@@ -557,39 +886,44 @@
                                 <!-- Options will be populated here -->
                             </select>
                         </div>
-            
+
                         <div class="form-group">
                             <select id="client-code-select" class="form-control" disabled>
                                 <option value="">Select Client Code</option>
                                 <!-- Options will be populated here -->
                             </select>
                         </div>
-            
+
                         <div class="form-group">
                             <select id="work-type-select" class="form-control" disabled>
                                 <option value="">Select Work Type</option>
                                 <!-- Options will be populated here -->
                             </select>
                         </div>
-            
+
                         <input type="text" id="batch" name="batch" placeholder="Enter batch no or name" required>
-            
+
                         <button type="button" id="start-btn" class="start-btn">
                             <i class="fas fa-play"></i> Start
                         </button>
                     </form>
-            
+
                     <div id="end-popup" class="popup hidden">
                         <form id="end-form">
-                            <label for="work-units"><i class="fas fa-tasks"></i> Work Units:</label>
-                            <input type="number" id="work-units" name="work-units" min="1" required>
-                    
-                            <label for="pages" id="pages-label" style="display: none;"><i class="fas fa-file-alt"></i> Pages:</label>
-                            <input type="number" id="pages" name="pages" min="1" style="display: none;">
-                    
-                            <label for="review"><i class="fas fa-comment"></i> Review (Optional):</label>
-                            <textarea id="review" name="review" placeholder="Enter review"></textarea>
-                    
+
+                            <label for="chain-sheet"><i class="fas fa-file-excel"></i> Chain Sheet (Excel):</label>
+                            <input type="file" id="chain-sheet" name="chain_sheet" accept=".xlsx,.xls,.csv" required>
+
+                            <label for="search-package"><i class="fas fa-file-pdf"></i> Search Package (PDF):</label>
+                            <input type="file" id="search-package" name="search_package" accept=".pdf" required>
+
+                            <label for="report"><i class="fas fa-file-word"></i> Report (Word):</label>
+                            <input type="file" id="report" name="report" accept=".doc,.docx" required>
+
+                            <label for="employee-comments"><i class="fas fa-comments"></i> Employee Comments:</label>
+                            <textarea id="employee-comments" name="employee_comments"
+                                placeholder="Enter comments for the QC"></textarea>
+
                             <div class="button-group">
                                 <button type="submit" class="start-btn">
                                     <i class="fas fa-check"></i> Submit
@@ -601,25 +935,25 @@
                         </form>
                     </div>
                 </section>
-            
+
                 <!-- Breaks Content Section (Below Dashboard) -->
                 <section class="breaks-content">
                     <h2 class="breaks-header">
                         <span><i class="fas fa-coffee"></i> Breaks</span>
                         <span id="break-timer"><i class="fas fa-clock"></i> 00:00:00</span>
                     </h2>
-            
+
                     <div class="form-group">
                         <select id="break-select" class="form-control">
                             <option value="">Select Break Type</option>
                             <!-- Options will be populated here -->
                         </select>
                     </div>
-            
+
                     <button id="break-start-btn" class="start-btn" disabled>
                         <i class="fas fa-play"></i> Start
                     </button>
-            
+
                     <!-- Break Reports Table Section -->
                     <table id="break-report-table" class="break-table">
                         <thead>
@@ -636,7 +970,7 @@
                     </table>
                 </section>
             </div>
-            
+
             <!-- Break Exceeded Popup -->
             <div id="breakpopup" class="breakpopup">
                 <div class="breakpopup-content">
@@ -650,25 +984,24 @@
                     </div>
                 </div>
             </div>
-    
+
             <!-- Reports Section (Right Side) -->
             <section class="reports-content">
                 <div class="reports-header">
                     <h2><i class="fas fa-chart-line"></i> Task Productivity Summary</h2>
-                    <span id="timer" style="background: #2c3e50; color: #fff; padding: 8px 15px; border-radius: 20px; font-weight: 600; font-size: 1.1rem; display: none; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <span id="timer"
+                        style="background: #2c3e50; color: #fff; padding: 8px 15px; border-radius: 20px; font-weight: 600; font-size: 1.1rem; display: none; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                         <i class="fas fa-clock" style="color: #e74c3c;"></i>
                         <span class="time-value">00:00:00</span>
                     </span>
                     <div class="date-filter">
-                        {% if emp_id in ['AT0176','AT0200','AT0207','AT0085','AT0212','AT0215','AT0238','AT0244','AT0241', 'AT0001', 'AT0012', 'AT0250', 'AT0278'] %}
-                        <button id="paTasksBtn" class="btn btn-info" style="margin-right: 10px;">
-                            <i class="fas fa-tasks"></i> ProvenAir Tasks
-                        </button>
-                        {% endif %}
+
                         <button id="pendingTasksBtn" class="btn btn-primary" style="margin-right: 10px;">
-                            <i class="fas fa-tasks"></i> OverDue Tasks <span id="pendingCount" class="badge badge-light" style="display: none;">0</span>
+                            <i class="fas fa-tasks"></i> OverDue Tasks <span id="pendingCount" class="badge badge-light"
+                                style="display: none;">0</span>
                         </button>
-                        <input type="text" id="global-search-input" class="form-control" placeholder="Global Search..." style="width: 180px; margin-right: 10px;">
+                        <input type="text" id="global-search-input" class="form-control" placeholder="Global Search..."
+                            style="width: 180px; margin-right: 10px;">
                         <select id="client-code-filter" class="form-control" style="width: 160px; margin-right: 10px;">
                             <option value="">All Client Codes</option>
                             <!-- Options will be populated dynamically -->
@@ -677,15 +1010,56 @@
                     </div>
                 </div>
 
+                <!-- ── Allocated Orders Panel ──────────────────────── -->
+                <div class="allocated-orders-section">
+                    <div class="allocated-orders-header">
+                        <h3>
+                            <i class="fas fa-clipboard-list"></i>
+                            My Allocated Orders
+                            <span id="allocated-orders-badge" hidden>0</span>
+                            <span id="allocated-orders-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+                        </h3>
+                        <button id="allocated-orders-toggle-btn" type="button" aria-expanded="true"
+                            aria-controls="allocated-orders-panel">
+                            <i class="fas fa-chevron-up"></i> Collapse
+                        </button>
+                    </div>
+                    <div id="allocated-orders-panel">
+                        <table id="allocated-orders-table">
+                            <thead>
+                                <tr>
+                                    <th>Client</th>
+                                    <th>Work Type</th>
+                                    <th>Order No.</th>
+                                    <th>Order Type</th>
+                                    <th>AR Number</th>
+                                    <th>Owner Name</th>
+                                    <th>Property Address</th>
+                                    <th>State</th>
+                                    <th>County</th>
+                                    <th>Allocated On</th>
+                                    <th>Due</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <p id="allocated-orders-empty" hidden>No open orders assigned to you.</p>
+                    </div>
+                </div>
+                <!-- ── End Allocated Orders Panel ── -->
+
                 <!-- Table to display work data -->
                 <table id="work-data-table" class="table">
                     <thead>
                         <tr>
                             <th>DATE</th>
                             <th>PROJECT</th>
-                            <th>CLIENT CODE</th>
+                            <th>CLIENT</th>
                             <th>WORK TYPE</th>
-                            <th>BATCH</th>
+                            <th>ORDER NO.</th>
+                            <th>ORDER TYPE</th>
                             <th>START TIME</th>
                             <th>END TIME</th>
                             <th>WORK UNITS</th>
@@ -701,15 +1075,12 @@
                 </table>
             </section>
         </div>
-        <div id="orderDetailsModal" class="oa_modal" style="display: none;">
-            <div class="oa_modal-content">
-                <span class="oa_close-modal">&times;</span>
-                <div id="orderDetailsContent"></div>
-            </div>
+        <div id="orderDetailsModal" class="oa-details-popup" style="display: none;">
+            <div id="orderDetailsContent"></div>
         </div>
-        
+
     </main>
-    
+
     <!-- Core libraries -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Select2 library -->
@@ -717,12 +1088,17 @@
     <!-- Custom scripts -->
     <script src="{{ static('js/userdashboard/image-viewer.js') }}?v=2"></script>
     <script src="{{ static('js/userdashboard/userdashboard-feedback.js') }}?v=2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="{{ static('js/socket-client.js') }}?v=2"></script>
     <script src="{{ static('js/userdashboard/userdashboard-breaks.js') }}?v=2"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-work.js') }}?v=2"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-work.js') }}?v=6"></script>
     <script src="{{ static('js/userdashboard/userdashboard-tasks.js') }}?v=2"></script>
     <script src="{{ static('js/userdashboard/userdashboard.js') }}?v=2"></script>
-    
+
+    <!-- Modern ES6 Core for Notifications & Realtime -->
+    <script type="module" src="{{ static('js/core/bootstrap.js') }}?v=2"></script>
+    <!-- Allocated Orders realtime panel -->
+    <script type="module" src="{{ static('js/userdashboard/userdashboard-allocations.js') }}?v=3"></script>
+
+
 </body>
+
 </html>

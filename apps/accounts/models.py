@@ -89,12 +89,12 @@ class User(AbstractBaseUser):
 
     @property
     def is_admin(self) -> bool:
-        return self.role == Role.ADMIN
+        return self.role.lower() == Role.ADMIN if self.role else False
 
     @property
     def is_supervisor(self) -> bool:
         """Supervisor *or above* — admins are supervisors for every purpose."""
-        return self.role in (Role.ADMIN, Role.SUPERVISOR)
+        return self.role.lower() in (Role.ADMIN, Role.SUPERVISOR) if self.role else False
 
     @property
     def is_active(self) -> bool:
@@ -166,7 +166,22 @@ class Employee(models.Model):
 
     @property
     def is_supervisor(self) -> bool:
-        return self.role in (Role.ADMIN, Role.SUPERVISOR)
+        return self.role.lower() in (Role.ADMIN, Role.SUPERVISOR) if self.role else False
+
+    @classmethod
+    def generate_employee_id(cls) -> str:
+        """Auto-generate the next employee ID, e.g., AT0010."""
+        last_emp = cls.objects.filter(employee_id__startswith="AT").order_by("-employee_id").first()
+        if not last_emp:
+            return "AT0001"
+        
+        try:
+            # Extract numeric part (e.g., '0009' from 'AT0009')
+            num_part = int(last_emp.employee_id[2:])
+            return f"AT{num_part + 1:04d}"
+        except ValueError:
+            # Fallback if something weird is in the DB
+            return "AT0001"
 
 
 class LoginHistory(models.Model):

@@ -120,7 +120,7 @@ const MasterDataCache = {
             throw new Error(`HTTP error ${response.status}`);
         }
         const json = await response.json();
-        const data = (json && typeof json === 'object' && json.ok !== undefined && json.data !== undefined) ? json.data : json;
+        const data = (json && typeof json === 'object' && 'data' in json) ? json.data : json;
         this.set(key, data, ttlSeconds);
         return data;
     },

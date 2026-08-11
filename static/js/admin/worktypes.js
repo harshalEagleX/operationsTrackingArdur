@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
             row.innerHTML = `
                 <td>${originalIndex}</td>
                 <td>${worktype.wt_id}</td>
-                <td>${worktype.worktypename}</td>
+                <td>${worktype.work_type}</td>
                 <td>
                     <button title="Edit Work Type" class="wtedit-btn" data-id="${worktype.wt_id}">
                         <img src="/static/icons/edit.png" alt="Edit">
@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const worktype = resp.data || resp;
                 document.getElementById("worktype-id").value = worktype.wt_id;
                 document.getElementById("worktype-wt_id").value = worktype.wt_id;
-                document.getElementById("worktype-worktypename").value = worktype.worktypename;
+                document.getElementById("worktype-work_type").value = worktype.work_type;
 
                 editWorktypeModal.style.display = "block";
             })
@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
 
         const wt_id = document.getElementById("worktype-wt_id").value;
-        const worktypename = document.getElementById("worktype-worktypename").value;
+        const worktypename = document.getElementById("worktype-work_type").value;
 
         fetch(`/api/v1/masters/worktypes/${wt_id}/`, {
             method: "PATCH",
@@ -190,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const section = document.getElementById('worktypes');
             const localModal = section ? section.querySelector('#addWorktypeModal') : null;
             const localIdField = section ? section.querySelector('#add-wt_id') : null;
-            const worktypenameInput = section ? section.querySelector('#add-worktypename') : null;
+            const worktypenameInput = section ? section.querySelector('#add-work_type') : null;
 
             const wt_id = ((localIdField && localIdField.value) || '').trim();
             const worktypename = ((worktypenameInput && worktypenameInput.value) || '').trim();
@@ -219,6 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         notify('Work Type added successfully!', 'success');
                         fetchWorktypes();
                         if (localModal) localModal.style.display = "none";
+                    } else {
                         let errorMsg = 'Unknown error';
                         if (data.error) {
                             errorMsg = data.error.message || JSON.stringify(data.error);
@@ -286,7 +287,7 @@ window.filterWorktypes = function() {
     } else {
         window.filteredWorktypesData = window.worktypesData.filter(wt => {
             const id = String(wt.wt_id || '').toLowerCase();
-            const name = String(wt.worktypename || '').toLowerCase();
+            const name = String(wt.work_type || '').toLowerCase();
             return id.includes(term) || name.includes(term);
         });
     }

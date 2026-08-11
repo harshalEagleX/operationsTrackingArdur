@@ -121,7 +121,7 @@ class WorkSession(models.Model):
 
     @property
     def is_open(self) -> bool:
-        return self.end_time is None and self.is_started == SessionState.RUNNING
+        return self.end_time is None and int(self.is_started) == SessionState.RUNNING
 
     @property
     def live_elapsed_seconds(self) -> float:
@@ -135,7 +135,11 @@ class WorkSession(models.Model):
 
         reference = self.paused_at if self.is_paused else now_ist()
         gross = elapsed_seconds(self.start_time, reference)
-        return max(gross - (self.paused_elapsed or 0), 0.0)
+        try:
+            paused_secs = float(self.paused_elapsed or 0)
+        except ValueError:
+            paused_secs = 0.0
+        return max(gross - paused_secs, 0.0)
 
     @property
     def units_per_hour(self) -> float | None:
@@ -192,3 +196,23 @@ class Target(models.Model):
     @property
     def is_met(self) -> bool:
         return bool(self.target_units) and self.achieved_units >= self.target_units
+
+
+class EmployeeSubmission(models.Model):
+    """Files submitted by an employee upon completing an order."""
+    allocation = models.ForeignKey(
+        'allocations.BatchAllocation',
+        on_delete=models.CASCADE,
+        to_field='allocation_id',
+        db_column='allocation_id',
+        related_name='submissions',
+        db_constraint=False
+    )
+    chain_sheet = models.FileField(upload_to="submissions/chain_sheets/", blank=True, null=True)
+    search_package = models.FileField(upload_to="submissions/search_packages/", blank=True, null=True)
+    report = models.FileField(upload_to="submissions/reports/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "ot_employee_submissions"
+        ordering = ["-created_at"]

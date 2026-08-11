@@ -62,7 +62,16 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.instance = self.service.create(dict(serializer.validated_data))
+        data = dict(serializer.validated_data)
+        
+        # Handle uploaded document(s) sent from the frontend
+        documents = self.request.FILES.getlist('documents[]')
+        if documents:
+            # We currently only support saving one document in the BatchAllocation model.
+            data['document_file'] = documents[0]
+            data['document_name'] = documents[0].name
+            
+        serializer.instance = self.service.create(data)
 
     def perform_destroy(self, instance):
         self.service.cancel(instance, reason="Cancelled by supervisor")
@@ -101,6 +110,27 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         return self.ok(AllocationSerializer(allocation).data)
 
     @action(detail=True, methods=["get"])
+    def download(self, request, allocation_id=None):
+        allocation = self.get_object()
+        
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT document_file, document_name FROM ot_batch_allocations WHERE id = %s", [allocation.id])
+            row = cursor.fetchone()
+            
+        if not row or not row[0]:
+            from core.exceptions import APIError
+            raise APIError("No document attached to this order.", status_code=404)
+            
+        file_bytes = row[0]
+        file_name = row[1] or f"order_{allocation.allocation_id}.bin"
+        
+        from django.http import HttpResponse
+        response = HttpResponse(file_bytes, content_type="application/octet-stream")
+        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
+        return response
+
+    @action(detail=True, methods=["get"])
     def history(self, request, allocation_id=None):
         allocation = self.get_object()
         rows = OrderHistory.objects.filter(allocation_id=allocation.allocation_id)
@@ -108,9 +138,14 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="mine")
     def mine(self, request):
-        """The caller's open allocations — the 'my tasks' panel."""
-        queryset = BatchAllocation.objects.for_employee(request.user.emp_id).open()
+        """The caller's open allocations, plus those completed today."""
+        queryset = BatchAllocation.objects.for_employee(request.user.emp_id).open_or_completed_today()
         return self.ok(AllocationSerializer(queryset, many=True).data)
+
+    @action(detail=False, methods=["get"], url_path="next_ar_number")
+    def next_ar_number(self, request):
+        """Return the next auto-generated ar_number."""
+        return self.ok({"next_ar_number": BatchAllocation.generate_ar_number()})
 
 
 class OrderHistoryViewSet(EnvelopeMixin, viewsets.ReadOnlyModelViewSet):

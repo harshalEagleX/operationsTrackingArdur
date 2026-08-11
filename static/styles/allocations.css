@@ -1920,3 +1920,45 @@ input[type="file"]:hover {
         width: 100%;
     }
 }
+
+/* ==========================================================================
+   INLINE EMPLOYEE ASSIGNMENT (oa-assign-trigger)
+   ========================================================================== */
+
+/* The clickable element inside the "Assigned To" table cell */
+.oa-assign-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    user-select: none;
+}
+
+/* Amber badge for unassigned orders */
+.oa-assign-trigger.oa-unassigned {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px dashed #f59e0b;
+}
+.oa-assign-trigger.oa-unassigned:hover {
+    background: #fde68a;
+    transform: scale(1.03);
+}
+
+/* Subtle style for already-assigned (shows pencil on hover) */
+.oa-assign-trigger.oa-assigned {
+    background: transparent;
+    color: #374151;
+    border: 1px solid transparent;
+}
+.oa-assign-trigger.oa-assigned:hover {
+    background: #ede9fe;
+    color: #4c1d95;
+    border-color: #c4b5fd;
+    transform: scale(1.02);
+}

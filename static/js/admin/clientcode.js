@@ -67,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${originalIndex}</td>
                 <td>${clientCode.cc_id}</td>
                 <td>${clientCode.client_code}</td>
+                <td>${clientCode.client_name || '-'}</td>
                 <td>
                     <a href="javascript:void(0);" 
                     title="View Work Types" 
@@ -134,6 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                         document.getElementById("clientcode-cc_id").value = client.cc_id;
                         document.getElementById("clientcode-client_code").value = client.client_code;
+                        document.getElementById("clientcode-client_name").value = client.client_name || "";
 
                         // Split and pass existing work types for pre-selection
                         const selectedWorkTypes = client.worktypes.split("|");
@@ -218,11 +220,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             const wts = Array.isArray(resp) ? resp : (resp.results || resp.data || []);
                             const preselect = new Set(['Training']);
                             wts.forEach(wt => {
-                                const isChecked = preselect.has(wt.worktypename) ? 'checked' : '';
+                                const isChecked = preselect.has(wt.work_type) ? 'checked' : '';
                                 container.innerHTML += `
                                     <label>
-                                        <input type="checkbox" value="${wt.worktypename}" ${isChecked}>
-                                        ${wt.worktypename}
+                                        <input type="checkbox" value="${wt.work_type}" ${isChecked}>
+                                        ${wt.work_type}
                                     </label>
                                 `;
                             });
@@ -253,10 +255,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const ccInput = modal.querySelector('#add-cc_id');
             const codeInput = modal.querySelector('#add-cclient_code');
+            const nameInput = modal.querySelector('#add-client_name');
             const container = modal.querySelector('#addWorkTypesContainer');
 
             const cc_id = (ccInput?.value || '').trim();
             const client_code = (codeInput?.value || '').trim();
+            const client_name = (nameInput?.value || '').trim();
             const worktypes = getSelectedWorkTypesFrom(container);
 
             if (!cc_id || !client_code) {
@@ -274,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '',
                 },
-                body: JSON.stringify({ cc_id, client_code, worktypes }),
+                body: JSON.stringify({ cc_id, client_code, client_name, worktypes }),
             })
                 .then(response => response.json())
                 .then(data => {
@@ -302,6 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const cc_id = document.getElementById("clientcode-cc_id").value;
         const client_code = document.getElementById("clientcode-client_code").value;
+        const client_name = document.getElementById("clientcode-client_name").value.trim();
         const worktypes = getSelectedWorkTypesFrom(document.getElementById("editWorkTypesContainer"));
 
         fetch(`/api/v1/masters/clientcodes/${cc_id}/`, {
@@ -311,7 +316,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '',
             },
-            body: JSON.stringify({ cc_id, client_code, worktypes }),
+            body: JSON.stringify({ cc_id, client_code, client_name, worktypes }),
         })
             .then(response => response.json())
             .then(data => {
@@ -339,22 +344,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 container.innerHTML = "";
 
                 data.forEach(workType => {
-                    const isChecked = selectedWorkTypes.includes(workType.worktypename) ? "checked" : "";
+                    const isChecked = selectedWorkTypes.includes(workType.work_type) ? "checked" : "";
                     container.innerHTML += `
                         <label>
-                            <input type="checkbox" value="${workType.worktypename}" ${isChecked}>
-                            ${workType.worktypename}
+                            <input type="checkbox" value="${workType.work_type}" ${isChecked}>
+                            ${workType.work_type}
                         </label>
                     `;
                 });
 
                 if (isEditForm) {
                     // Update active work types count
-                    document.getElementById('active-worktypes').textContent = selectedWorkTypes.length;
+                    const activeWorkTypesEl = document.getElementById('active-worktypes');
+                    if (activeWorkTypesEl) activeWorkTypesEl.textContent = selectedWorkTypes.length;
                     
                     // Update last updated date
-                    const currentDate = new Date().toISOString().split('T')[0];
-                    document.getElementById('last-updated').textContent = currentDate;
+                    const lastUpdatedEl = document.getElementById('last-updated');
+                    if (lastUpdatedEl) {
+                        const currentDate = new Date().toISOString().split('T')[0];
+                        lastUpdatedEl.textContent = currentDate;
+                    }
                     
                     initializeWorkTypeSearch();
                 }
@@ -416,6 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function initializeWorkTypeSearch() {
         const searchInput = document.getElementById('worktype-search');
+        if (!searchInput) return;
         const clearSearchIcon = document.querySelector('.clear-search-icon');
         
         searchInput.addEventListener('input', (e) => {

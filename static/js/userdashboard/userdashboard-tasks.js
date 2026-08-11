@@ -150,6 +150,10 @@ function displayOrderDetails(order) {
                                 <div class="oa-detail-value">${order.batch_id || '-'}</div>
                             </div>
                             <div class="oa-detail-item">
+                                <div class="oa-detail-label">AR Number</div>
+                                <div class="oa-detail-value">${order.ar_number || '-'}</div>
+                            </div>
+                            <div class="oa-detail-item">
                                 <div class="oa-detail-label">Order Type</div>
                                 <div class="oa-detail-value editable">
                                     <select class="editable-input" data-original="${order.order_details || ''}">
@@ -203,9 +207,15 @@ function displayOrderDetails(order) {
                                 <div class="oa-detail-value">$${order.fees || '0'}</div>
                             </div>
                             <div class="oa-detail-item">
-                                <div class="oa-detail-label">Remarks</div>
+                                <div class="oa-detail-label">Instructions</div>
+                                <div class="oa-detail-value">
+                                    <span class="oa-display-value" style="white-space: pre-wrap;">${order.remarks || '-'}</span>
+                                </div>
+                            </div>
+                            <div class="oa-detail-item">
+                                <div class="oa-detail-label">Employee Comments</div>
                                 <div class="oa-detail-value editable">
-                                    <textarea class="editable-input" data-original="${order.remarks || ''}">${order.remarks || ''}</textarea>
+                                    <textarea class="editable-input" data-original="${order.employee_comments || ''}">${order.employee_comments || ''}</textarea>
                                 </div>
                             </div>
                             <div class="oa-detail-item">
@@ -308,7 +318,7 @@ function displayOrderDetails(order) {
                             search_type: order.search_type,
                             fees: order.fees,
                             order_details: newOrderType,
-                            remarks: newRemarks
+                            employee_comments: newRemarks
                         };
                         
                         formData.append('data', JSON.stringify(updateData));
@@ -1765,9 +1775,10 @@ function showOrderDetailsFromApi(orderData) {
         // Only run if not on feedback tab
         const feedbackSection = document.getElementById('feedback-section');
         if (feedbackSection && feedbackSection.style.display !== 'block') {
-            const res = await fetch('/get_user_feedback');
+            const res = await fetch('/api/v1/feedback/');
             if (!res.ok) return;
-            const data = await res.json();
+            const payload = await res.json();
+            const data = payload.data || payload; // handle envelope
             // Only consider pending feedbacks where 24h have passed since created_at
             const now = Date.now();
             const pending = data.filter(fb => {
@@ -2132,7 +2143,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Assignment popup disabled — new orders appear in the bell notification
+    // centre instead of a blocking modal popup.
     document.addEventListener('DOMContentLoaded', function(){
+        // fetchPendingAssignments(); // disabled: use bell notifications instead
     });
 })();
 

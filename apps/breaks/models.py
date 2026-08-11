@@ -103,7 +103,10 @@ class BreakTime(models.Model):
     @property
     def live_elapsed_seconds(self) -> float:
         if self.end_time:
-            return self.total_time or 0.0
+            try:
+                return float(self.total_time) if self.total_time is not None else 0.0
+            except (ValueError, TypeError):
+                return 0.0
         return elapsed_seconds(self.start_time)
 
     @property

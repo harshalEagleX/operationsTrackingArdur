@@ -673,6 +673,19 @@ document.addEventListener("DOMContentLoaded", function () {
         addForm.reset();
         fetchProjects();
         fetchShifts(); // Refresh shifts when opening add modal
+        
+        // Fetch next Employee ID for the placeholder
+        const empIdInput = document.getElementById("new-employee-employee_id");
+        empIdInput.placeholder = "Loading...";
+        fetch('/api/v1/auth/employees/next_id/')
+            .then(res => res.json())
+            .then(resp => {
+                empIdInput.placeholder = resp.data?.next_id || resp.next_id || "Auto-generated";
+            })
+            .catch(() => {
+                empIdInput.placeholder = "Auto-generated";
+            });
+            
         addModal.style.display = "flex";
     });
 
@@ -686,7 +699,8 @@ document.addEventListener("DOMContentLoaded", function () {
     function fetchProjects() {
         fetch('/api/v1/masters/emp_get_projects/')
             .then(response => response.json())
-            .then(data => {
+            .then(resp => {
+                const data = resp.data || resp;
                 const addProjectSelect = document.getElementById("new-employee-projects");
                 addProjectSelect.innerHTML = '';
 
@@ -715,7 +729,8 @@ document.addEventListener("DOMContentLoaded", function () {
             body: JSON.stringify({ project_ids: projectIds })
         })
             .then(response => response.json())
-            .then(data => {
+            .then(resp => {
+                const data = resp.data || resp;
                 const clientCodeSelect = document.getElementById("new-employee-client_code");
                 clientCodeSelect.innerHTML = '';
 
@@ -744,7 +759,8 @@ document.addEventListener("DOMContentLoaded", function () {
             body: JSON.stringify({ client_codes: clientCodes })
         })
             .then(response => response.json())
-            .then(data => {
+            .then(resp => {
+                const data = resp.data || resp;
                 const workTypeSelect = document.getElementById("new-employee-work_type");
                 workTypeSelect.innerHTML = '';
 
@@ -781,7 +797,8 @@ document.addEventListener("DOMContentLoaded", function () {
     function fetchProjectsForEdit(selectedProjects = []) {
         fetch('/api/v1/masters/emp_get_projects/')
             .then(response => response.json())
-            .then(data => {
+            .then(resp => {
+                const data = resp.data || resp;
                 const projectSelect = document.getElementById("employee-projects");
                 projectSelect.innerHTML = '';
 
@@ -816,7 +833,8 @@ document.addEventListener("DOMContentLoaded", function () {
             body: JSON.stringify({ project_ids: selectedProjects })
         })
             .then(response => response.json())
-            .then(data => {
+            .then(resp => {
+                const data = resp.data || resp;
                 const clientCodeSelect = document.getElementById("employee-client_code");
                 clientCodeSelect.innerHTML = '';
 
@@ -852,7 +870,8 @@ document.addEventListener("DOMContentLoaded", function () {
             body: JSON.stringify({ client_codes: selectedClientCodes })
         })
             .then(response => response.json())
-            .then(data => {
+            .then(resp => {
+                const data = resp.data || resp;
                 const workTypeSelect = document.getElementById("employee-work_type");
                 workTypeSelect.innerHTML = '';
 
@@ -1284,8 +1303,10 @@ function fetchShifts(preselectValue = null) {
             editShiftSelect.appendChild(defaultOption.cloneNode(true));
             addShiftSelect.appendChild(defaultOption);
 
+            const shifts = data.data || data;
+
             // Add shifts to both select elements
-            data.forEach(shift => {
+            shifts.forEach(shift => {
                 const editOption = document.createElement("option");
                 editOption.value = shift.shift;
                 editOption.textContent = `${shift.shift} (${shift.startedAt} - ${shift.endedAt})`;

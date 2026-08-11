@@ -12,7 +12,9 @@ from core.timezone import now_ist
 class AllocationStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     IN_PROGRESS = "in_progress", "In progress"
+    SEND_FOR_QC = "send_for_qc", "Send for QC"
     COMPLETED = "completed", "Completed"
+    DISPATCH = "dispatch", "Dispatch"
     ON_HOLD = "on_hold", "On hold"
     CANCELLED = "cancelled", "Cancelled"
 
@@ -30,9 +32,23 @@ class AllocationQuerySet(OwnedQuerySet):
     def pending(self):
         return self.filter(status=AllocationStatus.PENDING)
 
+    def for_employee(self, emp_id: str):
+        from django.db.models import Q
+        return self.filter(Q(employee_id=emp_id) | Q(qc_id=emp_id))
+
     def open(self):
         return self.filter(
-            status__in=(AllocationStatus.PENDING, AllocationStatus.IN_PROGRESS)
+            status__in=(AllocationStatus.PENDING, AllocationStatus.IN_PROGRESS, AllocationStatus.SEND_FOR_QC)
+        )
+
+    def open_or_completed_today(self):
+        from django.db.models import Q
+        import datetime
+        today_start = now_ist().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + datetime.timedelta(days=1)
+        return self.filter(
+            Q(status__in=(AllocationStatus.PENDING, AllocationStatus.IN_PROGRESS, AllocationStatus.SEND_FOR_QC)) |
+            Q(status__in=[AllocationStatus.COMPLETED, AllocationStatus.DISPATCH], completed_at__gte=today_start, completed_at__lt=today_end)
         )
 
     def due_within(self, hours: int):
@@ -64,8 +80,30 @@ class BatchAllocation(models.Model):
     batch = models.CharField(max_length=100, blank=True, default="")
     order_id = models.CharField(max_length=100, blank=True, default="", db_index=True)
 
+    # Added fields expected by frontend
+    owner_name = models.CharField(max_length=255, blank=True, null=True)
+    property_address = models.CharField(max_length=500, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    county = models.CharField(max_length=100, blank=True, null=True)
+    search_type = models.CharField(max_length=100, blank=True, null=True)
+    fees = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    margin = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    vendor_rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    document_file = models.FileField(upload_to="order_docs/", blank=True, null=True)
+    document_name = models.CharField(max_length=255, blank=True, null=True)
+    received_date = models.DateTimeField(blank=True, null=True)
+    eta = models.DateTimeField(blank=True, null=True)
+
     quantity = models.IntegerField(default=0)
     completed_quantity = models.IntegerField(default=0)
+    
+    # Employee uploaded files
+    chain_sheet = models.FileField(upload_to="employee_docs/", blank=True, null=True)
+    chain_sheet_name = models.CharField(max_length=255, blank=True, null=True)
+    search_package = models.FileField(upload_to="employee_docs/", blank=True, null=True)
+    search_package_name = models.CharField(max_length=255, blank=True, null=True)
+    report = models.FileField(upload_to="employee_docs/", blank=True, null=True)
+    report_name = models.CharField(max_length=255, blank=True, null=True)
 
     status = models.CharField(
         max_length=20, choices=AllocationStatus.choices,
@@ -82,9 +120,26 @@ class BatchAllocation(models.Model):
 
     allocated_by = models.CharField(max_length=20, blank=True, default="")
     remarks = models.CharField(max_length=500, blank=True, default="")
+    employee_comments = models.TextField(blank=True, default="")
+    qc_id = models.CharField(max_length=20, blank=True, null=True, db_index=True)
+    qc_name = models.CharField(max_length=100, blank=True, null=True)
+    qc_comments = models.TextField(blank=True, null=True)
+    time_taken = models.CharField(max_length=100, blank=True, default="")
+    ar_number = models.CharField(max_length=20, blank=True, null=True, unique=True)
     sla_notified = models.BooleanField(default=False)
 
     objects = AllocationQuerySet.as_manager()
+
+    @classmethod
+    def generate_ar_number(cls) -> str:
+        last_allocation = cls.objects.exclude(ar_number__isnull=True).exclude(ar_number="").order_by("-pk").first()
+        if not last_allocation or not last_allocation.ar_number.startswith("AT00M"):
+            return "AT00M001"
+        try:
+            num = int(last_allocation.ar_number.replace("AT00M", ""))
+            return f"AT00M{num + 1:03d}"
+        except ValueError:
+            return "AT00M001"
 
     class Meta:
         managed = legacy_managed()

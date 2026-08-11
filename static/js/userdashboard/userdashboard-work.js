@@ -148,20 +148,6 @@ startBtn.addEventListener('click', function () {
         toggleFullScreenMode(false); // This will restore the layout
         // --- Reset the submit button to default state when end popup is shown ---
         const submitBtn = endForm.querySelector('button[type="submit"]');
-        // If ProvenAir task, default work-units to 1; else keep empty
-        try {
-            const selectedOption = projectSelect.options[projectSelect.selectedIndex];
-            const selectedProjectName = selectedOption ? selectedOption.textContent : '';
-            const wuInput = document.getElementById('work-units');
-            if (wuInput) {
-                if (selectedProjectName === 'ProvenAir-AAR') {
-                    if (!wuInput.value) wuInput.value = '1';
-                } else {
-                    // Clear any residual default for non-ProvenAir tasks
-                    if (wuInput.value === '1') wuInput.value = '';
-                }
-            }
-        } catch (e) {}
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit';
@@ -180,30 +166,62 @@ endForm.addEventListener('submit', function (event) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
 
-    const workUnits = document.getElementById('work-units').value;
-    const review = document.getElementById('review').value;
-    
-    if (!workUnits) {
-        alert("Work Units are mandatory.");
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalBtnHTML;
-        return;
-    }
+    // Default workUnits to 1 and review to empty since they are removed from the form
+    const workUnits = 1;
+    const review = "";
 
     // Check for active work session if startTime is not set
     if (!startTime) {
-                fetch('/api/v1/tracking/sessions/current/')
+        const formData = new FormData(endForm);
+        const empComments = formData.get("employee_comments") || "";
+        
+        fetch('/api/v1/tracking/sessions/current/')
             .then(response => response.json())
             .then(res => {
-                const data = res.data || res;
-                if (data) {
+                const data = res.data !== undefined ? res.data : res;
+                if (data && data.id) {
                     activeSessionId = data.id;
                     startTime = new Date(data.start_time);
-                    submitWorkData(workUnits, review);
+                    submitWorkData(review);
                 } else {
-                    alert("Error: Start time is not available. Please refresh the page and try again.");
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalBtnHTML;
+                    if (window.activeAllocationIdToComplete) {
+                        const allocId = window.activeAllocationIdToComplete;
+                        const targetStatus = window.activeAllocationTargetStatus || "completed";
+                        const isQC = targetStatus === "dispatch";
+                        formData.append("status", targetStatus);
+                        if (isQC) {
+                            formData.append("qc_comments", empComments);
+                        } else {
+                            formData.append("employee_comments", empComments);
+                        }
+                        
+                        window.activeAllocationIdToComplete = null;
+                        fetch(`/api/v1/allocations/${allocId}/status/`, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' },
+                            body: formData
+                        })
+                        .then(res => res.json())
+                        .then(payload => {
+                            if (!payload.ok && payload.error) {
+                                alert("Error completing order: " + payload.error.message);
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = originalBtnHTML;
+                                return;
+                            }
+                            alert("Order completed successfully.");
+                            endPopup.classList.add('hidden');
+                            location.reload();
+                        }).catch(e => {
+                            alert("Network error: " + e);
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalBtnHTML;
+                        });
+                    } else {
+                        alert("Error: Start time is not available. Please refresh the page and try again.");
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnHTML;
+                    }
                 }
             })
             .catch(error => {
@@ -213,12 +231,12 @@ endForm.addEventListener('submit', function (event) {
                 submitBtn.innerHTML = originalBtnHTML;
             });
     } else {
-        submitWorkData(workUnits, review);
+        submitWorkData(review);
     }
 });
 
 // Helper function to submit work data
-function submitWorkData(workUnits, review) {
+function submitWorkData(review) {
     endTime = new Date();
     
     // Calculate total time considering pauses
@@ -233,20 +251,18 @@ function submitWorkData(workUnits, review) {
         totalTime = (endTime - startTime) / 1000;
     }
     
-    const averageTime = totalTime / workUnits;
-    const pages = document.getElementById('pages').value;
+    const pagesEl = document.getElementById('pages');
+    const pages = pagesEl ? pagesEl.value : "";
 
     const data = {
         project: projectSelect.value,
         client_code: clientCodeSelect.value,
         work_type: workTypeSelect.value,
         batch: batchInput.value || null,
-        work_units: workUnits,
         review: review,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         total_time: totalTime,
-        average_time: averageTime,
         pages: pages || null
     };
 
@@ -254,26 +270,66 @@ function submitWorkData(workUnits, review) {
     const originalBtnHTML = '<i class="fas fa-check"></i> Submit';
 
     // Send final data to server
-        fetch(`/api/v1/tracking/sessions/${activeSessionId}/end/`, {
+    const formData = new FormData(endForm);
+    formData.append('work_units', 1);
+    formData.append('review', review);
+    if (pages) formData.append('pages', pages);
+
+    const empComments = formData.get("employee_comments") || "";
+
+    fetch(`/api/v1/tracking/sessions/${activeSessionId}/end/`, {
         method: 'POST',
         headers: { 
-            'Content-Type': 'application/json',
             'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
         },
-        body: JSON.stringify({ work_units: workUnits, review: review, pages: pages || null })
+        body: formData
     })
     .then(response => response.json())
     .then(res => {
         const result = res.data || res;
         if (res.ok || result.id) {
             activeSessionId = null;
+
+            // --- Check if we need to also complete an allocated order ---
+            if (window.activeAllocationIdToComplete) {
+                const allocId = window.activeAllocationIdToComplete;
+                const targetStatus = window.activeAllocationTargetStatus || "completed";
+                const isQC = targetStatus === "dispatch";
+                
+                // We reuse formData which already contains the files
+                formData.append("status", targetStatus);
+                if (isQC) {
+                    formData.append("qc_comments", empComments || review);
+                } else {
+                    formData.append("employee_comments", empComments || review);
+                }
+                
+                window.activeAllocationIdToComplete = null;
+                fetch(`/api/v1/allocations/${allocId}/status/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' },
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(payload => {
+                    if (!payload.ok && payload.error) {
+                        alert("Warning: Tracking session saved, but failed to complete order: " + payload.error.message);
+                    }
+                    if (window.loadAllocatedOrders) window.loadAllocatedOrders();
+                }).catch(e => console.error("Failed to complete allocation:", e));
+            }
+
             alert("Work data submitted successfully.");
             
             // Reset form fields and enable them
             batchInput.value = '';
-            document.getElementById('work-units').value = '';
-            document.getElementById('review').value = '';
+            // Fields removed: review, pages
             
+            // Also reset file inputs and comments
+            document.getElementById('chain-sheet').value = '';
+            document.getElementById('search-package').value = '';
+            document.getElementById('report').value = '';
+            document.getElementById('employee-comments').value = '';
             // Enable all form fields
             projectSelect.disabled = false;
             clientCodeSelect.disabled = false;
@@ -392,15 +448,15 @@ function fetchWorkData(date) {
     }
     const userId = sessionStorage.getItem('emp_id');
     if (!userId) {
-        fetch('/get_current_user')
-            .then(response => response.json())
-            .then(data => {
-                if (data.employee_id) {
-                    sessionStorage.setItem('emp_id', data.employee_id);
-                    fetchWorkData(date);
-                }
-            })
-            .catch(error => console.error('Error getting user ID:', error));
+        // emp_id is embedded in the page via bootstrap-data — read it directly.
+        try {
+            const bootstrap = JSON.parse(document.getElementById('bootstrap-data')?.textContent || '{}');
+            const empId = bootstrap?.user?.emp_id;
+            if (empId) {
+                sessionStorage.setItem('emp_id', empId);
+                fetchWorkData(date);
+            }
+        } catch (e) { console.error('Could not read emp_id from bootstrap-data', e); }
         return;
     }
 
@@ -453,19 +509,17 @@ function fetchWorkData(date) {
                 }
 
                 const totalTimeFormatted = row.total_time ? new Date(row.total_time * 1000).toISOString().substr(11, 8) : '00:00:00';
-                const avgTimeFormatted = row.average_time ? new Date(row.average_time * 1000).toISOString().substr(11, 8) : '00:00:00';
 
                 tr.innerHTML = `
                     <td>${dateStr}</td>
                     <td>${row.project || ''}</td>
-                    <td>${row.client_code || ''}</td>
+                    <td>${row.client_name || row.client_code || ''}</td>
                     <td>${row.work_type || ''}</td>
                     <td>${row.batch || '-'}</td>
+                    <td>${row.order_type || '-'}</td>
                     <td>${startTimeStr}</td>
                     <td>${endTimeStr}</td>
-                    <td>${row.work_units || 0}</td>
                     <td>${totalTimeFormatted}</td>
-                    <td>${avgTimeFormatted}</td>
                     <td>${row.review || '-'}</td>
                     <td>${row.pages || '-'}</td>
                     <td>${statusBadge}</td>
@@ -511,9 +565,8 @@ document.addEventListener('DOMContentLoaded', function () {
 document.getElementById('end-popup-cancel').addEventListener('click', function() {
     const endPopup = document.getElementById('end-popup');
     endPopup.classList.add('hidden');
-    // Clear form fields
-    document.getElementById('work-units').value = '';
-    document.getElementById('review').value = '';
+    const pagesInput = document.getElementById('pages');
+    if (pagesInput) pagesInput.value = '';
     // --- Also reset the submit button on cancel for extra safety ---
     const submitBtn = endForm.querySelector('button[type="submit"]');
     if (submitBtn) {
@@ -657,6 +710,7 @@ function resumeWorkSession(startTime) {
                     `;
 
                     // Start timer considering the elapsed time before pause
+                    activeSessionId = sessionData.id;
                     startTime = new Date(sessionData.start_time);
                     const pausedElapsed = sessionData.paused_elapsed || 0;
                     
@@ -755,13 +809,23 @@ function resetDashboard() {
 
 // Add this at the beginning of the file, after DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Check for active work session on page load
-    fetch('/check_active_work_session')
+    // Seed emp_id from the page's bootstrap blob immediately (replaces /get_current_user)
+    if (!sessionStorage.getItem('emp_id')) {
+        try {
+            const bootstrap = JSON.parse(document.getElementById('bootstrap-data')?.textContent || '{}');
+            const empId = bootstrap?.user?.emp_id;
+            if (empId) sessionStorage.setItem('emp_id', empId);
+        } catch (e) {}
+    }
+
+    // Check for active work session on page load using the correct API endpoint.
+    fetch('/api/v1/tracking/sessions/current/')
         .then(response => response.json())
-        .then(data => {
-            if (data.active && data.data.start_time) {
-                startTime = new Date(data.data.start_time);
-                // Update timer display if needed
+        .then(payload => {
+            const data = payload.data !== undefined ? payload.data : payload;
+            if (data && data.start_time) {
+                activeSessionId = data.id;
+                startTime = new Date(data.start_time);
                 if (timerDisplay.style.display !== 'none') {
                     timerInterval = setInterval(function () {
                         elapsedTime = Math.floor((new Date() - startTime) / 1000);
@@ -788,3 +852,76 @@ function isBreakActive() {
 function isWorkSessionActive() {
     return startBtn.innerText === "End";
 }
+
+// --- Auto-start Work Sessions for Allocated Orders ---
+window.startAllocatedWorkSession = async function(allocData) {
+    // End any existing session first
+    if (startBtn.innerText === "End") {
+        toast.show("Please end your current work session first.", {type: "warning"});
+        return false;
+    }
+
+    const data = {
+        project: allocData.project,
+        client_code: allocData.client_code,
+        work_type: allocData.work_type,
+        batch: allocData.batch,
+        allocation_id: allocData.allocation_id,
+        start_time: new Date().toISOString()
+    };
+
+    try {
+        const res = await fetch('/api/v1/tracking/sessions/', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+            },
+            body: JSON.stringify(data)
+        });
+        const payload = await res.json();
+        const result = payload.data || payload;
+        
+        if (payload.ok || result.id) {
+            activeSessionId = result.id;
+            window.activeAllocationId = allocData.allocation_id;
+            
+            startTime = new Date();
+            startBtn.innerText = "End";
+            startBtn.disabled = false;
+            
+            timerInterval = setInterval(function () {
+                elapsedTime = Math.floor((new Date() - startTime) / 1000);
+                timerDisplay.querySelector('.time-value').textContent = formatTime(elapsedTime);
+            }, 1000);
+            toggleFullScreenMode(true);
+            return true;
+        } else {
+            alert("Error: " + (payload.error || "Unknown error"));
+            return false;
+        }
+    } catch (e) {
+        console.error("Failed to start session", e);
+        return false;
+    }
+};
+
+window.completeAllocatedOrder = function(allocationId, targetStatus = "completed") {
+    window.activeAllocationIdToComplete = allocationId;
+    window.activeAllocationTargetStatus = targetStatus;
+    
+    const endPopup = document.getElementById('end-popup');
+    if (endPopup) {
+        endPopup.classList.remove('hidden');
+        
+        const endForm = document.getElementById('end-form');
+        if (endForm) {
+            const submitBtn = endForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit';
+                submitBtn.focus();
+            }
+        }
+    }
+};

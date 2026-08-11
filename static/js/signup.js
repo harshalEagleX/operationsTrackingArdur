@@ -55,9 +55,10 @@ document.getElementById('emp_id').addEventListener('blur', function () {
         })
         .then((response) => response.json().then(data => ({ status: response.status, body: data })))
         .then(({ status, body }) => {
-            if (status === 200 && body.name) {
+            const name = body.name || (body.data && body.data.name);
+            if (status === 200 && name) {
                 // Autofill the name if employee ID exists
-                document.getElementById('name').value = body.name;
+                document.getElementById('name').value = name;
                 document.getElementById('name').classList.remove('error');
             } else {
                 document.getElementById('name').value = '';

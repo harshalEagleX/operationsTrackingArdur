@@ -522,7 +522,8 @@ $(document).ready(function () {
 
             .task-status {
                 display: flex;
-                justify-content: space-between;
+                flex-direction: column;
+                gap: 5px;
                 margin-top: 15px;
             }
 

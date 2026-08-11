@@ -20,11 +20,27 @@ class WorkSessionSerializer(serializers.ModelSerializer):
     live_elapsed_seconds = serializers.FloatField(read_only=True)
     units_per_hour = serializers.FloatField(read_only=True)
     is_open = serializers.BooleanField(read_only=True)
+    client_name = serializers.SerializerMethodField()
+    order_type = serializers.SerializerMethodField()
+
+    def get_order_type(self, obj):
+        from apps.allocations.models import BatchAllocation
+        if obj.allocation_id:
+            alloc = BatchAllocation.objects.filter(allocation_id=obj.allocation_id).first()
+            if alloc:
+                return alloc.order_id
+        return ""
+
+    def get_client_name(self, obj):
+        from apps.masters.models import ClientCode
+        client = ClientCode.objects.filter(client_code=obj.client_code).first()
+        return client.client_name if client else obj.client_code
 
     class Meta:
         model = WorkSession
         fields = [
-            "id", "emp_id", "name", "project", "client_code", "work_type", "batch",
+            "id", "emp_id", "name", "project", "client_code", "client_name", "work_type", "batch",
+            "order_type",
             "work_units", "start_time", "end_time", "total_time", "average_time",
             "is_paused", "paused_at", "paused_elapsed", "allocation_id",
             "is_started", "state", "is_open", "live_elapsed_seconds", "units_per_hour",
@@ -56,9 +72,13 @@ class EndSessionSerializer(serializers.Serializer):
 
     work_units = serializers.IntegerField(min_value=0, validators=[validate_work_units])
     review = serializers.CharField(
-        max_length=255, required=False, allow_blank=True, default=""
+        max_length=500, required=False, allow_blank=True, default=""
     )
     pages = serializers.IntegerField(min_value=0, required=False, allow_null=True, default=None)
+    chain_sheet = serializers.FileField(required=False, allow_null=True)
+    search_package = serializers.FileField(required=False, allow_null=True)
+    report = serializers.FileField(required=False, allow_null=True)
+    employee_comments = serializers.CharField(max_length=2000, required=False, allow_blank=True, default="")
 
 
 class TargetSerializer(serializers.ModelSerializer):

@@ -24,12 +24,10 @@ class WorkTypeSerializer(serializers.ModelSerializer):
     )
     # Legacy alias fields — keep the JS working during migration
     wt_id = serializers.CharField(required=False, default="", allow_blank=True)
-    worktypename = serializers.CharField(required=False, default="", allow_blank=True)
-
     class Meta:
         model = WorkType
         fields = [
-            "id", "wt_id", "worktypename",
+            "id", "wt_id",
             "work_type", "description", "standard_rate",
             "is_active", "created_at", "updated_at",
         ]

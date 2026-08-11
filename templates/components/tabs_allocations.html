@@ -20,7 +20,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="oa_clientCode">Client Code:</label>
+                            <label for="oa_clientCode">Client Name:</label>
                             <select id="oa_clientCode" name="clientCode" required>
                                 <option value="">Loading...</option>
                             </select>
@@ -34,8 +34,13 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="oa_orderBatchId">Order ID:</label>
+                            <label for="oa_orderBatchId">Order No:</label>
                             <input type="text" id="oa_orderBatchId" name="orderBatchId" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="oa_arNumber">AR Number:</label>
+                            <input type="text" id="oa_arNumber" name="arNumber" placeholder="Auto-generated" readonly style="background-color: #f1f5f9; cursor: not-allowed;">
                         </div>
 
                         <div class="form-group">
@@ -71,12 +76,7 @@
                             </select>
                         </div>
 
-                        <div class="form-group">
-                            <label for="oa_empIdName">Assign To:</label>
-                            <select id="oa_empIdName" name="empIdName" required>
-                                <option value="">Loading...</option>
-                            </select>
-                        </div>
+                        <!-- Employee assignment is done inline from the table after order creation -->
 
                         <div class="form-group" style="display: none;">
                             <label for="oa_receivedDate">Received Date:</label>
@@ -124,6 +124,8 @@
                             <input id="oa_remarks" name="remarks" rows="3">
                         </div>
 
+
+
                         <div class="form-group">
                             <label for="oa_document">Upload Order Form:</label>
                             <input type="file" id="oa_document" name="documents[]" accept=".doc,.docx,.pdf" multiple>
@@ -145,9 +147,11 @@
                         <h3><i class="fas fa-list"></i> Allocated Orders</h3>
                         <div class="allocation-search-container">
                             <div class="search-wrapper">
-                                <input type="text" id="allocationSearchInput" class="allocation-search-input" placeholder="Global Search...">
+                                <input type="text" id="allocationSearchInput" class="allocation-search-input"
+                                    placeholder="Global Search...">
                                 <i class="fas fa-times allocation-clear-search-icon" id="clearAllocationSearch"></i>
-                                <button class="allocation-refresh-btn-modern" id="refreshAllocationTable" title="Refresh Orders">
+                                <button class="allocation-refresh-btn-modern" id="refreshAllocationTable"
+                                    title="Refresh Orders">
                                     <i class="fas fa-sync-alt"></i>
                                 </button>
                             </div>
@@ -157,15 +161,16 @@
                         <table class="allocation-table">
                             <thead>
                                 <tr>
-                                    <th>Task ID</th>
                                     <th>Client</th>
                                     <th>Work Type</th>
-                                    <th>Batch ID</th>
+                                    <th>Order No.</th>
+                                    <th>AR Number</th>
                                     <th>Owner Name</th>
                                     <th>Property Address</th>
                                     <th>State</th>
                                     <th>County</th>
                                     <th>Assigned To</th>
+                                    <th>Assign QC To</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -174,21 +179,25 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="allocation-pagination-bar" id="allocationPaginationBar" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; margin-top: 10px; flex-wrap: wrap; gap: 12px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <div class="pagination-info" id="allocationPaginationInfo" style="font-size: 13px; color: #64748b; font-weight: 500;">
+                    <div class="allocation-pagination-bar" id="allocationPaginationBar"
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; margin-top: 10px; flex-wrap: wrap; gap: 12px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div class="pagination-info" id="allocationPaginationInfo"
+                            style="font-size: 13px; color: #64748b; font-weight: 500;">
                             Showing 0 to 0 of 0 entries
                         </div>
                         <div class="pagination-controls" style="display: flex; align-items: center; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #64748b;">
                                 <span>Show:</span>
-                                <select id="allocationPageSize" style="font-size: 13px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; outline: none; background: #fff;">
+                                <select id="allocationPageSize"
+                                    style="font-size: 13px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; outline: none; background: #fff;">
                                     <option value="25" selected>25</option>
                                     <option value="50">50</option>
                                     <option value="100">100</option>
                                     <option value="all">All</option>
                                 </select>
                             </div>
-                            <div id="allocationPaginationBtns" style="display: flex; gap: 4px; align-items: center;"></div>
+                            <div id="allocationPaginationBtns" style="display: flex; gap: 4px; align-items: center;">
+                            </div>
                         </div>
                     </div>
                 </div>

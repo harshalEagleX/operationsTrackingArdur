@@ -82,7 +82,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         if not p_ids:
             return []
         from apps.masters.models import Project
-        return list(Project.objects.filter(project_code__in=p_ids).values_list("project_name", flat=True))
+        return list(Project.objects.filter(project_id__in=p_ids).values_list("project_name", flat=True))
 
     def get_client_code_names(self, obj) -> list[str]:
         return [c.strip() for c in obj.client_code.split("|") if c.strip()] if obj.client_code else []
@@ -99,7 +99,7 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
     row nobody can find again.
     """
 
-    employee_id = serializers.CharField(max_length=20, validators=[validate_emp_id])
+    employee_id = serializers.CharField(max_length=20, required=False, allow_blank=True)
     name = serializers.CharField(max_length=100, validators=[validate_non_blank])
     role = serializers.CharField(max_length=20, default=Role.EMPLOYEE)
     status = serializers.CharField(max_length=10, default=Status.ACTIVE)
@@ -107,6 +107,11 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         max_length=128, write_only=True, required=False, allow_blank=True
     )
+
+    def validate_employee_id(self, value: str) -> str:
+        if value:
+            validate_emp_id(value)
+        return value
     
     # Legacy aliases for JS compatibility
     joining_date = serializers.DateField(source="date_of_joining", required=False, allow_null=True)

@@ -116,6 +116,10 @@ class WorkSessionService(BaseService):
         work_units: int,
         review: str = "",
         pages: int | None = None,
+        chain_sheet=None,
+        search_package=None,
+        report=None,
+        employee_comments: str = "",
     ) -> WorkSession:
         session = self._locked_open_session(session_id)
 
@@ -125,7 +129,7 @@ class WorkSessionService(BaseService):
         end = now_ist()  # server clock, always
 
         # A session ended while paused should not be billed for the pause.
-        paused_elapsed = session.paused_elapsed or 0
+        paused_elapsed = float(session.paused_elapsed) if session.paused_elapsed else 0.0
         if session.is_paused and session.paused_at:
             paused_elapsed += elapsed_seconds(session.paused_at, end)
 
@@ -140,7 +144,7 @@ class WorkSessionService(BaseService):
         session.is_started = SessionState.COMPLETED
         session.is_paused = False
         session.paused_at = None
-        session.review = (review or "")[:255]
+        session.review = (review or "")[:500]
         session.pages = pages
         session.save(
             update_fields=[
@@ -148,6 +152,32 @@ class WorkSessionService(BaseService):
                 "is_started", "is_paused", "paused_at", "review", "pages",
             ]
         )
+
+        if session.allocation_id:
+            from apps.allocations.models import BatchAllocation
+            from apps.tracking.models import EmployeeSubmission
+            
+            # Save files to EmployeeSubmission
+            if chain_sheet or search_package or report:
+                submission = EmployeeSubmission(allocation_id=session.allocation_id)
+                if chain_sheet:
+                    submission.chain_sheet = chain_sheet
+                if search_package:
+                    submission.search_package = search_package
+                if report:
+                    submission.report = report
+                submission.save()
+
+            # Save employee_comments back to BatchAllocation if provided
+            if employee_comments:
+                alloc = BatchAllocation.objects.filter(allocation_id=session.allocation_id).first()
+                if alloc:
+                    # Append or overwrite? Usually append or just overwrite if empty
+                    if alloc.employee_comments:
+                        alloc.employee_comments = f"{alloc.employee_comments}\n{employee_comments}"
+                    else:
+                        alloc.employee_comments = employee_comments
+                    alloc.save(update_fields=['employee_comments'])
 
         self._roll_up_target(session)
 
