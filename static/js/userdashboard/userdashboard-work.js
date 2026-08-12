@@ -826,12 +826,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data && data.start_time) {
                 activeSessionId = data.id;
                 startTime = new Date(data.start_time);
-                if (timerDisplay.style.display !== 'none') {
-                    timerInterval = setInterval(function () {
-                        elapsedTime = Math.floor((new Date() - startTime) / 1000);
-                        timerDisplay.querySelector('.time-value').textContent = formatTime(elapsedTime);
-                    }, 1000);
-                }
+                startBtn.innerText = "End";
+                startBtn.disabled = false;
+                
+                timerDisplay.style.display = 'inline-flex';
+                timerDisplay.innerHTML = `
+                    <span class="work-status">Work In Progress</span>
+                    <i class="fas fa-clock" style="color: #e74c3c;"></i>
+                    <span class="time-value">00:00:00</span>
+                `;
+                
+                timerInterval = setInterval(function () {
+                    elapsedTime = Math.floor((new Date() - startTime) / 1000);
+                    timerDisplay.querySelector('.time-value').textContent = formatTime(elapsedTime);
+                }, 1000);
             }
         })
         .catch(error => console.error('Error checking active session:', error));
@@ -889,6 +897,13 @@ window.startAllocatedWorkSession = async function(allocData) {
             startTime = new Date();
             startBtn.innerText = "End";
             startBtn.disabled = false;
+            
+            timerDisplay.style.display = 'inline-flex';
+            timerDisplay.innerHTML = `
+                <span class="work-status">Work In Progress</span>
+                <i class="fas fa-clock" style="color: #e74c3c;"></i>
+                <span class="time-value">00:00:00</span>
+            `;
             
             timerInterval = setInterval(function () {
                 elapsedTime = Math.floor((new Date() - startTime) / 1000);

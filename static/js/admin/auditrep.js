@@ -73,7 +73,8 @@ function setDefaultDates(useGraphMode = false) {
 async function populateAuditFilters() {
     try {
         if (auditProjectFilter) {
-            const projects = await MasterDataCache.getOrFetch('master_projects', '/api/v1/projects/');
+            const data = await MasterDataCache.getOrFetch('master_projects_v2', '/api/v1/masters/emp_get_projects/');
+            const projects = Array.isArray(data) ? data : (data.projects || data.results || []);
             auditProjectFilter.innerHTML = '<option value="">All Projects</option>';
             projects.forEach(p => {
                 const name = typeof p === 'string' ? p : (p.name || p.project_name || p.project);
@@ -86,7 +87,8 @@ async function populateAuditFilters() {
             });
         }
         if (auditWorkTypeFilter) {
-            const workTypes = await MasterDataCache.getOrFetch('master_work_types', '/api/v1/work-types/');
+            const resp = await MasterDataCache.getOrFetch('master_work_types_v2', '/api/v1/masters/worktypes/?active=true');
+            const workTypes = Array.isArray(resp) ? resp : (resp.results || resp.data || []);
             auditWorkTypeFilter.innerHTML = '<option value="">All Work Types</option>';
             workTypes.forEach(wt => {
                 const name = typeof wt === 'string' ? wt : (wt.name || wt.work_type);
@@ -954,7 +956,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // Function to load projects with caching
 async function loadProjects() {
     try {
-        const projects = await MasterDataCache.getOrFetch('master_projects', '/api/v1/masters/emp_get_projects/');
+        const data = await MasterDataCache.getOrFetch('master_projects_v2', '/api/v1/masters/emp_get_projects/');
+        const projects = Array.isArray(data) ? data : (data.projects || data.results || []);
         
         const projectFilter = document.querySelector('.audit-project-filter');
         const workTypeFilter = document.querySelector('.audit-worktype-filter');

@@ -39,13 +39,13 @@ $(document).ready(function() {
 
     function loadInitialData() {
         // Load projects on page load with MasterDataCache
-        MasterDataCache.getOrFetch('master_projects', '/api/v1/masters/emp_get_projects/')
+        MasterDataCache.getOrFetch('master_projects_v2', '/api/v1/masters/emp_get_projects/')
             .then(data => {
+                const projects = Array.isArray(data) ? data : (data.projects || data.results || []);
                 const projectDropdown = document.getElementById('project');
                 if (projectDropdown) {
                     projectDropdown.innerHTML = '<option value="">Select a project</option>';
-                    const projectsList = data.projects || data;
-                    projectsList.forEach(project => {
+                    projects.forEach(project => {
                         const option = document.createElement('option');
                         option.value = project.project_name;
                         option.textContent = project.project_name;

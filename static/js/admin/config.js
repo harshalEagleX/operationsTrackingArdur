@@ -150,4 +150,4 @@ const MasterDataCache = {
     }
 };
 
-window.MasterDataCache = MasterDataCache;
+window.MasterDataCache = MasterDataCache;

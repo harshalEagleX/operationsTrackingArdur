@@ -44,7 +44,8 @@ class AllocationSerializer(serializers.ModelSerializer):
             "fees", "margin", "vendor_rate", "document_file",
             "document_name", "received_date", "eta",
             "employee_comments", "qc_id", "qc_name", "qc_comments", "time_taken", "ar_number",
-            "batch_documents"
+            "batch_documents",
+            "chain_sheet_name", "search_package_name", "report_name"
         ]
         read_only_fields = [
             "id", "progress_percent", "is_overdue", "is_open",

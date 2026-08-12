@@ -1,3 +1,11 @@
+function formatStatusDisplay(statusStr) {
+    if (!statusStr) return '-';
+    let s = statusStr.toLowerCase();
+    if (s === 'send_for_qc' || s === 'send__for__qc') return 'Send for QC';
+    if (s === 'in_progress' || s === 'in__progress') return 'In Progress';
+    return statusStr.replace(/_+/g, ' ');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add toggle form functionality
     const toggleFormBtn = document.getElementById('toggleFormBtn');
@@ -76,8 +84,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedOrderType = orderDetailsSelect.value;
         const selectedStateOption = this.value;
         
-        // Extract actual state name from the format "stateabr - state"
-        const selectedState = selectedStateOption.split(' - ')[1];
+        // Extract actual state name from the format "stateabr - state" if it has one, else use the raw value
+        const selectedState = selectedStateOption.includes(' - ') ? selectedStateOption.split(' - ')[1] : selectedStateOption;
         
         if (selectedOrderType && selectedState) {
             // Load counties for selected state with caching
@@ -863,6 +871,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     feesInput.readOnly = true;
                     vendorRatesContainer.style.display = 'none';
                     document.getElementById('oa_document').value = '';
+                    document.querySelectorAll('.selected-file').forEach(el => el.remove());
                     updateDateFields();
                     currentOrderId++;
                 } else {
@@ -1069,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td class="oa-assign-cell" data-task-id="${taskId}" data-employee-id="${employeeId}" data-assign-type="employee">${assignedToCell}</td>
                     <td class="oa-assign-cell" data-task-id="${taskId}" data-employee-id="${qcId}" data-assign-type="qc">${qcToCell}</td>
                     <td class="status-cell">
-                        <span class="status-badge ${status.toLowerCase()}">${status}</span>
+                        <span class="status-badge ${status.toLowerCase()}">${formatStatusDisplay(status)}</span>
                         <button class="allocation-info-btn" data-task-id="${taskId}" title="View history" aria-label="View history">
                             <i class="fas fa-info-circle"></i>
                         </button>
@@ -1457,7 +1466,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${assignedBy}</td>
                     <td>${assignedOn}</td>
                     <td>${totalFmt}</td>
-                    <td>${h.status || '-'}</td>
+                    <td>${formatStatusDisplay(h.status)}</td>
                 </tr>
             `;
         }).join('');
@@ -1660,7 +1669,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                     
                                     return `<span class="oa-status-badge ${cssClass}">
-                                        ${status}
+                                        ${formatStatusDisplay(status)}
                                     </span>`;
                                 })()}
                             </div>

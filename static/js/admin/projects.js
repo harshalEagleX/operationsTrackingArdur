@@ -446,7 +446,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then((response) => response.json())
             .then((data) => {
                 if (!data.error) {
-                    MasterDataCache.invalidate('master_projects');
+                    MasterDataCache.invalidate('master_projects_v2');
                     MasterDataCache.invalidate('oa_projects');
                     notify('Project added successfully!', 'success');
                     addProjectModal.style.display = "none";
@@ -486,7 +486,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then((response) => response.json())
             .then((data) => {
                 if (!data.error) {
-                    MasterDataCache.invalidate('master_projects');
+                    MasterDataCache.invalidate('master_projects_v2');
                     MasterDataCache.invalidate('oa_projects');
                     notify('Project updated successfully!', 'success');
                     document.getElementById('editProjectModal').style.display = "none";
@@ -507,7 +507,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
             .then((response) => {
                 if (response.ok) {
-                    MasterDataCache.invalidate('master_projects');
+                    MasterDataCache.invalidate('master_projects_v2');
                     MasterDataCache.invalidate('oa_projects');
                     confirmDeleteProjectModal.style.display = "none";
                     fetchProjects();

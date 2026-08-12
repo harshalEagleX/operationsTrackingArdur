@@ -621,6 +621,20 @@
     color: #1976d2;
 }
 
+.status-badge.in_progress,
+.status-badge.in__progress {
+    background-color: #E3F2FD;
+    color: #1976D2;
+    border: 1px solid #BBDEFB;
+}
+
+.status-badge.send_for_qc,
+.status-badge.send__for__qc {
+    background-color: #FFF3CD;
+    color: #856404;
+    border: 1px solid #FFEEBA;
+}
+
 /* Cancelled status */
 .status-badge.cancelled {
     background-color: #fdecea;
@@ -1692,7 +1706,9 @@ input[type="file"]:hover {
     transition: all 0.2s ease;
 }
 
-.status-badge.send {
+.status-badge.send,
+.status-badge.send_for_qc,
+.status-badge.send__for__qc {
     background-color: #FFF3CD;
     color: #856404;
     border: 1px solid #FFEEBA;
@@ -1704,7 +1720,9 @@ input[type="file"]:hover {
     border: 1px solid #FFE0B2;
 }
 
-.status-badge.in.progress {
+.status-badge.in.progress,
+.status-badge.in_progress,
+.status-badge.in__progress {
     background-color: #E3F2FD;
     color: #1976D2;
     border: 1px solid #BBDEFB;

@@ -480,8 +480,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update loadProjects to return a promise with caching
     function loadProjects() {
-        return MasterDataCache.getOrFetch('master_projects', '/api/v1/masters/emp_get_projects/')
-            .then(projects => {
+        return MasterDataCache.getOrFetch('master_projects_v2', '/api/v1/masters/emp_get_projects/')
+            .then(data => {
+                const projects = Array.isArray(data) ? data : (data.projects || data.results || []);
                 const projectSelect = document.getElementById('projectSelect');
                 projectSelect.innerHTML = ''; // Clear existing options
                 

@@ -53,9 +53,16 @@ class WorkSessionViewSet(ServiceMixin, EnvelopeMixin, viewsets.ReadOnlyModelView
         if params.get("today") == "true":
             queryset = queryset.for_day()
         if date_from := params.get("from"):
-            queryset = queryset.filter(start_time__date__gte=date_from)
+            from datetime import datetime
+            from core.timezone import start_of_day
+            dt = datetime.strptime(date_from, "%Y-%m-%d").date()
+            queryset = queryset.filter(start_time__gte=start_of_day(dt))
         if date_to := params.get("to"):
-            queryset = queryset.filter(start_time__date__lte=date_to)
+            from datetime import datetime
+            from core.timezone import day_bounds
+            dt = datetime.strptime(date_to, "%Y-%m-%d").date()
+            _, end_dt = day_bounds(dt)
+            queryset = queryset.filter(start_time__lt=end_dt)
         return queryset
 
     def create(self, request, *args, **kwargs):

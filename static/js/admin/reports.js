@@ -1070,6 +1070,7 @@ $(document).ready(function () {
  // ⚡ Extend row click to toggle end button
  $('#reportsTable tbody').on('click', 'tr', function () {
     const rowData = table.row(this).data();
+    if (!rowData) return;
     currentRowData = rowData;
     currentRowIndex = table.row(this).index(); // Store the DataTables row index
 
@@ -1230,6 +1231,7 @@ $('.end-popup-submit').off('click').on('click', function () {
  // Handle row click events
  $('#reportsTable tbody').on('click', 'tr', function(e) {
      const rowData = table.row(this).data();
+     if (!rowData) return;
      currentRowData = rowData;
      
      // Remove selected class from all rows and add to clicked row

@@ -32,7 +32,10 @@ function statusBadge(status) {
     cancelled: "badge-cancelled",
   };
   const cls = map[status] || "badge-pending";
-  const label = (status || "pending").replace("_", " ");
+  let label = status || "pending";
+  if (label.toLowerCase() === 'send_for_qc' || label.toLowerCase() === 'send__for__qc') label = 'Send for QC';
+  else if (label.toLowerCase() === 'in_progress' || label.toLowerCase() === 'in__progress') label = 'In Progress';
+  else label = label.replace(/_+/g, " ");
   return `<span class="alloc-status-badge ${cls}">${label}</span>`;
 }
 
@@ -86,7 +89,7 @@ function renderRow(alloc) {
         data-allocation-id="${alloc.allocation_id}"
         data-is-qc="true"
         title="Review this order"
-        style="background: #10b981; color: white;"
+        style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 500;"
       >
         <i class="fas fa-search"></i> Review
       </button>
@@ -199,19 +202,71 @@ function showOrderDetailsModal(alloc) {
                     <h4><i class="fas fa-file-upload"></i> Attachments </h4>
                 </div>
                 <div class="oa-documents-grid">
-                    ${alloc.document_name ? `
-                        <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6;">
-                            <div class="oa-document-icon" style="font-size: 24px; color: #dc3545; margin-right: 15px;">
-                                <i class="fas fa-file-pdf"></i>
-                            </div>
-                            <div class="oa-document-info">
-                                <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.document_name}</span>
-                                <a href="/api/v1/allocations/${alloc.allocation_id}/download/" target="_blank" class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
-                                    <i class="fas fa-download"></i> Download
-                                </a>
-                            </div>
-                        </div>
-                    ` : '<div class="oa-no-documents">No documents attached</div>'}
+                    ${(() => {
+                        let docsHtml = '';
+                        if (alloc.document_name) {
+                            docsHtml += `
+                                <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; margin-bottom: 10px;">
+                                    <div class="oa-document-icon" style="font-size: 24px; color: #dc3545; margin-right: 15px;">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </div>
+                                    <div class="oa-document-info">
+                                        <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.document_name}</span>
+                                        <a href="/api/v1/allocations/${alloc.allocation_id}/download/" target="_blank" class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
+                                            <i class="fas fa-download"></i> Download Original
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        if (alloc.chain_sheet_name) {
+                            docsHtml += `
+                                <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; margin-bottom: 10px;">
+                                    <div class="oa-document-icon" style="font-size: 24px; color: #28a745; margin-right: 15px;">
+                                        <i class="fas fa-file-excel"></i>
+                                    </div>
+                                    <div class="oa-document-info">
+                                        <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.chain_sheet_name}</span>
+                                        <a href="/api/v1/allocations/${alloc.allocation_id}/download/?doc=chain_sheet" target="_blank" class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
+                                            <i class="fas fa-download"></i> Download Chain Sheet
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        if (alloc.search_package_name) {
+                            docsHtml += `
+                                <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; margin-bottom: 10px;">
+                                    <div class="oa-document-icon" style="font-size: 24px; color: #dc3545; margin-right: 15px;">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </div>
+                                    <div class="oa-document-info">
+                                        <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.search_package_name}</span>
+                                        <a href="/api/v1/allocations/${alloc.allocation_id}/download/?doc=search_package" target="_blank" class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
+                                            <i class="fas fa-download"></i> Download Search Package
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        if (alloc.report_name) {
+                            docsHtml += `
+                                <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; margin-bottom: 10px;">
+                                    <div class="oa-document-icon" style="font-size: 24px; color: #007bff; margin-right: 15px;">
+                                        <i class="fas fa-file-word"></i>
+                                    </div>
+                                    <div class="oa-document-info">
+                                        <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.report_name}</span>
+                                        <a href="/api/v1/allocations/${alloc.allocation_id}/download/?doc=report" target="_blank" class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
+                                            <i class="fas fa-download"></i> Download Report
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        return docsHtml ? docsHtml : '<div class="oa-no-documents">No documents attached</div>';
+                    })()}
                 </div>
             </div>
             
@@ -292,6 +347,16 @@ async function loadAllocatedOrders() {
 // ── actions ───────────────────────────────────────────────────────────────────
 
 async function markInProgress(btn) {
+  const startBtn = document.getElementById('start-btn');
+  if (startBtn && startBtn.innerText === "End") {
+      if (typeof toast !== 'undefined') {
+          toast.show("Please end your current work session before starting a new one.", {type: "warning"});
+      } else {
+          alert("Please end your current work session before starting a new one.");
+      }
+      return;
+  }
+
   const allocationId = btn.dataset.allocationId;
   const project = btn.dataset.project;
   const clientCode = btn.dataset.clientCode;

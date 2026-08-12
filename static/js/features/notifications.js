@@ -26,7 +26,7 @@ export function initNotifications() {
   });
 
   document.addEventListener("click", (event) => {
-    if (!centre.hidden && !centre.contains(event.target) && event.target !== bell) {
+    if (!centre.hidden && !centre.contains(event.target) && !bell.contains(event.target)) {
       centre.hidden = true;
       bell.setAttribute("aria-expanded", "false");
     }

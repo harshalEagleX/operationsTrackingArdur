@@ -113,9 +113,20 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
     def download(self, request, allocation_id=None):
         allocation = self.get_object()
         
+        doc_type = request.query_params.get("doc", "document")
+        if doc_type == "chain_sheet":
+            file_col, name_col = "chain_sheet", "chain_sheet_name"
+        elif doc_type == "search_package":
+            file_col, name_col = "search_package", "search_package_name"
+        elif doc_type == "report":
+            file_col, name_col = "report", "report_name"
+        else:
+            file_col, name_col = "document_file", "document_name"
+            
         from django.db import connection
         with connection.cursor() as cursor:
-            cursor.execute("SELECT document_file, document_name FROM ot_batch_allocations WHERE id = %s", [allocation.id])
+            query = f"SELECT {file_col}, {name_col} FROM ot_batch_allocations WHERE id = %s"
+            cursor.execute(query, [allocation.id])
             row = cursor.fetchone()
             
         if not row or not row[0]:
@@ -123,7 +134,7 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
             raise APIError("No document attached to this order.", status_code=404)
             
         file_bytes = row[0]
-        file_name = row[1] or f"order_{allocation.allocation_id}.bin"
+        file_name = row[1] or f"order_{allocation.allocation_id}_{doc_type}.bin"
         
         from django.http import HttpResponse
         response = HttpResponse(file_bytes, content_type="application/octet-stream")
