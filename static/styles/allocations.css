@@ -1714,6 +1714,12 @@ input[type="file"]:hover {
     border: 1px solid #FFEEBA;
 }
 
+.status-badge.dispatch {
+    background-color: #f3e5f5;
+    color: #8e24aa;
+    border: 1px solid #e1bee7;
+}
+
 .status-badge.pending {
     background-color: #FFF4E5;
     color: #FF9800;

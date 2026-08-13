@@ -13,13 +13,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Count, Q, Sum, Subquery, OuterRef
 
 from apps.allocations.models import BatchAllocation
 from apps.breaks.models import BreakTime
 from apps.feedback.models import Feedback
 from apps.tracking.models import WorkSession
 from core.timezone import day_bounds, today_ist
+from apps.accounts.models import Employee
 
 
 @dataclass
@@ -89,17 +90,14 @@ class BaseSelector:
 
 
 class ProductivitySelector(BaseSelector):
-    """Units, hours and rate per employee."""
+    """Sessions, hours and rate per employee."""
 
     columns = [
         ("emp_id", "Employee ID"),
         ("name", "Name"),
         ("project", "Project"),
         ("sessions", "Sessions"),
-        ("total_units", "Units"),
         ("total_hours", "Hours"),
-        ("units_per_hour", "Units/hour"),
-        ("avg_seconds_per_unit", "Avg sec/unit"),
     ]
 
     def rows(self) -> list[dict]:
@@ -109,17 +107,14 @@ class ProductivitySelector(BaseSelector):
             queryset.values("emp_id", "name", "project")
             .annotate(
                 sessions=Count("id"),
-                total_units=Sum("work_units"),
                 total_seconds=Sum("total_time"),
-                avg_seconds_per_unit=Avg("average_time"),
             )
-            .order_by("-total_units")
+            .order_by("-sessions")
         )
 
         rows = []
         for row in aggregated:
             seconds = row["total_seconds"] or 0
-            units = row["total_units"] or 0
             hours = seconds / 3600
             rows.append(
                 {
@@ -127,10 +122,7 @@ class ProductivitySelector(BaseSelector):
                     "name": row["name"],
                     "project": row["project"],
                     "sessions": row["sessions"],
-                    "total_units": units,
                     "total_hours": round(hours, 2),
-                    "units_per_hour": round(units / hours, 2) if hours else 0,
-                    "avg_seconds_per_unit": round(row["avg_seconds_per_unit"] or 0, 2),
                 }
             )
         return rows
@@ -146,16 +138,19 @@ class SummarySelector(BaseSelector):
         ("project", "Project"),
         ("client_code", "Client code"),
         ("work_type", "Work type"),
-        ("batch", "Batch"),
-        ("work_units", "Units"),
+        ("batch", "Order No."),
         ("start_time", "Start"),
         ("end_time", "End"),
         ("total_time", "Seconds"),
-        ("average_time", "Avg sec/unit"),
+        ("work_location", "Location"),
+        ("is_paused", "Is paused"),
     ]
 
     def rows(self) -> list[dict]:
-        queryset = self.base_queryset(WorkSession.objects.completed()).order_by("-start_time")
+        location_subquery = Employee.objects.filter(employee_id=OuterRef('emp_id')).values('department')[:1]
+        queryset = self.base_queryset(WorkSession.objects.completed()).annotate(
+            work_location=Subquery(location_subquery)
+        ).order_by("-start_time")
         return list(queryset.values(*[c[0] for c in self.columns]))
 
 
@@ -378,7 +373,7 @@ def dashboard_metrics(user) -> dict:
 
     today_sessions = WorkSession.objects.filter(start_time__gte=start, start_time__lt=end)
     totals = today_sessions.filter(is_started=2).aggregate(
-        units=Sum("work_units"), seconds=Sum("total_time"), sessions=Count("id")
+        seconds=Sum("total_time"), sessions=Count("id")
     )
 
     return {
@@ -386,9 +381,8 @@ def dashboard_metrics(user) -> dict:
         "active_now": WorkSession.objects.active_now().count(),
         "on_break_now": BreakTime.objects.open().count(),
         "sessions_today": totals["sessions"] or 0,
-        "units_today": totals["units"] or 0,
-        "hours_today": round((totals["seconds"] or 0) / 3600, 2),
+        "hours_today": round((totals["seconds"] or 0) / 3600, 1),
         "open_allocations": BatchAllocation.objects.open().count(),
         "overdue_allocations": BatchAllocation.objects.overdue().count(),
-        "unacknowledged_feedback": Feedback.objects.unacknowledged().count(),
+        "unacknowledged_feedback": Feedback.objects.filter(acknowledged_at__isnull=True).count(),
     }

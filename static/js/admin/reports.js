@@ -8,8 +8,7 @@ $(document).ready(function () {
             { data: 'project_name', title: 'Project Name' },
             { data: 'active_users', title: 'Active Users' },
             { data: 'completed_tasks', title: 'Completed Tasks' },
-            { data: 'completed_work_units', title: 'Completed Work Units' },
-            { data: 'avg_processtime_perunit', title: 'Avg Process Time/Unit' },
+            { data: 'avg_processtime_perunit', title: 'Avg Process Time/Task' },
             { data: 'inprogress_tasks', title: 'In Progress Tasks' },
             { data: 'onhold_tasks', title: 'On Hold Tasks' }
         ]
@@ -25,6 +24,7 @@ $(document).ready(function () {
         $('.graphs-btn').removeClass('active');
         $('#summaryTableSection').show();
         $('#reportsSection').hide();
+        $('#graphsSection').hide();
         fetchSummaryData();
     });
 
@@ -34,6 +34,7 @@ $(document).ready(function () {
         $('.graphs-btn').removeClass('active');
         $('#summaryTableSection').hide();
         $('#reportsSection').show();
+        $('#graphsSection').hide();
         // Refresh reports data
         const startDate = $('#startDate').val();
         const endDate = $('#endDate').val();
@@ -48,12 +49,7 @@ $(document).ready(function () {
         $('.report-btn').removeClass('active');
         $('#summaryTableSection').hide();
         $('#reportsSection').hide();
-
-        // Trigger the summary reports content display
-        const summaryReportsLink = document.querySelector('a[href="#summaryreports"]');
-        if (summaryReportsLink) {
-            showContent('summaryreports');
-        }
+        $('#graphsSection').show();
         
         // Initialize summary dashboard if not already initialized
         if (!window.projectChart) {
@@ -164,21 +160,21 @@ $(document).ready(function () {
                 const inProgressPercent = totalTasks > 0 ? ((inProgressTasks / totalTasks) * 100).toFixed(1) : 0;
                 const onHoldPercent = totalTasks > 0 ? ((onHoldTasks / totalTasks) * 100).toFixed(1) : 0;
 
-                const unitsPerUser = activeUsers > 0 ? (totalWorkUnits / activeUsers).toFixed(2) : "0.00";
+                const tasksPerUser = activeUsers > 0 ? (completedTasks / activeUsers).toFixed(2) : "0.00";
                 const dailyTarget = 0;
-                const targetCompletion = dailyTarget > 0 ? Math.min(100, (totalWorkUnits / dailyTarget) * 100).toFixed(1) : 0;
+                const targetCompletion = dailyTarget > 0 ? Math.min(100, (completedTasks / dailyTarget) * 100).toFixed(1) : 0;
 
                 // Format avg time
-                let avgTimePerUnit = "00:00:00";
-                if (totalWorkUnits > 0 && totalSeconds > 0) {
-                    const avgSec = Math.round(totalSeconds / totalWorkUnits);
+                let avgTimePerTask = "00:00:00";
+                if (completedTasks > 0 && totalSeconds > 0) {
+                    const avgSec = Math.round(totalSeconds / completedTasks);
                     const h = String(Math.floor(avgSec / 3600)).padStart(2, '0');
                     const m = String(Math.floor((avgSec % 3600) / 60)).padStart(2, '0');
                     const s = String(avgSec % 60).padStart(2, '0');
-                    avgTimePerUnit = `${h}:${m}:${s}`;
+                    avgTimePerTask = `${h}:${m}:${s}`;
                 }
 
-                const efficiencyRate = parseFloat(unitsPerUser) || (totalWorkUnits > 0 ? 5 : 0);
+                const efficiencyRate = parseFloat(tasksPerUser) || (completedTasks > 0 ? 5 : 0);
                 const efficiencyClass = getEfficiencyClass(efficiencyRate);
                 const efficiencyLabel = getEfficiencyLabel(efficiencyRate);
 
@@ -198,10 +194,6 @@ $(document).ready(function () {
                                     <div class="stat-value">${completedTasks}</div>
                                     <div class="stat-label">Completed Tasks</div>
                                 </div>
-                                <div class="summary-stat-item">
-                                    <div class="stat-value">${totalWorkUnits}</div>
-                                    <div class="stat-label">Work Units</div>
-                                </div>
                             </div>
 
                             <div class="metrics-grid">
@@ -211,16 +203,16 @@ $(document).ready(function () {
                                     </div>
                                     <div class="metric-content">
                                         <div class="metric-row">
-                                            <span>Units/User:</span>
-                                            <span class="metric-value">${unitsPerUser}</span>
+                                            <span>Tasks/User:</span>
+                                            <span class="metric-value">${tasksPerUser}</span>
                                         </div>
                                         <div class="metric-row">
                                             <span>Daily Target:</span>
                                             <span class="metric-value">${dailyTarget}</span>
                                         </div>
                                         <div class="metric-row">
-                                            <span>Avg Time/Unit:</span>
-                                            <span class="metric-value">${avgTimePerUnit}</span>
+                                            <span>Avg Time/Task:</span>
+                                            <span class="metric-value">${avgTimePerTask}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -749,13 +741,11 @@ $(document).ready(function () {
      'date': 'Date',
      'start_time': 'Start',
      'end_time': 'End',
-     'project': 'Project',
+     'project_name': 'Project',
      'client_code': 'Client Code',
      'work_type': 'WorkType',
-     'batch': 'Batch',
-     'work_units': 'Work Units',
+     'batch': 'Order No.',
      'total_time': 'Total Time',
-     'average_time': 'Average Time',
      'work_location': 'Location',
      'status': 'Status',
      'review': 'Review',
@@ -786,19 +776,12 @@ $(document).ready(function () {
                  return data ? data.split('T')[1].substring(0,8) : '';
              }
          },
-         { data: 'project' },
+         { data: 'project_name', defaultContent: '' },
          { data: 'client_code' },
          { data: 'work_type' },
          { data: 'batch' },
-         { data: 'work_units' },
          { 
              data: 'total_time',
-             render: function (data) {
-                 return formatTime(data);
-             }
-         },
-         { 
-             data: 'average_time',
              render: function (data) {
                  return formatTime(data);
              }
@@ -974,7 +957,7 @@ $(document).ready(function () {
  // Work Location filter change event
  $('#workLocationFilter').on('change', function () {
      const selectedWorkLocation = $(this).val();
-     table.column(12).search(selectedWorkLocation).draw(); // Assuming work_location is the 13th column
+     table.column(11).search(selectedWorkLocation).draw(); // Assuming work_location is the 12th column
  });
 
  // Search field keyup event
@@ -1019,7 +1002,7 @@ $(document).ready(function () {
              table.rows.add(rows).draw();
 
              // Populate project dropdown
-             const projects = [...new Set(rows.map(item => item.project).filter(Boolean))];
+             const projects = [...new Set(rows.map(item => item.project_name || item.project).filter(Boolean))];
              const projectFilter = $('#projectFilter');
              projectFilter.empty();
              projectFilter.append('<option value="">All Projects</option>');
@@ -1160,18 +1143,12 @@ $('.end-popup-submit').off('click').on('click', function () {
         alert('You must resume the paused work before ending it.');
         return;
     }
-    const work_units = parseInt($('#endWorkUnits').val());
     const pages = parseInt($('#endPages').val());
     const review = $('#endReview').val().trim();
     const emp_id = currentRowData.emp_id;
     // Combine date and time in the format 'YYYY-MM-DD HH:MM:SS' to match DB
     const start_time = `${currentRowData.date} ${currentRowData.start_time}`;
     const end_time = new Date().toISOString();
-
-    if (!work_units || work_units <= 0) {
-        alert('Work units must be greater than 0.');
-        return;
-    }
 
         const session_id = currentRowData.id;
     if (!session_id) {
@@ -1187,9 +1164,8 @@ $('.end-popup-submit').off('click').on('click', function () {
         },
         contentType: 'application/json',
         data: JSON.stringify({
-            work_units,
             review,
-            pages
+            pages: pages || null
         }),
         success: function (res) {
             const result = res.data || res;
@@ -1250,7 +1226,7 @@ $('.end-popup-submit').off('click').on('click', function () {
              value = rowData.start_time ? rowData.start_time.split('T')[1].substring(0,8) : '';
          } else if (key === 'end_time') {
              value = rowData.end_time ? rowData.end_time.split('T')[1].substring(0,8) : '';
-         } else if (key === 'total_time' || key === 'average_time') {
+         } else if (key === 'total_time') {
              value = formatTime(value);
          } else if (key === 'status') {
              value = rowData.end_time ? 'Completed' : 'In Progress';

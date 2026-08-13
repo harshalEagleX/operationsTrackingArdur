@@ -1042,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Build the "Assigned To" and "Assign QC To" cells.
             // Completed/cancelled orders: plain non-clickable text to prevent 409 on reassign.
             // All other orders: clickable trigger that opens the inline dropdown.
-            const isFinalState = status.toLowerCase() === 'completed' || status.toLowerCase() === 'cancelled';
+            const isFinalState = status.toLowerCase() === 'completed' || status.toLowerCase() === 'cancelled' || status.toLowerCase() === 'dispatch';
             const assignedToCell = isFinalState
                 ? `<span style="font-size:12px;color:#6b7280;">${employeeName || '-'}</span>`
                 : (employeeId
@@ -1498,8 +1498,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const receivedDate = order.received_date ? new Date(order.received_date).toLocaleString() : '-';
         const eta = order.eta ? new Date(order.eta).toLocaleString() : '-';
         const slaDate = order.sla_date ? new Date(order.sla_date).toLocaleString() : '-';
-
-
+        
+        const statusStr = order.status || 'Pending';
+        const isFinalState = statusStr.toLowerCase() === 'completed' || statusStr.toLowerCase() === 'cancelled' || statusStr.toLowerCase() === 'dispatch';
+        const editableClass = isFinalState ? '' : 'editable';
         // Remove any existing popups
         const existingPopup = document.querySelector('.oa-details-popup');
         if (existingPopup) {
@@ -1574,7 +1576,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="oa-detail-label">County</div>
                             <div class="oa-detail-value">${order.county || '-'}</div>
                         </div>
-                        <div class="oa-detail-item editable">
+                        <div class="oa-detail-item ${editableClass}">
                             <div class="oa-detail-label">Assigned To</div>
                             <div class="oa-detail-value">
                                 <select class="oa-edit-employee" style="display: none;">
@@ -1583,7 +1585,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="oa-display-value">${order.employeeName || '-'}</span>
                             </div>
                         </div>
-                        <div class="oa-detail-item editable">
+                        <div class="oa-detail-item ${editableClass}">
                             <div class="oa-detail-label">Assign QC To</div>
                             <div class="oa-detail-value">
                                 <select class="oa-edit-qc" style="display: none;">
@@ -1690,7 +1692,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                         <div class="oa-document-info">
                                             <span class="oa-document-name" title="${doc.name}">${doc.name}</span>
-                                            <a href="/api/v1/allocations/${order.allocation_id || order.task_id}/download/" 
+                                            <a href="/api/v1/allocations/${order.allocation_id || order.task_id}/download/${doc.type === 'original' || !doc.type ? '' : '?doc=' + doc.type}" 
                                                class="oa-document-download" 
                                                target="_blank">
                                                 <i class="fas fa-download"></i> Download

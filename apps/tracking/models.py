@@ -64,12 +64,10 @@ class WorkSession(models.Model):
     client_code = models.CharField(max_length=50, blank=True, default="")
     work_type = models.CharField(max_length=100, blank=True, default="")
     batch = models.CharField(max_length=100, blank=True, default="")
-    work_units = models.IntegerField(default=0)
 
     start_time = models.DateTimeField(default=now_ist)
     end_time = models.DateTimeField(null=True, blank=True)
     total_time = models.FloatField(null=True, blank=True, help_text="Seconds, excluding pauses")
-    average_time = models.FloatField(null=True, blank=True, help_text="Seconds per work unit")
 
     is_paused = models.BooleanField(default=False)
     paused_at = models.DateTimeField(null=True, blank=True)
@@ -86,7 +84,6 @@ class WorkSession(models.Model):
     )
 
     review = models.CharField(max_length=255, blank=True, default="")
-    pages = models.IntegerField(null=True, blank=True)
 
     objects = WorkSessionQuerySet.as_manager()
 
@@ -141,11 +138,6 @@ class WorkSession(models.Model):
             paused_secs = 0.0
         return max(gross - paused_secs, 0.0)
 
-    @property
-    def units_per_hour(self) -> float | None:
-        if not self.total_time or not self.work_units:
-            return None
-        return round(self.work_units / (self.total_time / 3600), 2)
 
 
 class TargetQuerySet(OwnedQuerySet):

@@ -76,16 +76,6 @@ def validate_positive(value) -> int | float:
     return value
 
 
-def validate_work_units(value: int) -> int:
-    """Sanity bound on manual entry.
-
-    Someone typing 100000 instead of 1000 skews a productivity average for the
-    whole month, and nobody notices until the client asks.
-    """
-    validate_positive(value)
-    if value > 100_000:
-        raise DjangoValidationError("That is more work units than a shift can contain.")
-    return value
 
 
 def validate_date_range(start, end) -> None:

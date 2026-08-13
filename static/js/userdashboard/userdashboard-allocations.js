@@ -30,8 +30,10 @@ function statusBadge(status) {
     completed: "badge-completed",
     on_hold: "badge-onhold",
     cancelled: "badge-cancelled",
+    dispatch: "badge-dispatch",
+    send_for_qc: "badge-sendforqc"
   };
-  const cls = map[status] || "badge-pending";
+  const cls = map[status.toLowerCase()] || map[status] || "badge-pending";
   let label = status || "pending";
   if (label.toLowerCase() === 'send_for_qc' || label.toLowerCase() === 'send__for__qc') label = 'Send for QC';
   else if (label.toLowerCase() === 'in_progress' || label.toLowerCase() === 'in__progress') label = 'In Progress';
@@ -43,7 +45,16 @@ function statusBadge(status) {
 
 function renderRow(alloc) {
   const currentEmpId = document.getElementById("user-name")?.dataset?.employeeId;
-  const isQC = alloc.qc_id && currentEmpId === alloc.qc_id;
+  const isAssignedEmployee = alloc.employee_id === currentEmpId;
+  const isAssignedQC = alloc.qc_id === currentEmpId;
+  
+  let isQC = false;
+  if (isAssignedEmployee && isAssignedQC) {
+      // If assigned both roles, they act as QC only after the initial work is completed
+      isQC = !!alloc.completed_at;
+  } else {
+      isQC = isAssignedQC;
+  }
 
   const tr = document.createElement("tr");
   if (alloc.is_overdue) tr.classList.add("alloc-row-overdue");
@@ -62,7 +73,7 @@ function renderRow(alloc) {
     <td>${alloc.due_at ? fmtDate(alloc.due_at) : "-"}</td>
     <td>${statusBadge(alloc.status)}</td>
     <td>
-      ${alloc.status === "pending" && !isQC ? `
+      ${(alloc.status === "pending" && !isQC) || (alloc.status === "send_for_qc" && isQC) ? `
       <button
         class="alloc-start-btn action-btn"
         data-allocation-id="${alloc.allocation_id}"
@@ -83,7 +94,7 @@ function renderRow(alloc) {
       >
         <i class="fas fa-check-circle"></i>
       </button>
-      ` : alloc.status === "send_for_qc" && isQC ? `
+      ` : alloc.status === "in_progress" && isQC ? `
       <button
         class="alloc-review-btn action-btn"
         data-allocation-id="${alloc.allocation_id}"
@@ -136,6 +147,14 @@ function showOrderDetailsModal(alloc) {
                 ${alloc.remarks ? alloc.remarks.replace(/\n/g, '<br>') : "<i>No specific remarks provided.</i>"}
               </p>
             </div>
+            ${alloc.employee_comments ? `
+            <div style="margin-bottom: 20px;">
+              <strong>Employee Comments:</strong>
+              <p style="background: #e2e3e5; padding: 10px; border-radius: 4px; border-left: 4px solid #6c757d; margin-top: 5px;">
+                ${alloc.employee_comments.replace(/\n/g, '<br>')}
+              </p>
+            </div>
+            ` : ''}
             
             ${alloc.qc_comments ? `
             <div style="margin-bottom: 20px;">

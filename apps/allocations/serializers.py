@@ -22,9 +22,16 @@ class AllocationSerializer(serializers.ModelSerializer):
     batch_documents = serializers.SerializerMethodField()
 
     def get_batch_documents(self, obj):
+        docs = []
         if obj.document_name:
-            return [{"name": obj.document_name}]
-        return []
+            docs.append({"name": obj.document_name, "type": "original"})
+        if obj.chain_sheet_name:
+            docs.append({"name": obj.chain_sheet_name, "type": "chain_sheet"})
+        if obj.search_package_name:
+            docs.append({"name": obj.search_package_name, "type": "search_package"})
+        if obj.report_name:
+            docs.append({"name": obj.report_name, "type": "report"})
+        return docs
     document_file = serializers.FileField(write_only=True, required=False, allow_null=True)
 
     def get_client_name(self, obj):

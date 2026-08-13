@@ -516,7 +516,9 @@ function loadActiveSessions() {
             const sessionsList = $('.sessions-list');
             sessionsList.empty();
             
-            if (!Array.isArray(data) || data.length === 0) {
+            const sessions = data.data || data;
+
+            if (!Array.isArray(sessions) || sessions.length === 0) {
                 sessionsList.append(`
                     <div class="empty-state">
                         <i class="fas fa-users fa-3x"></i>
@@ -526,7 +528,7 @@ function loadActiveSessions() {
                 return;
             }
 
-            data.forEach(user => {
+            sessions.forEach(user => {
                 if (!user || !user.emp_id || !user.name) return;
                 
                 const name = escapeHtml(user.name);
@@ -617,7 +619,9 @@ function loadAllUsers() {
             const usersList = $('.users-list');
             usersList.empty();
             
-            if (!Array.isArray(data) || data.length === 0) {
+            const users = data.data || data;
+
+            if (!Array.isArray(users) || users.length === 0) {
                 usersList.append(`
                     <div class="empty-state">
                         <i class="fas fa-users fa-3x"></i>
@@ -627,7 +631,7 @@ function loadAllUsers() {
                 return;
             }
 
-            data.forEach(user => {
+            users.forEach(user => {
                 if (!user || !user.emp_id || !user.name) return;
                 
                 const name = escapeHtml(user.name);

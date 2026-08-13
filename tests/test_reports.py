@@ -54,18 +54,16 @@ def test_filters_scoped_to_leaves_a_supervisors_filter_alone(supervisor):
 
 def test_productivity_selector_aggregates_per_employee(employee):
     WorkSession.objects.create(
-        emp_id=employee.emp_id, name=employee.name, project="P", work_units=10,
+        emp_id=employee.emp_id, name=employee.name, project="P",
         total_time=3600, is_started=SessionState.COMPLETED, end_time=now_ist(),
     )
     WorkSession.objects.create(
-        emp_id=employee.emp_id, name=employee.name, project="P", work_units=5,
+        emp_id=employee.emp_id, name=employee.name, project="P",
         total_time=1800, is_started=SessionState.COMPLETED, end_time=now_ist(),
     )
 
     [row] = ProductivitySelector(ReportFilters()).rows()
-    assert row["total_units"] == 15
     assert row["total_hours"] == 1.5
-    assert row["units_per_hour"] == 10.0
 
 
 def test_productivity_selector_excludes_incomplete_sessions(employee):
@@ -78,11 +76,10 @@ def test_summary_selector_returns_one_row_per_session(employee):
 
     WorkSession.objects.create(
         emp_id=employee.emp_id, project="P", is_started=SessionState.COMPLETED,
-        end_time=now_ist(), work_units=3,
+        end_time=now_ist(),
     )
     rows = SummarySelector(ReportFilters()).rows()
     assert len(rows) == 1
-    assert rows[0]["work_units"] == 3
 
 
 def test_break_selector_counts_overruns(employee):
@@ -161,7 +158,7 @@ def test_report_registry_matches_every_selector_class():
 def test_dashboard_metrics_shape(employee):
     metrics = dashboard_metrics(employee)
     assert set(metrics) == {
-        "date", "active_now", "on_break_now", "sessions_today", "units_today",
+        "date", "active_now", "on_break_now", "sessions_today",
         "hours_today", "open_allocations", "overdue_allocations", "unacknowledged_feedback",
     }
 
@@ -171,7 +168,7 @@ def test_dashboard_metrics_shape(employee):
 def test_run_returns_columns_and_rows(employee):
     WorkSession.objects.create(
         emp_id=employee.emp_id, project="P", is_started=SessionState.COMPLETED,
-        end_time=now_ist(), work_units=1,
+        end_time=now_ist(),
     )
     result = ReportService(actor=employee).run("productivity", {})
 
@@ -183,7 +180,7 @@ def test_run_returns_columns_and_rows(employee):
 def test_run_scopes_an_employee_to_their_own_rows(employee, other_employee):
     WorkSession.objects.create(
         emp_id=other_employee.emp_id, project="P", is_started=SessionState.COMPLETED,
-        end_time=now_ist(), work_units=1,
+        end_time=now_ist(),
     )
     result = ReportService(actor=employee).run("productivity", {})
     assert result["row_count"] == 0
@@ -197,7 +194,7 @@ def test_run_truncates_at_the_inline_limit(employee, monkeypatch):
         [
             WorkSession(
                 emp_id=employee.emp_id, project=f"P{i}", is_started=SessionState.COMPLETED,
-                end_time=now_ist(), work_units=1,
+                end_time=now_ist(),
             )
             for i in range(3)
         ]
@@ -353,7 +350,7 @@ def test_build_report_task_produces_a_downloadable_file(django_capture_on_commit
 
     WorkSession.objects.create(
         emp_id=employee.emp_id, project="P", is_started=SessionState.COMPLETED,
-        end_time=now_ist(), work_units=4,
+        end_time=now_ist(),
     )
     job = ReportJob.objects.create(requested_by=employee.emp_id, report_key="productivity")
 
@@ -406,7 +403,7 @@ def test_catalogue_endpoint_lists_every_report(as_employee):
 def test_run_endpoint(as_employee, employee):
     WorkSession.objects.create(
         emp_id=employee.emp_id, project="P", is_started=SessionState.COMPLETED,
-        end_time=now_ist(), work_units=1,
+        end_time=now_ist(),
     )
     response = as_employee.post("/api/v1/reports/run/", {"report_key": "productivity"})
 

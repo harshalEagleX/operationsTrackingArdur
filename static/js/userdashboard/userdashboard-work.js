@@ -1,14 +1,16 @@
 let startTime, endTime, timerInterval, elapsedTime = 0;
 let activeSessionId = null;
 
-const startBtn = document.getElementById('start-btn');
+const startBtn = document.getElementById('start-btn') || document.createElement('button');
+startBtn.id = 'start-btn';
+startBtn.innerText = 'Start';
 const endPopup = document.getElementById('end-popup');
 const endForm = document.getElementById('end-form');
 const timerDisplay = document.getElementById('timer');
-const projectSelect = document.getElementById('project-select');
-const clientCodeSelect = document.getElementById('client-code-select');
-const workTypeSelect = document.getElementById('work-type-select');
-const batchInput = document.getElementById('batch');
+const projectSelect = document.getElementById('project-select') || document.createElement('select');
+const clientCodeSelect = document.getElementById('client-code-select') || document.createElement('select');
+const workTypeSelect = document.getElementById('work-type-select') || document.createElement('select');
+const batchInput = document.getElementById('batch') || document.createElement('input');
 // Helper to force-enable ProvenAir view and keep it active
 function forceProvenAirViewActive() {
     try {
@@ -189,6 +191,7 @@ endForm.addEventListener('submit', function (event) {
                         const targetStatus = window.activeAllocationTargetStatus || "completed";
                         const isQC = targetStatus === "dispatch";
                         formData.append("status", targetStatus);
+                        formData.delete("employee_comments");
                         if (isQC) {
                             formData.append("qc_comments", empComments);
                         } else {
@@ -276,6 +279,17 @@ function submitWorkData(review) {
     if (pages) formData.append('pages', pages);
 
     const empComments = formData.get("employee_comments") || "";
+    
+    if (window.activeAllocationIdToComplete) {
+        const targetStatus = window.activeAllocationTargetStatus || "completed";
+        if (targetStatus === "dispatch") {
+            formData.delete("employee_comments");
+            // Append qc_comments here so it's ready for the tracking API (though it ignores it)
+            // and already present for the allocation API.
+            formData.append("qc_comments", empComments);
+        }
+    }
+
 
     fetch(`/api/v1/tracking/sessions/${activeSessionId}/end/`, {
         method: 'POST',
@@ -296,13 +310,8 @@ function submitWorkData(review) {
                 const targetStatus = window.activeAllocationTargetStatus || "completed";
                 const isQC = targetStatus === "dispatch";
                 
-                // We reuse formData which already contains the files
+                // We reuse formData which already contains the files and correct comments
                 formData.append("status", targetStatus);
-                if (isQC) {
-                    formData.append("qc_comments", empComments || review);
-                } else {
-                    formData.append("employee_comments", empComments || review);
-                }
                 
                 window.activeAllocationIdToComplete = null;
                 fetch(`/api/v1/allocations/${allocId}/status/`, {
@@ -520,10 +529,7 @@ function fetchWorkData(date) {
                     <td>${startTimeStr}</td>
                     <td>${endTimeStr}</td>
                     <td>${totalTimeFormatted}</td>
-                    <td>${row.review || '-'}</td>
-                    <td>${row.pages || '-'}</td>
-                    <td>${statusBadge}</td>
-                    ${isPendingView ? `<td>${resumeBtn}</td>` : ''}
+                    <td>${statusBadge} ${isPendingView ? resumeBtn : ''}</td>
                 `;
                 tableBody.appendChild(tr);
             });
@@ -927,6 +933,14 @@ window.completeAllocatedOrder = function(allocationId, targetStatus = "completed
     
     const endPopup = document.getElementById('end-popup');
     if (endPopup) {
+        const commentsLabel = document.querySelector('label[for="employee-comments"]');
+        if (commentsLabel) {
+            if (targetStatus === "dispatch") {
+                commentsLabel.innerHTML = '<i class="fas fa-comments"></i> QC Comments:';
+            } else {
+                commentsLabel.innerHTML = '<i class="fas fa-comments"></i> Employee Comments:';
+            }
+        }
         endPopup.classList.remove('hidden');
         
         const endForm = document.getElementById('end-form');

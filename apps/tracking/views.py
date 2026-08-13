@@ -128,7 +128,7 @@ class DashboardSummaryView(EnvelopeMixin, APIView):
 
         today = WorkSession.objects.filter(emp_id=emp_id).for_day().completed()
         totals = today.aggregate(
-            sessions=Count("id"), units=Sum("work_units"), seconds=Sum("total_time")
+            sessions=Count("id"), seconds=Sum("total_time")
         )
 
         open_session = WorkSession.objects.filter(emp_id=emp_id).open().first()
@@ -143,7 +143,6 @@ class DashboardSummaryView(EnvelopeMixin, APIView):
                 "emp_id": emp_id,
                 "open_session": WorkSessionSerializer(open_session).data if open_session else None,
                 "today_sessions": totals["sessions"] or 0,
-                "today_units": totals["units"] or 0,
                 "today_seconds": round(totals["seconds"] or 0, 2),
                 "target": TargetSerializer(target).data if target else None,
                 "on_break": on_break,

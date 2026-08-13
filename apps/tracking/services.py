@@ -113,18 +113,13 @@ class WorkSessionService(BaseService):
         self,
         session_id: int,
         *,
-        work_units: int,
         review: str = "",
-        pages: int | None = None,
         chain_sheet=None,
         search_package=None,
         report=None,
         employee_comments: str = "",
     ) -> WorkSession:
         session = self._locked_open_session(session_id)
-
-        if work_units is None or work_units < 0:
-            raise ValidationError("Work units must be zero or more.")
 
         end = now_ist()  # server clock, always
 
@@ -137,19 +132,16 @@ class WorkSessionService(BaseService):
         total = max(gross - paused_elapsed, 0.0)
 
         session.end_time = end
-        session.work_units = work_units
         session.total_time = round(total, 2)
-        session.average_time = round(total / work_units, 2) if work_units else None
         session.paused_elapsed = round(paused_elapsed, 2)
         session.is_started = SessionState.COMPLETED
         session.is_paused = False
         session.paused_at = None
         session.review = (review or "")[:500]
-        session.pages = pages
         session.save(
             update_fields=[
-                "end_time", "work_units", "total_time", "average_time", "paused_elapsed",
-                "is_started", "is_paused", "paused_at", "review", "pages",
+                "end_time", "total_time", "paused_elapsed",
+                "is_started", "is_paused", "paused_at", "review",
             ]
         )
 
@@ -181,7 +173,7 @@ class WorkSessionService(BaseService):
 
         self._roll_up_target(session)
 
-        self.log("session_ended", id=session.id, total=session.total_time, units=work_units)
+        self.log("session_ended", id=session.id, total=session.total_time)
         self.on_commit(lambda: self._announce_completion(session))
         return session
 
@@ -244,7 +236,7 @@ class WorkSessionService(BaseService):
 
         was_met = target.is_met
         Target.objects.filter(pk=target.pk).update(
-            achieved_units=target.achieved_units + session.work_units,
+            achieved_units=target.achieved_units + 1,
             updated_at=now_ist(),
         )
         target.refresh_from_db()
@@ -292,8 +284,6 @@ class WorkSessionService(BaseService):
             data={
                 "id": session.id,
                 "total_time": session.total_time,
-                "work_units": session.work_units,
-                "average_time": session.average_time,
             },
         )
 

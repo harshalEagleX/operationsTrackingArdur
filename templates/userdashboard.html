@@ -46,34 +46,6 @@
             gap: 8px;
         }
 
-        #allocated-orders-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 20px;
-            height: 20px;
-            padding: 0 6px;
-            border-radius: 10px;
-            background: #e74c3c;
-            color: #fff;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-left: 6px;
-            animation: pulse-badge 1.5s infinite;
-        }
-
-        @keyframes pulse-badge {
-
-            0%,
-            100% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.15);
-            }
-        }
-
         #allocated-orders-toggle-btn {
             background: rgba(255, 255, 255, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -158,6 +130,16 @@
         .alloc-status-badge.badge-cancelled {
             background: #f8d7da;
             color: #721c24;
+        }
+
+        .alloc-status-badge.badge-dispatch {
+            background-color: #f3e5f5;
+            color: #8e24aa;
+        }
+
+        .alloc-status-badge.badge-sendforqc {
+            background-color: #fff3cd;
+            color: #856404;
         }
 
         .alloc-id {
@@ -874,68 +856,7 @@
 
             <!-- Left Section (Dashboard + Breaks) -->
             <div class="left-section">
-                <!-- Dashboard Content (Left Side) -->
-                <section class="dashboard-content">
-                    <h2 class="dashboard-header">
-                        <span><i class="fas fa-tachometer-alt"></i> My Space </span>
-                    </h2>
-
-                    <form id="work-form">
-                        <div class="form-group">
-                            <select id="project-select" class="form-control">
-                                <option value="">Select Project</option>
-                                <!-- Options will be populated here -->
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <select id="client-code-select" class="form-control" disabled>
-                                <option value="">Select Client Code</option>
-                                <!-- Options will be populated here -->
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <select id="work-type-select" class="form-control" disabled>
-                                <option value="">Select Work Type</option>
-                                <!-- Options will be populated here -->
-                            </select>
-                        </div>
-
-                        <input type="text" id="batch" name="batch" placeholder="Enter batch no or name" required>
-
-                        <button type="button" id="start-btn" class="start-btn">
-                            <i class="fas fa-play"></i> Start
-                        </button>
-                    </form>
-
-                    <div id="end-popup" class="popup hidden">
-                        <form id="end-form">
-
-                            <label for="chain-sheet"><i class="fas fa-file-excel"></i> Chain Sheet (Excel):</label>
-                            <input type="file" id="chain-sheet" name="chain_sheet" accept=".xlsx,.xls,.csv" required>
-
-                            <label for="search-package"><i class="fas fa-file-pdf"></i> Search Package (PDF):</label>
-                            <input type="file" id="search-package" name="search_package" accept=".pdf" required>
-
-                            <label for="report"><i class="fas fa-file-word"></i> Report (Word):</label>
-                            <input type="file" id="report" name="report" accept=".doc,.docx" required>
-
-                            <label for="employee-comments"><i class="fas fa-comments"></i> Employee Comments:</label>
-                            <textarea id="employee-comments" name="employee_comments"
-                                placeholder="Enter comments for the QC"></textarea>
-
-                            <div class="button-group">
-                                <button type="submit" class="start-btn">
-                                    <i class="fas fa-check"></i> Submit
-                                </button>
-                                <button type="button" class="cancel-btn" id="end-popup-cancel">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
+                <!-- Dashboard Content (Left Side) removed -->
 
                 <!-- Breaks Content Section (Below Dashboard) -->
                 <section class="breaks-content">
@@ -986,6 +907,33 @@
                 </div>
             </div>
 
+            <!-- End Popup (for completing Allocated Orders) -->
+            <div id="end-popup" class="popup hidden">
+                <form id="end-form">
+                    <label for="chain-sheet"><i class="fas fa-file-excel"></i> Chain Sheet (Excel):</label>
+                    <input type="file" id="chain-sheet" name="chain_sheet" accept=".xlsx,.xls,.csv" required>
+
+                    <label for="search-package"><i class="fas fa-file-pdf"></i> Search Package (PDF):</label>
+                    <input type="file" id="search-package" name="search_package" accept=".pdf" required>
+
+                    <label for="report"><i class="fas fa-file-word"></i> Report (Word):</label>
+                    <input type="file" id="report" name="report" accept=".doc,.docx" required>
+
+                    <label for="employee-comments"><i class="fas fa-comments"></i> Employee Comments:</label>
+                    <textarea id="employee-comments" name="employee_comments"
+                        placeholder="Enter comments for the QC"></textarea>
+
+                    <div class="button-group">
+                        <button type="submit" class="start-btn">
+                            <i class="fas fa-check"></i> Submit
+                        </button>
+                        <button type="button" class="cancel-btn" id="end-popup-cancel">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+
             <!-- Reports Section (Right Side) -->
             <section class="reports-content">
                 <div class="reports-header">
@@ -1017,7 +965,6 @@
                         <h3>
                             <i class="fas fa-clipboard-list"></i>
                             My Allocated Orders
-                            <span id="allocated-orders-badge" hidden>0</span>
                             <span id="allocated-orders-spinner"><i class="fas fa-spinner fa-spin"></i></span>
                         </h3>
                         <button id="allocated-orders-toggle-btn" type="button" aria-expanded="true"
@@ -1063,10 +1010,7 @@
                             <th>ORDER TYPE</th>
                             <th>START TIME</th>
                             <th>END TIME</th>
-                            <th>WORK UNITS</th>
                             <th>TOTAL TIME</th>
-                            <th>AVERAGE TIME</th>
-                            <th>PAGES</th>
                             <th>ACTIONS</th>
                         </tr>
                     </thead>

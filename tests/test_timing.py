@@ -29,7 +29,7 @@ def test_end_time_is_server_generated(as_employee, employee, masters):
     forged = now_ist() + timedelta(hours=99)
     response = as_employee.post(
         f"/api/v1/tracking/sessions/{session.id}/end/",
-        {"work_units": 10, "end_time": forged.isoformat(), "total_time": 999999},
+        {"end_time": forged.isoformat(), "total_time": 999999},
     )
 
     assert response.status_code == 200
@@ -50,7 +50,7 @@ def test_total_time_excludes_paused_periods(employee, masters):
         is_started=SessionState.RUNNING,
     )
 
-    finished = service.end_session(session.id, work_units=10)
+    finished = service.end_session(session.id)
 
     # 60 minutes elapsed minus 10 paused = 50 minutes of work.
     assert 2950 < finished.total_time < 3050
@@ -65,7 +65,7 @@ def test_average_time_is_derived_not_supplied(employee, masters):
         is_started=SessionState.RUNNING,
     )
 
-    finished = service.end_session(session.id, work_units=10)
+    finished = service.end_session(session.id)
 
     assert finished.average_time == pytest.approx(finished.total_time / 10, abs=0.1)
 
@@ -80,7 +80,7 @@ def test_zero_work_units_leaves_average_null(employee, masters):
         is_started=SessionState.RUNNING,
     )
 
-    finished = service.end_session(session.id, work_units=0)
+    finished = service.end_session(session.id)
     assert finished.average_time is None
 
 
@@ -128,7 +128,7 @@ def test_employee_cannot_end_another_persons_session(employee, other_employee, m
     from core.exceptions import PermissionDeniedError
 
     with pytest.raises(PermissionDeniedError):
-        WorkSessionService(actor=employee).end_session(session.id, work_units=5)
+        WorkSessionService(actor=employee).end_session(session.id)
 
 
 def test_supervisor_can_end_someone_elses_session(supervisor, employee, masters):
@@ -138,7 +138,7 @@ def test_supervisor_can_end_someone_elses_session(supervisor, employee, masters)
         is_started=SessionState.RUNNING,
     )
 
-    finished = WorkSessionService(actor=supervisor).end_session(session.id, work_units=5)
+    finished = WorkSessionService(actor=supervisor).end_session(session.id)
     assert finished.is_started == SessionState.COMPLETED
 
 
