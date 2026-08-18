@@ -11,8 +11,8 @@
  *   Bad:  "Error!"  /  "Sorry, something went wrong."
  */
 
-const DEFAULT_TIMEOUT = 5000;
-const ERROR_TIMEOUT = 8000;
+const DEFAULT_TIMEOUT = 10000;
+const ERROR_TIMEOUT = 15000;
 
 function host() {
   let element = document.getElementById("toast-host");

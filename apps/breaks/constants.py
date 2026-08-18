@@ -17,9 +17,6 @@ BREAK_ALLOWANCES: dict[str, int] = {
     "Tea break 1": 5 * 60,
     "Meal break": 35 * 60,
     "Tea break 2": 5 * 60,
-    "Rest room": 10 * 60,
-    "Team meeting": 30 * 60,
-    "Technical issue": 30 * 60,
 }
 
 # Break types an employee may take more than once a day. Everything else is

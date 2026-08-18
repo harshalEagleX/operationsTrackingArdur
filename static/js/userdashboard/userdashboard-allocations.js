@@ -47,13 +47,13 @@ function renderRow(alloc) {
   const currentEmpId = document.getElementById("user-name")?.dataset?.employeeId;
   const isAssignedEmployee = alloc.employee_id === currentEmpId;
   const isAssignedQC = alloc.qc_id === currentEmpId;
-  
+
   let isQC = false;
   if (isAssignedEmployee && isAssignedQC) {
-      // If assigned both roles, they act as QC only after the initial work is completed
-      isQC = !!alloc.completed_at;
+    // If assigned both roles, they act as QC only after the initial work is completed
+    isQC = !!alloc.completed_at;
   } else {
-      isQC = isAssignedQC;
+    isQC = isAssignedQC;
   }
 
   const tr = document.createElement("tr");
@@ -121,7 +121,7 @@ function renderRow(alloc) {
 function showOrderDetailsModal(alloc) {
   const modal = document.getElementById("orderDetailsModal");
   const content = document.getElementById("orderDetailsContent");
-  
+
   let html = `
     <div class="oa-details-container">
         <div class="oa-details-header">
@@ -222,9 +222,9 @@ function showOrderDetailsModal(alloc) {
                 </div>
                 <div class="oa-documents-grid">
                     ${(() => {
-                        let docsHtml = '';
-                        if (alloc.document_name) {
-                            docsHtml += `
+      let docsHtml = '';
+      if (alloc.document_name) {
+        docsHtml += `
                                 <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; margin-bottom: 10px;">
                                     <div class="oa-document-icon" style="font-size: 24px; color: #dc3545; margin-right: 15px;">
                                         <i class="fas fa-file-pdf"></i>
@@ -237,9 +237,9 @@ function showOrderDetailsModal(alloc) {
                                     </div>
                                 </div>
                             `;
-                        }
-                        if (alloc.chain_sheet_name) {
-                            docsHtml += `
+      }
+      if (alloc.chain_sheet_name) {
+        docsHtml += `
                                 <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; margin-bottom: 10px;">
                                     <div class="oa-document-icon" style="font-size: 24px; color: #28a745; margin-right: 15px;">
                                         <i class="fas fa-file-excel"></i>
@@ -252,9 +252,9 @@ function showOrderDetailsModal(alloc) {
                                     </div>
                                 </div>
                             `;
-                        }
-                        if (alloc.search_package_name) {
-                            docsHtml += `
+      }
+      if (alloc.search_package_name) {
+        docsHtml += `
                                 <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; margin-bottom: 10px;">
                                     <div class="oa-document-icon" style="font-size: 24px; color: #dc3545; margin-right: 15px;">
                                         <i class="fas fa-file-pdf"></i>
@@ -267,9 +267,9 @@ function showOrderDetailsModal(alloc) {
                                     </div>
                                 </div>
                             `;
-                        }
-                        if (alloc.report_name) {
-                            docsHtml += `
+      }
+      if (alloc.report_name) {
+        docsHtml += `
                                 <div class="oa-document-item" style="display: flex; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; margin-bottom: 10px;">
                                     <div class="oa-document-icon" style="font-size: 24px; color: #007bff; margin-right: 15px;">
                                         <i class="fas fa-file-word"></i>
@@ -282,17 +282,17 @@ function showOrderDetailsModal(alloc) {
                                     </div>
                                 </div>
                             `;
-                        }
-                        
-                        return docsHtml ? docsHtml : '<div class="oa-no-documents">No documents attached</div>';
-                    })()}
+      }
+
+      return docsHtml ? docsHtml : '<div class="oa-no-documents">No documents attached</div>';
+    })()}
                 </div>
             </div>
             
         </div>
     </div>
   `;
-  
+
   content.innerHTML = html;
   modal.style.display = "flex";
   // Add animation class after a tiny delay
@@ -311,7 +311,7 @@ function showOrderDetailsModal(alloc) {
 // Setup modal close handlers
 document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("orderDetailsModal");
-  
+
   window.addEventListener("click", (e) => {
     if (e.target === modal) {
       modal.classList.remove("show");
@@ -344,8 +344,8 @@ async function loadAllocatedOrders() {
     const items = Array.isArray(payload)
       ? payload
       : Array.isArray(payload.data)
-      ? payload.data
-      : [];
+        ? payload.data
+        : [];
 
     tbody.innerHTML = "";
     items.forEach((alloc) => tbody.appendChild(renderRow(alloc)));
@@ -368,12 +368,12 @@ async function loadAllocatedOrders() {
 async function markInProgress(btn) {
   const startBtn = document.getElementById('start-btn');
   if (startBtn && startBtn.innerText === "End") {
-      if (typeof toast !== 'undefined') {
-          toast.show("Please end your current work session before starting a new one.", {type: "warning"});
-      } else {
-          alert("Please end your current work session before starting a new one.");
-      }
-      return;
+    if (typeof toast !== 'undefined') {
+      toast.show("Please end your current work session before starting a new one.", { type: "warning" });
+    } else {
+      alert("Please end your current work session before starting a new one.");
+    }
+    return;
   }
 
   const allocationId = btn.dataset.allocationId;
@@ -399,12 +399,16 @@ async function markInProgress(btn) {
 
     // Auto-start tracking session
     if (window.startAllocatedWorkSession) {
+      const isQC = btn.dataset.isQc === "true";
+      const hasQC = btn.dataset.hasQc === "true";
       await window.startAllocatedWorkSession({
         allocation_id: allocationId,
         project: project,
         client_code: clientCode,
         work_type: workType,
-        batch: batch
+        batch: batch,
+        is_qc: isQC,
+        has_qc: hasQC
       });
     }
 
@@ -422,8 +426,8 @@ function markCompleted(btn) {
   const allocationId = btn.dataset.allocationId;
   const isQC = btn.dataset.isQc === "true";
   const hasQC = btn.dataset.hasQc === "true";
-  
-  let targetStatus = "completed";
+
+  let targetStatus = "in_progress"; // Default: Keep in progress if no QC is assigned
   if (isQC) targetStatus = "dispatch";
   else if (hasQC) targetStatus = "send_for_qc";
 
@@ -459,7 +463,7 @@ function initPanel() {
       const startBtn = e.target.closest(".alloc-start-btn");
       const completeBtn = e.target.closest(".alloc-complete-btn");
       const reviewBtn = e.target.closest(".alloc-review-btn");
-      
+
       if (startBtn && startBtn.dataset.allocationId) {
         markInProgress(startBtn);
       } else if (completeBtn && completeBtn.dataset.allocationId) {

@@ -891,6 +891,28 @@
                         </tbody>
                     </table>
                 </section>
+
+                <!-- Monthly Attendance Section -->
+                <section class="breaks-content" style="margin-top: 20px;">
+                    <h2 class="breaks-header" style="background: linear-gradient(90deg, #1a1f36 0%, #2d3561 100%);">
+                        <span><i class="fas fa-calendar-alt"></i> Monthly Attendance</span>
+                    </h2>
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        <table class="break-table" style="margin-top: 0; border-top: none;">
+                            <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 1;">
+                                <tr>
+                                    <th style="font-size: 0.8rem; padding: 6px;">Date</th>
+                                    <th style="font-size: 0.8rem; padding: 6px;">Login</th>
+                                    <th style="font-size: 0.8rem; padding: 6px;">Logout</th>
+                                    <th style="font-size: 0.8rem; padding: 6px;">Net Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-history-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
             <!-- Break Exceeded Popup -->
@@ -911,21 +933,24 @@
             <div id="end-popup" class="popup hidden">
                 <form id="end-form">
                     <label for="chain-sheet"><i class="fas fa-file-excel"></i> Chain Sheet (Excel):</label>
-                    <input type="file" id="chain-sheet" name="chain_sheet" accept=".xlsx,.xls,.csv" required>
+                    <input type="file" id="chain-sheet" name="chain_sheet" accept=".xlsx,.xls,.csv">
 
                     <label for="search-package"><i class="fas fa-file-pdf"></i> Search Package (PDF):</label>
-                    <input type="file" id="search-package" name="search_package" accept=".pdf" required>
+                    <input type="file" id="search-package" name="search_package" accept=".pdf">
 
                     <label for="report"><i class="fas fa-file-word"></i> Report (Word):</label>
-                    <input type="file" id="report" name="report" accept=".doc,.docx" required>
+                    <input type="file" id="report" name="report" accept=".doc,.docx">
 
                     <label for="employee-comments"><i class="fas fa-comments"></i> Employee Comments:</label>
                     <textarea id="employee-comments" name="employee_comments"
                         placeholder="Enter comments for the QC"></textarea>
 
                     <div class="button-group">
-                        <button type="submit" class="start-btn">
-                            <i class="fas fa-check"></i> Submit
+                        <button type="submit" class="start-btn" id="submit-qc-btn" style="background-color: #2ecc71;">
+                            <i class="fas fa-check"></i> Submit to QC
+                        </button>
+                        <button type="submit" class="start-btn" id="submit-admin-btn" style="background-color: #e67e22;">
+                            <i class="fas fa-exclamation-circle"></i> Revert to Admin
                         </button>
                         <button type="button" class="cancel-btn" id="end-popup-cancel">
                             <i class="fas fa-times"></i> Cancel
@@ -998,6 +1023,8 @@
                 </div>
                 <!-- ── End Allocated Orders Panel ── -->
 
+                <hr style="margin: 30px 0; border: 0; border-top: 2px dashed #ddd;">
+
                 <!-- Table to display work data -->
                 <table id="work-data-table" class="table">
                     <thead>
@@ -1014,7 +1041,7 @@
                             <th>ACTIONS</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="work-data-body">
                         <!-- Data will be populated here dynamically -->
                     </tbody>
                 </table>
@@ -1028,6 +1055,9 @@
 
     <!-- Core libraries -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- DataTables -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
     <!-- Select2 library -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <!-- Custom scripts -->

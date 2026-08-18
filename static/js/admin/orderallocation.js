@@ -767,6 +767,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
+            // Check for duplicate order no
+            if (typeof allocationState !== 'undefined' && allocationState.allOrders) {
+                const existingOrder = allocationState.allOrders.find(o => 
+                    (o.batch_id || o.batchId || o.batch || '').toString().toLowerCase() === (orderData.batch_id || '').toString().toLowerCase()
+                );
+                
+                if (existingOrder && orderData.order_details !== 'Update') {
+                    const client = existingOrder.client_code || existingOrder.clientCode || 'Unknown';
+                    const addr = existingOrder.property_address || existingOrder.propertyAddress || 'Unknown';
+                    const status = existingOrder.status || 'Unknown';
+                    
+                    const msg = `Order No ${orderData.batch_id} already exists!\n\n` +
+                                `Client: ${client}\n` +
+                                `Property Address: ${addr}\n` +
+                                `Status: ${status}\n\n` +
+                                `Do you want to create this as an 'Update' order? (Click Cancel to abort)`;
+                                
+                    if (confirm(msg)) {
+                        orderData.order_details = 'Update';
+                        const orderTypeDropdown = document.getElementById('oa_orderType');
+                        if (orderTypeDropdown) orderTypeDropdown.value = 'Update';
+                    } else {
+                        submitBtn.classList.remove('loading');
+                        return;
+                    }
+                }
+            }
+
             // Map the old UI fields to the new DRF backend schema.
             // employee_id is intentionally omitted — order is created unassigned.
             const mappedData = {
@@ -908,22 +936,26 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             allocationState.filteredOrders = allocationState.allOrders.filter(order => {
                 if (!order) return false;
-                const taskId = (order.taskId || order.task_id || '').toLowerCase();
-                const clientCode = (order.client_code || order.clientCode || '').toLowerCase();
-                const workType = (order.work_type || order.workType || '').toLowerCase();
-                const batchId = (order.batch_id || order.batchId || '').toLowerCase();
-                const ownerName = (order.owner_name || order.ownerName || '').toLowerCase();
-                const propertyAddress = (order.property_address || order.propertyAddress || '').toLowerCase();
-                const state = (order.state || '').toLowerCase();
-                const county = (order.county || '').toLowerCase();
+                const taskId = (order.taskId || order.task_id || '').toString().toLowerCase();
+                const clientCode = (order.client_code || order.clientCode || '').toString().toLowerCase();
+                const workType = (order.work_type || order.workType || '').toString().toLowerCase();
+                const batchId = (order.batch_id || order.batchId || order.batch || '').toString().toLowerCase();
+                const orderNo = (order.order_no || order.orderNo || '').toString().toLowerCase();
+                const arNumber = (order.ar_number || order.arNumber || '').toString().toLowerCase();
+                const ownerName = (order.owner_name || order.ownerName || '').toString().toLowerCase();
+                const propertyAddress = (order.property_address || order.propertyAddress || '').toString().toLowerCase();
+                const state = (order.state || '').toString().toLowerCase();
+                const county = (order.county || '').toString().toLowerCase();
                 const employeeId = (order.employee_id || order.employeeId || '').toString().toLowerCase();
-                const employeeName = (order.employee_name || order.employeeName || employeeMap.get(employeeId) || '').toLowerCase();
-                const status = (order.status || '').toLowerCase();
+                const employeeName = (order.employee_name || order.employeeName || employeeMap.get(employeeId) || '').toString().toLowerCase();
+                const status = (order.status || '').toString().toLowerCase();
 
                 return taskId.includes(term) ||
                     clientCode.includes(term) ||
                     workType.includes(term) ||
                     batchId.includes(term) ||
+                    orderNo.includes(term) ||
+                    arNumber.includes(term) ||
                     ownerName.includes(term) ||
                     propertyAddress.includes(term) ||
                     state.includes(term) ||

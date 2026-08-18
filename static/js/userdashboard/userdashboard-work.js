@@ -148,13 +148,17 @@ startBtn.addEventListener('click', function () {
         // When End is clicked
         endPopup.classList.remove('hidden');
         toggleFullScreenMode(false); // This will restore the layout
-        // --- Reset the submit button to default state when end popup is shown ---
-        const submitBtn = endForm.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit';
-            // Focus the submit button so user can press Enter immediately
-            submitBtn.focus();
+        // --- Reset the submit buttons to default state when end popup is shown ---
+        const qcBtn = document.getElementById('submit-qc-btn');
+        if (qcBtn) {
+            qcBtn.disabled = false;
+            qcBtn.innerHTML = '<i class="fas fa-check"></i> Submit to QC';
+            qcBtn.focus();
+        }
+        const adminBtn = document.getElementById('submit-admin-btn');
+        if (adminBtn) {
+            adminBtn.disabled = false;
+            adminBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Revert to Admin';
         }
     }
 });
@@ -163,10 +167,17 @@ startBtn.addEventListener('click', function () {
 endForm.addEventListener('submit', function (event) {
     event.preventDefault();
 
-    const submitBtn = endForm.querySelector('button[type="submit"]');
+    const submitBtn = event.submitter || document.getElementById('submit-qc-btn');
     const originalBtnHTML = submitBtn.innerHTML;
-    submitBtn.disabled = true;
+    
+    // Disable all buttons to prevent double submission
+    endForm.querySelectorAll('button').forEach(btn => btn.disabled = true);
+    
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    
+    if (submitBtn.id === 'submit-admin-btn') {
+        window.activeAllocationTargetStatus = 'on_hold';
+    }
 
     // Default workUnits to 1 and review to empty since they are removed from the form
     const workUnits = 1;
@@ -188,7 +199,7 @@ endForm.addEventListener('submit', function (event) {
                 } else {
                     if (window.activeAllocationIdToComplete) {
                         const allocId = window.activeAllocationIdToComplete;
-                        const targetStatus = window.activeAllocationTargetStatus || "completed";
+                        const targetStatus = window.activeAllocationTargetStatus || "in_progress";
                         const isQC = targetStatus === "dispatch";
                         formData.append("status", targetStatus);
                         formData.delete("employee_comments");
@@ -281,7 +292,7 @@ function submitWorkData(review) {
     const empComments = formData.get("employee_comments") || "";
     
     if (window.activeAllocationIdToComplete) {
-        const targetStatus = window.activeAllocationTargetStatus || "completed";
+        const targetStatus = window.activeAllocationTargetStatus || "in_progress";
         if (targetStatus === "dispatch") {
             formData.delete("employee_comments");
             // Append qc_comments here so it's ready for the tracking API (though it ignores it)
@@ -307,7 +318,7 @@ function submitWorkData(review) {
             // --- Check if we need to also complete an allocated order ---
             if (window.activeAllocationIdToComplete) {
                 const allocId = window.activeAllocationIdToComplete;
-                const targetStatus = window.activeAllocationTargetStatus || "completed";
+                const targetStatus = window.activeAllocationTargetStatus || "in_progress";
                 const isQC = targetStatus === "dispatch";
                 
                 // We reuse formData which already contains the files and correct comments
@@ -475,11 +486,18 @@ function fetchWorkData(date) {
         '<i class="fas fa-calendar-day"></i> Today\'s Tasks' : 
         `<i class="fas fa-tasks"></i> OverDue Tasks <span id="pendingCount" class="badge badge-light" style="display: none;">0</span>`;
 
-        fetch(`/api/v1/tracking/sessions/?emp_id=${userId}&${isPendingView ? 'open=true' : 'today=true'}`)
+    let queryParams = `emp_id=${userId}`;
+    if (isPendingView) {
+        queryParams += '&open=true';
+    } else if (date) {
+        queryParams += `&from=${date}&to=${date}`;
+    }
+
+    fetch(`/api/v1/tracking/sessions/?${queryParams}`)
         .then(response => response.json())
         .then(res => {
             const data = res.data || res;
-            const tableBody = isPendingView ? document.getElementById('pending-work-data-body') : document.getElementById('work-data-body');
+            const tableBody = document.getElementById('work-data-body');
             
             if (tableBody) tableBody.innerHTML = ''; // Clear existing rows
             else return; // Don't proceed if table body not found
@@ -487,6 +505,11 @@ function fetchWorkData(date) {
             if (!Array.isArray(data)) {
                 console.error("Expected array from API, got:", typeof data);
                 return;
+            }
+            
+            // Destroy existing DataTable instance if it exists
+            if ($.fn.DataTable.isDataTable('#work-data-table')) {
+                $('#work-data-table').DataTable().destroy();
             }
             
             data.forEach(row => {
@@ -521,7 +544,7 @@ function fetchWorkData(date) {
 
                 tr.innerHTML = `
                     <td>${dateStr}</td>
-                    <td>${row.project || ''}</td>
+                    <td>${row.project_name || row.project || ''}</td>
                     <td>${row.client_name || row.client_code || ''}</td>
                     <td>${row.work_type || ''}</td>
                     <td>${row.batch || '-'}</td>
@@ -533,6 +556,48 @@ function fetchWorkData(date) {
                 `;
                 tableBody.appendChild(tr);
             });
+
+            // Initialize DataTable
+            const dt = $('#work-data-table').DataTable({
+                pageLength: 10,
+                lengthChange: false,
+                dom: '<"top">rt<"bottom"p><"clear">', // Custom DOM to hide default search
+                order: [[0, 'desc'], [6, 'desc']] // Sort by date and start time desc
+            });
+
+            // Connect existing global search
+            const searchInput = document.getElementById('global-search-input');
+            if (searchInput) {
+                const newSearchInput = searchInput.cloneNode(true);
+                searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+                newSearchInput.addEventListener('keyup', function() {
+                    dt.search(this.value).draw();
+                });
+            }
+
+            // Connect existing client code filter
+            const clientFilter = document.getElementById('client-code-filter');
+            if (clientFilter) {
+                // Populate options
+                const uniqueClients = new Set();
+                data.forEach(row => {
+                    const client = row.client_name || row.client_code;
+                    if (client && client !== '-') uniqueClients.add(client);
+                });
+                
+                clientFilter.innerHTML = '<option value="">All Client Codes</option>';
+                Array.from(uniqueClients).sort().forEach(client => {
+                    clientFilter.appendChild(new Option(client, client));
+                });
+
+                const newClientFilter = clientFilter.cloneNode(true);
+                clientFilter.parentNode.replaceChild(newClientFilter, clientFilter);
+                newClientFilter.addEventListener('change', function() {
+                    // Exact match search for client code to avoid partial matches
+                    const val = $.fn.dataTable.util.escapeRegex(this.value);
+                    dt.column(2).search(val ? '^' + val + '$' : '', true, false).draw();
+                });
+            }
         })
         .catch(error => console.error('Error fetching work data:', error));
 }
@@ -558,12 +623,10 @@ document.querySelectorAll('.status-badge.allocated.view-btn').forEach(viewBtn =>
     });
 });
 
-// Fetch today's work data by default on page load
+// Fetch all work data by default on page load
 document.addEventListener('DOMContentLoaded', function () {
-    const today = new Date().toISOString().split('T')[0];  // Get today's date in YYYY-MM-DD format
-    document.getElementById('date-filter').value = today;
-    fetchWorkData(today);  // Fetch today's data
-
+    document.getElementById('date-filter').value = '';
+    fetchWorkData('');  // Fetch all data
 });
 
 
@@ -900,6 +963,13 @@ window.startAllocatedWorkSession = async function(allocData) {
             activeSessionId = result.id;
             window.activeAllocationId = allocData.allocation_id;
             
+            let targetStatus = "in_progress"; // Default: Keep in progress if no QC is assigned
+            if (allocData.is_qc) targetStatus = "dispatch";
+            else if (allocData.has_qc) targetStatus = "send_for_qc";
+            
+            window.activeAllocationIdToComplete = allocData.allocation_id;
+            window.activeAllocationTargetStatus = targetStatus;
+            
             startTime = new Date();
             startBtn.innerText = "End";
             startBtn.disabled = false;
@@ -927,7 +997,7 @@ window.startAllocatedWorkSession = async function(allocData) {
     }
 };
 
-window.completeAllocatedOrder = function(allocationId, targetStatus = "completed") {
+window.completeAllocatedOrder = function(allocationId, targetStatus = "in_progress") {
     window.activeAllocationIdToComplete = allocationId;
     window.activeAllocationTargetStatus = targetStatus;
     
@@ -945,12 +1015,69 @@ window.completeAllocatedOrder = function(allocationId, targetStatus = "completed
         
         const endForm = document.getElementById('end-form');
         if (endForm) {
-            const submitBtn = endForm.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit';
-                submitBtn.focus();
+            const qcBtn = document.getElementById('submit-qc-btn');
+            if (qcBtn) {
+                qcBtn.disabled = false;
+                qcBtn.innerHTML = '<i class="fas fa-check"></i> Submit to QC';
+                qcBtn.focus();
+            }
+            const adminBtn = document.getElementById('submit-admin-btn');
+            if (adminBtn) {
+                adminBtn.disabled = false;
+                adminBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Revert to Admin';
             }
         }
     }
 };
+
+// --- Monthly Attendance Summary ---
+document.addEventListener('DOMContentLoaded', function () {
+    const tbody = document.getElementById('attendance-history-body');
+    if (!tbody) return;
+
+    fetch('/api/v1/tracking/attendance-history/')
+        .then(res => res.json())
+        .then(payload => {
+            const data = payload.data || payload;
+            if (Array.isArray(data)) {
+                tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No records for this month</td></tr>';
+                    return;
+                }
+
+                data.forEach(day => {
+                    const tr = document.createElement('tr');
+                    
+                    const dateObj = new Date(day.date);
+                    const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    
+                    let loginStr = '--:--';
+                    if (day.login_time) {
+                        loginStr = new Date(day.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                    
+                    let logoutStr = '--:--';
+                    if (day.logout_time) {
+                        logoutStr = new Date(day.logout_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                    
+                    const netStr = formatTime(day.net_seconds);
+                    const netColor = day.net_seconds > 0 ? '#2ecc71' : 'inherit';
+
+                    tr.innerHTML = `
+                        <td style="font-size: 0.85rem; padding: 6px;">${dateStr}</td>
+                        <td style="font-size: 0.85rem; padding: 6px;">${loginStr}</td>
+                        <td style="font-size: 0.85rem; padding: 6px;">${logoutStr}</td>
+                        <td style="font-size: 0.85rem; padding: 6px; font-weight: 600; color: ${netColor};">${netStr}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        })
+        .catch(err => {
+            console.error("Failed to load attendance history", err);
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #e74c3c;">Failed to load data</td></tr>';
+        });
+});
