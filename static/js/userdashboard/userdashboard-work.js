@@ -152,13 +152,29 @@ startBtn.addEventListener('click', function () {
         const qcBtn = document.getElementById('submit-qc-btn');
         if (qcBtn) {
             qcBtn.disabled = false;
-            qcBtn.innerHTML = '<i class="fas fa-check"></i> Submit to QC';
+            if (window.activeAllocationTargetStatus === 'dispatch') {
+                qcBtn.innerHTML = '<i class="fas fa-check"></i> Submit';
+            } else {
+                qcBtn.innerHTML = '<i class="fas fa-check"></i> Submit to QC';
+            }
             qcBtn.focus();
         }
         const adminBtn = document.getElementById('submit-admin-btn');
         if (adminBtn) {
             adminBtn.disabled = false;
             adminBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Revert to Admin';
+        }
+        
+        const commentsLabel = document.querySelector('label[for="employee-comments"]');
+        const commentsInput = document.getElementById('employee-comments');
+        if (commentsLabel) {
+            if (window.activeAllocationTargetStatus === 'dispatch') {
+                commentsLabel.innerHTML = '<i class="fas fa-comments"></i> QC Comments:';
+                if (commentsInput) commentsInput.placeholder = 'Enter QC comments';
+            } else {
+                commentsLabel.innerHTML = '<i class="fas fa-comments"></i> Employee Comments:';
+                if (commentsInput) commentsInput.placeholder = 'Enter comments for the QC';
+            }
         }
     }
 });
@@ -547,7 +563,6 @@ function fetchWorkData(date) {
                     <td>${row.project_name || row.project || ''}</td>
                     <td>${row.client_name || row.client_code || ''}</td>
                     <td>${row.work_type || ''}</td>
-                    <td>${row.batch || '-'}</td>
                     <td>${row.order_type || '-'}</td>
                     <td>${startTimeStr}</td>
                     <td>${endTimeStr}</td>
@@ -1004,11 +1019,14 @@ window.completeAllocatedOrder = function(allocationId, targetStatus = "in_progre
     const endPopup = document.getElementById('end-popup');
     if (endPopup) {
         const commentsLabel = document.querySelector('label[for="employee-comments"]');
+        const commentsInput = document.getElementById('employee-comments');
         if (commentsLabel) {
             if (targetStatus === "dispatch") {
                 commentsLabel.innerHTML = '<i class="fas fa-comments"></i> QC Comments:';
+                if (commentsInput) commentsInput.placeholder = 'Enter QC comments';
             } else {
                 commentsLabel.innerHTML = '<i class="fas fa-comments"></i> Employee Comments:';
+                if (commentsInput) commentsInput.placeholder = 'Enter comments for the QC';
             }
         }
         endPopup.classList.remove('hidden');
@@ -1018,7 +1036,11 @@ window.completeAllocatedOrder = function(allocationId, targetStatus = "in_progre
             const qcBtn = document.getElementById('submit-qc-btn');
             if (qcBtn) {
                 qcBtn.disabled = false;
-                qcBtn.innerHTML = '<i class="fas fa-check"></i> Submit to QC';
+                if (targetStatus === "dispatch") {
+                    qcBtn.innerHTML = '<i class="fas fa-check"></i> Submit';
+                } else {
+                    qcBtn.innerHTML = '<i class="fas fa-check"></i> Submit to QC';
+                }
                 qcBtn.focus();
             }
             const adminBtn = document.getElementById('submit-admin-btn');

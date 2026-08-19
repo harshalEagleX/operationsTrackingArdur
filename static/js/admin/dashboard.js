@@ -573,6 +573,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         } else {
                             document.getElementById("employee-id").value = data.id;
                             document.getElementById("employee-name").value = data.name;
+                            document.getElementById("employee-email").value = data.email || "";
+                            document.getElementById("employee-phone").value = data.phone || "";
+                            document.getElementById("employee-alternate_phone").value = data.alternate_phone || "";
                             document.getElementById("employee-employee_id").value = data.employee_id;
                             document.getElementById("employee-role").value = data.role.toLowerCase(); // Map nicely
                             document.getElementById("employee-joining_date").value = data.joining_date;
@@ -938,6 +941,9 @@ document.addEventListener("DOMContentLoaded", function () {
             .map(option => option.value).join('|');
         const newEmployeeData = {
             name: document.getElementById("new-employee-name").value,
+            email: document.getElementById("new-employee-email").value,
+            phone: document.getElementById("new-employee-phone").value,
+            alternate_phone: document.getElementById("new-employee-alternate_phone").value,
             employee_id: document.getElementById("new-employee-employee_id").value,
             role: document.getElementById("new-employee-role").value,
             joining_date: document.getElementById("new-employee-joining_date").value,
@@ -980,6 +986,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Get form data
         const name = document.getElementById("employee-name").value;
+        const email = document.getElementById("employee-email").value;
+        const phone = document.getElementById("employee-phone").value;
+        const alternatePhone = document.getElementById("employee-alternate_phone").value;
         const employeeId = document.getElementById("employee-employee_id").value;
         const role = document.getElementById("employee-role").value;
         const joiningDate = document.getElementById("employee-joining_date").value;
@@ -1010,6 +1019,9 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             body: JSON.stringify({
                 name: name,
+                email: email,
+                phone: phone,
+                alternate_phone: alternatePhone,
                 employee_id: employeeId,
                 role: role,
                 joining_date: joiningDate,

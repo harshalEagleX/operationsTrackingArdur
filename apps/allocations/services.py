@@ -196,8 +196,7 @@ class AllocationService(BaseService):
                 "task_id": allocation.allocation_id,
                 "project": allocation.project,
                 "quantity": allocation.quantity,
-            },
-            link=f"/userdashboard?tab=tasks&allocation={allocation.allocation_id}",
+            }
         )
         # Also push the live event so the user-dashboard panel refreshes
         # immediately without waiting for the notification to arrive.

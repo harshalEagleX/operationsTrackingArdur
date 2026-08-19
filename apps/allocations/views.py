@@ -115,31 +115,32 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         
         doc_type = request.query_params.get("doc", "document")
         if doc_type == "chain_sheet":
-            file_col, name_col = "chain_sheet", "chain_sheet_name"
+            file_field = allocation.chain_sheet
+            file_name = allocation.chain_sheet_name or f"order_{allocation.allocation_id}_chain_sheet.bin"
         elif doc_type == "search_package":
-            file_col, name_col = "search_package", "search_package_name"
+            file_field = allocation.search_package
+            file_name = allocation.search_package_name or f"order_{allocation.allocation_id}_search_package.bin"
         elif doc_type == "report":
-            file_col, name_col = "report", "report_name"
+            file_field = allocation.report
+            file_name = allocation.report_name or f"order_{allocation.allocation_id}_report.bin"
         else:
-            file_col, name_col = "document_file", "document_name"
+            file_field = allocation.document_file
+            file_name = allocation.document_name or f"order_{allocation.allocation_id}_document.bin"
             
-        from django.db import connection
-        with connection.cursor() as cursor:
-            query = f"SELECT {file_col}, {name_col} FROM ot_batch_allocations WHERE id = %s"
-            cursor.execute(query, [allocation.id])
-            row = cursor.fetchone()
+        if not file_field:
+            from core.exceptions import NotFoundError
+            raise NotFoundError("No document attached to this order.")
             
-        if not row or not row[0]:
-            from core.exceptions import APIError
-            raise APIError("No document attached to this order.", status_code=404)
-            
-        file_bytes = row[0]
-        file_name = row[1] or f"order_{allocation.allocation_id}_{doc_type}.bin"
-        
-        from django.http import HttpResponse
-        response = HttpResponse(file_bytes, content_type="application/octet-stream")
-        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
-        return response
+        try:
+            from django.http import FileResponse
+            response = FileResponse(file_field.open('rb'), as_attachment=True, filename=file_name)
+            return response
+        except Exception as e:
+            from core.exceptions import NotFoundError
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error opening file {file_field.name}: {e}")
+            raise NotFoundError("The attached document could not be found on the server.")
 
     @action(detail=True, methods=["get"])
     def history(self, request, allocation_id=None):
@@ -149,8 +150,25 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="mine")
     def mine(self, request):
-        """The caller's open allocations, plus those completed today."""
-        queryset = BatchAllocation.objects.for_employee(request.user.emp_id).open_or_completed_today()
+        """The caller's actionable allocations, based on their role."""
+        from django.db.models import Q
+        
+        emp_id = request.user.emp_id
+        base_qs = BatchAllocation.objects.open_or_completed_today()
+        
+        # User is the searcher
+        cond_searcher = Q(employee_id=emp_id)
+        
+        # User is the QC person, only show when it reaches QC or later
+        from apps.allocations.models import AllocationStatus
+        cond_qc = Q(qc_id=emp_id) & Q(status__in=[
+            AllocationStatus.SEND_FOR_QC,
+            AllocationStatus.QC_IN_PROGRESS,
+            AllocationStatus.COMPLETED,
+            AllocationStatus.DISPATCH,
+        ])
+        
+        queryset = base_qs.filter(cond_searcher | cond_qc)
         return self.ok(AllocationSerializer(queryset, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="next_ar_number")

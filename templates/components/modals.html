@@ -116,8 +116,16 @@
                         <input type="text" id="employee-name" required>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-calendar-alt"></i> Joining Date:</label>
-                        <input type="date" id="employee-joining_date" required>
+                        <label><i class="fas fa-envelope"></i> Email ID:</label>
+                        <input type="email" id="employee-email">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-phone"></i> Mobile Number:</label>
+                        <input type="text" id="employee-phone">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-phone-alt"></i> Alternate Mobile:</label>
+                        <input type="text" id="employee-alternate_phone">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-project-diagram"></i> Projects:</label>
@@ -134,15 +142,15 @@
                             <div class="emp-checkbox-list" id="edit-projects-list"></div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-calendar-check"></i> Active/Inactive Date:</label>
-                        <input type="date" id="employee-active_inactive_date" required>
-                    </div>   
                 </div>
                 <div class="form-column">
                     <div class="form-group">
                         <label><i class="fas fa-id-badge"></i> Employee ID:</label>
                         <input type="text" id="employee-employee_id" required readonly>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-alt"></i> Joining Date:</label>
+                        <input type="date" id="employee-joining_date" required>
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-map-marker-alt"></i> Work Location:</label>
@@ -166,13 +174,6 @@
                             <div class="emp-checkbox-list" id="edit-client-codes-list"></div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-check-circle"></i> Status:</label>
-                        <select id="employee-status" required>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
                 </div>
                 <div class="form-column">
                     <div class="form-group">
@@ -186,6 +187,17 @@
                     <div class="form-group">
                         <label><i class="fas fa-clock"></i> Shift Time:</label>
                         <select id="employee-shift_time" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-check-circle"></i> Status:</label>
+                        <select id="employee-status" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-check"></i> Active/Inactive Date:</label>
+                        <input type="date" id="employee-active_inactive_date" required>
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-tasks"></i> Work Type:</label>
@@ -222,8 +234,16 @@
                         <input type="text" id="new-employee-name" required>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-calendar-alt"></i> Joining Date:</label>
-                        <input type="date" id="new-employee-joining_date" required>
+                        <label><i class="fas fa-envelope"></i> Email ID:</label>
+                        <input type="email" id="new-employee-email">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-phone"></i> Mobile Number:</label>
+                        <input type="text" id="new-employee-phone">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-phone-alt"></i> Alternate Mobile:</label>
+                        <input type="text" id="new-employee-alternate_phone">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-project-diagram"></i> Projects:</label>
@@ -240,18 +260,15 @@
                             <div class="emp-checkbox-list" id="add-projects-list"></div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-check-circle"></i> Status:</label>
-                        <select id="new-employee-status" required>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
                 </div>
                 <div class="form-column">
                     <div class="form-group">
                         <label><i class="fas fa-id-badge"></i> Employee ID:</label>
                         <input type="text" id="new-employee-employee_id" placeholder="Auto-generated" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-alt"></i> Joining Date:</label>
+                        <input type="date" id="new-employee-joining_date" required>
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-map-marker-alt"></i> Work Location:</label>
@@ -275,10 +292,6 @@
                             <div class="emp-checkbox-list" id="add-client-codes-list"></div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-calendar-check"></i> Active/Inactive Date:</label>
-                        <input type="date" id="new-employee-active_inactive_date" required>
-                    </div>
                 </div>
                 <div class="form-column">
                     <div class="form-group">
@@ -292,6 +305,17 @@
                     <div class="form-group">
                         <label><i class="fas fa-clock"></i> Shift Time:</label>
                         <select id="new-employee-shift_time" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-check-circle"></i> Status:</label>
+                        <select id="new-employee-status" required>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-check"></i> Active/Inactive Date:</label>
+                        <input type="date" id="new-employee-active_inactive_date" required>
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-tasks"></i> Work Type:</label>

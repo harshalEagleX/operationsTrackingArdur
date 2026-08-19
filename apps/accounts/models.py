@@ -130,6 +130,7 @@ class Employee(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=150, blank=True, default="")
     phone = models.CharField(max_length=20, blank=True, default="")
+    alternate_phone = models.CharField(max_length=20, blank=True, default="")
     role = models.CharField(
         max_length=20, choices=Role.choices, default=Role.EMPLOYEE, db_index=True
     )

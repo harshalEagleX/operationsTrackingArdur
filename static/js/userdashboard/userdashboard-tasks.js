@@ -463,7 +463,7 @@ function displayOrderDetails(order) {
                         <div class="oa-document-info">
                             <span class="oa-document-name" title="${doc.name}">${doc.name}</span>
                             <div class="oa-document-actions">
-                                <a href="/api/download-document/${order.task_id}/${encodeURIComponent(doc.name)}" 
+                                <a href="/api/v1/allocations/${order.allocation_id || order.id}/download/?doc=${doc.type}" 
                                    class="oa-document-download" 
                                    target="_blank">
                                     <i class="fas fa-download"></i> Download

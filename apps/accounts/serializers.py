@@ -63,7 +63,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = [
-            "id", "employee_id", "name", "email", "phone", "role", "designation",
+            "id", "employee_id", "name", "email", "phone", "alternate_phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
             "status", "has_login", "created_at", "updated_at",
             "client_code", "work_type", "active_inactive_date",
@@ -122,7 +122,7 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = [
-            "employee_id", "name", "email", "phone", "role", "designation",
+            "employee_id", "name", "email", "phone", "alternate_phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
             "status", "password", "client_code", "work_type", "active_inactive_date",
             "joining_date", "work_location", "projects", "shift_time"
