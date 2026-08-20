@@ -36,9 +36,10 @@ def check_sla_breaches():
                 notif_type="allocation.sla_breach",
                 context={
                     "task_id": allocation.allocation_id,
+                    "ar_number": allocation.ar_number,
                     "project": allocation.project,
                     "due_at": allocation.due_at.isoformat() if allocation.due_at else "",
-                    "body": f"{allocation.allocation_id} is due at "
+                    "body": f"{allocation.ar_number} is due at "
                             f"{allocation.due_at:%d %b %H:%M} and is "
                             f"{allocation.progress_percent}% complete.",
                 },

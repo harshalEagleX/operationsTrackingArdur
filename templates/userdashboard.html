@@ -933,13 +933,13 @@
             <div id="end-popup" class="popup hidden">
                 <form id="end-form">
                     <label for="chain-sheet"><i class="fas fa-file-excel"></i> Chain Sheet (Excel):</label>
-                    <input type="file" id="chain-sheet" name="chain_sheet" accept=".xlsx,.xls,.csv">
+                    <input type="file" id="chain-sheet" name="chain_sheet" accept=".xlsx,.xls,.csv" disabled>
 
                     <label for="search-package"><i class="fas fa-file-pdf"></i> Search Package (PDF):</label>
-                    <input type="file" id="search-package" name="search_package" accept=".pdf">
+                    <input type="file" id="search-package" name="search_package" accept=".pdf" disabled>
 
                     <label for="report"><i class="fas fa-file-word"></i> Report (Word):</label>
-                    <input type="file" id="report" name="report" accept=".doc,.docx">
+                    <input type="file" id="report" name="report" accept=".doc,.docx" disabled>
 
                     <label for="employee-comments"><i class="fas fa-comments"></i> Employee Comments:</label>
                     <textarea id="employee-comments" name="employee_comments"
@@ -949,7 +949,8 @@
                         <button type="submit" class="start-btn" id="submit-qc-btn" style="background-color: #2ecc71;">
                             <i class="fas fa-check"></i> Submit to QC
                         </button>
-                        <button type="submit" class="start-btn" id="submit-admin-btn" style="background-color: #e67e22;">
+                        <button type="submit" class="start-btn" id="submit-admin-btn"
+                            style="background-color: #e67e22;">
                             <i class="fas fa-exclamation-circle"></i> Revert to Admin
                         </button>
                         <button type="button" class="cancel-btn" id="end-popup-cancel">
@@ -1047,7 +1048,7 @@
             </section>
         </div>
         <div id="orderDetailsModal" class="oa-details-popup" style="display: none;">
-            <div id="orderDetailsContent"></div>
+            <div id="orderDetailsContent" style="width: 100%; display: flex; justify-content: center;"></div>
         </div>
 
     </main>
@@ -1056,7 +1057,8 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- DataTables -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
-    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+    <script type="text/javascript" charset="utf8"
+        src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
     <!-- Select2 library -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <!-- Custom scripts -->

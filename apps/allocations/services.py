@@ -124,26 +124,26 @@ class AllocationService(BaseService):
         if qc_comments:
             allocation.qc_comments = qc_comments
 
-        if chain_sheet:
-            allocation.chain_sheet = chain_sheet
-            allocation.chain_sheet_name = chain_sheet.name
-        if search_package:
-            allocation.search_package = search_package
-            allocation.search_package_name = search_package.name
-        if report:
-            allocation.report = report
-            allocation.report_name = report.name
+        # if chain_sheet:
+        #     allocation.chain_sheet = chain_sheet
+        #     allocation.chain_sheet_name = chain_sheet.name
+        # if search_package:
+        #     allocation.search_package = search_package
+        #     allocation.search_package_name = search_package.name
+        # if report:
+        #     allocation.report = report
+        #     allocation.report_name = report.name
 
         update_fields = [
             "status", "completed_quantity", "started_at", "completed_at", 
             "remarks", "employee_comments", "qc_comments", "time_taken"
         ]
-        if chain_sheet:
-            update_fields.extend(['chain_sheet', 'chain_sheet_name'])
-        if search_package:
-            update_fields.extend(['search_package', 'search_package_name'])
-        if report:
-            update_fields.extend(['report', 'report_name'])
+        # if chain_sheet:
+        #     update_fields.extend(['chain_sheet', 'chain_sheet_name'])
+        # if search_package:
+        #     update_fields.extend(['search_package', 'search_package_name'])
+        # if report:
+        #     update_fields.extend(['report', 'report_name'])
 
         allocation.save(update_fields=update_fields)
 
@@ -194,6 +194,7 @@ class AllocationService(BaseService):
             notif_type="allocation.assigned",
             context={
                 "task_id": allocation.allocation_id,
+                "ar_number": allocation.ar_number,
                 "project": allocation.project,
                 "quantity": allocation.quantity,
             }
@@ -213,6 +214,7 @@ class AllocationService(BaseService):
             data={
                 "id": allocation.id,
                 "allocation_id": allocation.allocation_id,
+                "ar_number": allocation.ar_number,
                 "status": allocation.status,
                 "project": allocation.project,
                 "client_code": allocation.client_code,

@@ -32,7 +32,7 @@ class AllocationSerializer(serializers.ModelSerializer):
         if obj.report_name:
             docs.append({"name": obj.report_name, "type": "report"})
         return docs
-    document_file = serializers.FileField(write_only=True, required=False, allow_null=True)
+    # document_file = serializers.FileField(write_only=True, required=False, allow_null=True)
 
     def get_client_name(self, obj):
         from apps.masters.models import ClientCode
@@ -48,11 +48,11 @@ class AllocationSerializer(serializers.ModelSerializer):
             "status", "priority", "allocated_at", "due_at", "started_at",
             "completed_at", "allocated_by", "remarks", "is_overdue", "is_open",
             "owner_name", "property_address", "state", "county", "search_type",
-            "fees", "margin", "vendor_rate", "document_file",
+            "fees", "margin", "vendor_rate", # "document_file",
             "document_name", "received_date", "eta",
             "employee_comments", "qc_id", "qc_name", "qc_comments", "time_taken", "ar_number",
             "batch_documents",
-            "chain_sheet_name", "search_package_name", "report_name"
+            "chain_sheet_name", "search_package_name", "report_name", "general_instructions"
         ]
         read_only_fields = [
             "id", "progress_percent", "is_overdue", "is_open",
@@ -70,7 +70,7 @@ class AllocationWriteSerializer(serializers.ModelSerializer):
     )
     quantity = serializers.IntegerField(min_value=1, max_value=1_000_000)
     priority = serializers.ChoiceField(choices=Priority.choices, default=Priority.NORMAL)
-    document_file = serializers.FileField(write_only=True, required=False, allow_null=True)
+    # document_file = serializers.FileField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = BatchAllocation
@@ -79,9 +79,9 @@ class AllocationWriteSerializer(serializers.ModelSerializer):
             "client_code", "work_type", "batch", "order_id", "quantity",
             "priority", "due_at", "remarks",
             "owner_name", "property_address", "state", "county", "search_type",
-            "fees", "margin", "vendor_rate", "document_file",
+            "fees", "margin", "vendor_rate", # "document_file",
             "document_name", "received_date", "eta", "employee_comments",
-            "qc_id", "qc_name", "qc_comments", "ar_number"
+            "qc_id", "qc_name", "qc_comments", "ar_number", "general_instructions"
         ]
 
     def update(self, instance, validated_data):
@@ -123,9 +123,9 @@ class AllocationStatusSerializer(serializers.Serializer):
     remarks = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
     employee_comments = serializers.CharField(required=False, allow_blank=True, default="")
     qc_comments = serializers.CharField(required=False, allow_blank=True, default="")
-    chain_sheet = serializers.FileField(required=False, allow_null=True)
-    search_package = serializers.FileField(required=False, allow_null=True)
-    report = serializers.FileField(required=False, allow_null=True)
+    # chain_sheet = serializers.FileField(required=False, allow_null=True)
+    # search_package = serializers.FileField(required=False, allow_null=True)
+    # report = serializers.FileField(required=False, allow_null=True)
 
 
 class ReassignSerializer(serializers.Serializer):

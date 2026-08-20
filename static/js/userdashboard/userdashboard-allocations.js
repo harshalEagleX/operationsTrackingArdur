@@ -146,14 +146,12 @@ function showOrderDetailsModal(alloc) {
             <div style="margin-bottom: 15px;">
               <strong>General Instructions:</strong>
               <p style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 4px solid #007bff; margin-top: 5px;">
-                Please ensure all mandatory fields are filled out accurately. 
-                Verify property details against the provided documentation and report any discrepancies immediately.
-                Chain sheets must include full historical data back to the requested date.
+                ${alloc.general_instructions ? alloc.general_instructions.replace(/\n/g, '<br>') : "<i>No general instructions provided.</i>"}
               </p>
             </div>
             
             <div style="margin-bottom: 20px;">
-              <strong>Order Specific Remarks:</strong>
+              <strong>Special Instructions:</strong>
               <p style="background: #e9ecef; padding: 10px; border-radius: 4px; margin-top: 5px;">
                 ${alloc.remarks ? alloc.remarks.replace(/\n/g, '<br>') : "<i>No specific remarks provided.</i>"}
               </p>
@@ -238,9 +236,11 @@ function showOrderDetailsModal(alloc) {
                                     </div>
                                     <div class="oa-document-info">
                                         <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.document_name}</span>
+                                        <!-- Downloads Disabled
                                         <a href="/api/v1/allocations/${alloc.allocation_id}/download/" download class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
                                             <i class="fas fa-download"></i> Download Original
                                         </a>
+                                        -->
                                     </div>
                                 </div>
                             `;
@@ -253,9 +253,11 @@ function showOrderDetailsModal(alloc) {
                                     </div>
                                     <div class="oa-document-info">
                                         <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.chain_sheet_name}</span>
+                                        <!-- Downloads Disabled
                                         <a href="/api/v1/allocations/${alloc.allocation_id}/download/?doc=chain_sheet" download class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
                                             <i class="fas fa-download"></i> Download Chain Sheet
                                         </a>
+                                        -->
                                     </div>
                                 </div>
                             `;
@@ -268,9 +270,11 @@ function showOrderDetailsModal(alloc) {
                                     </div>
                                     <div class="oa-document-info">
                                         <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.search_package_name}</span>
+                                        <!-- Downloads Disabled
                                         <a href="/api/v1/allocations/${alloc.allocation_id}/download/?doc=search_package" download class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
                                             <i class="fas fa-download"></i> Download Search Package
                                         </a>
+                                        -->
                                     </div>
                                 </div>
                             `;
@@ -283,9 +287,11 @@ function showOrderDetailsModal(alloc) {
                                     </div>
                                     <div class="oa-document-info">
                                         <span class="oa-document-name" style="display: block; font-weight: 500; margin-bottom: 5px;">${alloc.report_name}</span>
+                                        <!-- Downloads Disabled
                                         <a href="/api/v1/allocations/${alloc.allocation_id}/download/?doc=report" download class="oa-document-download" style="color: #007bff; text-decoration: none; font-size: 14px;">
                                             <i class="fas fa-download"></i> Download Report
                                         </a>
+                                        -->
                                     </div>
                                 </div>
                             `;

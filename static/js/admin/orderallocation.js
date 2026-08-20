@@ -752,7 +752,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 eta: document.getElementById('oa_eta').value,
                 sla: document.getElementById('oa_sla').value,
                 remarks: document.getElementById('oa_remarks').value,
-                county: document.getElementById('oa_county').value
+                county: document.getElementById('oa_county').value,
+                general_instructions: document.getElementById('oa_generalInstructions').value
             };
 
             // Add margin value if search type is Ground
@@ -815,6 +816,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 remarks: orderData.remarks,
                 received_date: orderData.received_date,
                 eta: orderData.eta,
+                general_instructions: orderData.general_instructions,
             };
             if (orderData.margin) {
                 mappedData.margin = orderData.margin;
@@ -833,8 +835,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Add all document files
             const documentFiles = document.getElementById('oa_document').files;
-            for (let i = 0; i < documentFiles.length; i++) {
-                formData.append('documents[]', documentFiles[i]);
+            if (documentFiles.length > 0) {
+                for (let i = 0; i < documentFiles.length; i++) {
+                    // Uploads disabled for now
+                    // formData.append('documents[]', documentFiles[i]);
+                }
             }
 
             // Function to show message
@@ -1546,13 +1551,34 @@ document.addEventListener('DOMContentLoaded', function() {
         popup.innerHTML = `
             <div class="oa-details-container">
                 <div class="oa-details-header">
-                    <h3><i class="fas fa-file-alt"></i> Order Details</h3>
+                    <h3><i class="fas fa-file-alt"></i> Order Details: ${order.batch_id || order.batchId || order.batch || '-'} (${order.ar_number || '-'})</h3>
                     <div class="oa-details-actions">
                         <button class="oa-save-btn" style="display: none;"><i class="fas fa-save"></i> Save</button>
                         <button class="oa-details-close">&times;</button>
                     </div>
                 </div>
                 <div class="oa-details-body">
+                    
+                    <div class="oa-detail-item editable" style="margin-bottom: 15px; display: block; border: none; padding: 0;">
+                      <strong>General Instructions:</strong>
+                      <div class="oa-detail-value" style="margin-top: 5px;">
+                          <textarea class="oa-edit-general-instructions" style="display: none; width: 100%; min-height: 80px; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">${order.general_instructions || ''}</textarea>
+                          <p class="oa-display-value" style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 4px solid #007bff; margin: 0;">
+                            ${order.general_instructions ? order.general_instructions.replace(/\n/g, '<br>') : "<i>No general instructions provided.</i>"}
+                          </p>
+                      </div>
+                    </div>
+                    
+                    <div class="oa-detail-item editable" style="margin-bottom: 20px; display: block; border: none; padding: 0;">
+                      <strong>Special Instructions:</strong>
+                      <div class="oa-detail-value" style="margin-top: 5px;">
+                          <textarea class="oa-edit-remarks" style="display: none; width: 100%; min-height: 80px; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">${order.remarks || ''}</textarea>
+                          <p class="oa-display-value" style="background: #e9ecef; padding: 10px; border-radius: 4px; margin: 0;">
+                            ${order.remarks ? order.remarks.replace(/\n/g, '<br>') : "<i>No specific remarks provided.</i>"}
+                          </p>
+                      </div>
+                    </div>
+
                     <div class="oa-details-grid">
                         <div class="oa-detail-item">
                             <div class="oa-detail-label">Task ID</div>  
@@ -1576,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                         <div class="oa-detail-item">
-                            <div class="oa-detail-label">Batch ID</div>
+                            <div class="oa-detail-label">Order No</div>
                             <div class="oa-detail-value">${order.batch_id || order.batchId || order.batch || '-'}</div>
                         </div>
                         <div class="oa-detail-item">
@@ -1664,13 +1690,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="oa-display-value">$${order.fees || '0'}</span>
                             </div>
                         </div>
-                        <div class="oa-detail-item editable">
-                            <div class="oa-detail-label">Remarks</div>
-                            <div class="oa-detail-value">
-                                <textarea class="oa-edit-remarks" style="display: none;">${order.remarks || ''}</textarea>
-                                <span class="oa-display-value">${order.remarks || '-'}</span>
-                            </div>
-                        </div>
+                        <!-- Remarks moved to the top of the modal -->
                         <div class="oa-detail-item">
                             <div class="oa-detail-label">Employee Comments</div>
                             <div class="oa-detail-value">
@@ -1905,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Handle edit button click
         editBtn.addEventListener('click', function() {
-            popup.querySelectorAll('.oa-edit-employee, .oa-edit-qc, .oa-edit-worktype, .oa-edit-ordertype, .oa-edit-searchtype, .oa-edit-remarks, .oa-edit-qccomments, .oa-edit-eta').forEach(el => {
+            popup.querySelectorAll('.oa-edit-employee, .oa-edit-qc, .oa-edit-worktype, .oa-edit-ordertype, .oa-edit-searchtype, .oa-edit-remarks, .oa-edit-qccomments, .oa-edit-eta, .oa-edit-general-instructions').forEach(el => {
                 el.style.display = 'block';
             });
             // Show the fees edit controls container
@@ -1933,13 +1953,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Handle save button click
         saveBtn.addEventListener('click', function() {
+            const targetId = order.allocation_id || order.task_id || order.taskId;
             const updatedData = {
-                task_id: order.task_id,
+                task_id: targetId,
                 work_type: popup.querySelector('.oa-edit-worktype').value,
                 order_details: popup.querySelector('.oa-edit-ordertype').value,
                 employee_id: popup.querySelector('.oa-edit-employee').value,
                 search_type: popup.querySelector('.oa-edit-searchtype').value,
                 remarks: popup.querySelector('.oa-edit-remarks').value || '',
+                general_instructions: popup.querySelector('.oa-edit-general-instructions').value || '',
                 qc_comments: popup.querySelector('.oa-edit-qccomments') ? popup.querySelector('.oa-edit-qccomments').value || '' : '',
                 qc_id: popup.querySelector('.oa-edit-qc') ? popup.querySelector('.oa-edit-qc').value || '' : '',
                 qc_name: popup.querySelector('.oa-edit-qc') ? (popup.querySelector('.oa-edit-qc').options[popup.querySelector('.oa-edit-qc').selectedIndex]?.text || '').replace('Select QC', '') : '',
@@ -1974,7 +1996,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Send update to server via the DRF PATCH endpoint.
             // The popup collects changed fields as a JSON object (updatedData).
             // File operations are handled separately if needed in future.
-            fetch(`/api/v1/allocations/${encodeURIComponent(order.task_id)}/`, {
+            fetch(`/api/v1/allocations/${encodeURIComponent(targetId)}/`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

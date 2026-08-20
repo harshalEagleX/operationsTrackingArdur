@@ -31,7 +31,7 @@ class PrivateStorage(FileSystemStorage):
             location=location,
             base_url=None,
             file_permissions_mode=getattr(settings, "FILE_UPLOAD_PERMISSIONS", 0o640),
-            directory_permissions_mode=0o750,
+            directory_permissions_mode=getattr(settings, "FILE_UPLOAD_DIRECTORY_PERMISSIONS", 0o750),
             **kwargs,
         )
 
@@ -53,6 +53,7 @@ def ensure_directories() -> None:
     fresh clone can accept an upload immediately.
     """
     root = storage_root()
+    dir_perms = getattr(settings, "FILE_UPLOAD_DIRECTORY_PERMISSIONS", 0o750)
     for sub in (
         "uploads/feedback",
         "uploads/allocations",
@@ -63,7 +64,11 @@ def ensure_directories() -> None:
     ):
         path = root / sub
         path.mkdir(parents=True, exist_ok=True)
-        path.chmod(0o750)
+        if dir_perms is not None:
+            try:
+                path.chmod(dir_perms)
+            except (OSError, NotImplementedError):
+                pass  # Ignore chmod errors on restrictive network shares
 
 
 def safe_join(relative_path: str) -> Path:

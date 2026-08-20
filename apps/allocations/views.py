@@ -65,11 +65,11 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         data = dict(serializer.validated_data)
         
         # Handle uploaded document(s) sent from the frontend
-        documents = self.request.FILES.getlist('documents[]')
-        if documents:
-            # We currently only support saving one document in the BatchAllocation model.
-            data['document_file'] = documents[0]
-            data['document_name'] = documents[0].name
+        # documents = self.request.FILES.getlist('documents[]')
+        # if documents:
+        #     # We currently only support saving one document in the BatchAllocation model.
+        #     data['document_file'] = documents[0]
+        #     data['document_name'] = documents[0].name
             
         serializer.instance = self.service.create(data)
 
@@ -109,38 +109,38 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         )
         return self.ok(AllocationSerializer(allocation).data)
 
-    @action(detail=True, methods=["get"])
-    def download(self, request, allocation_id=None):
-        allocation = self.get_object()
-        
-        doc_type = request.query_params.get("doc", "document")
-        if doc_type == "chain_sheet":
-            file_field = allocation.chain_sheet
-            file_name = allocation.chain_sheet_name or f"order_{allocation.allocation_id}_chain_sheet.bin"
-        elif doc_type == "search_package":
-            file_field = allocation.search_package
-            file_name = allocation.search_package_name or f"order_{allocation.allocation_id}_search_package.bin"
-        elif doc_type == "report":
-            file_field = allocation.report
-            file_name = allocation.report_name or f"order_{allocation.allocation_id}_report.bin"
-        else:
-            file_field = allocation.document_file
-            file_name = allocation.document_name or f"order_{allocation.allocation_id}_document.bin"
-            
-        if not file_field:
-            from core.exceptions import NotFoundError
-            raise NotFoundError("No document attached to this order.")
-            
-        try:
-            from django.http import FileResponse
-            response = FileResponse(file_field.open('rb'), as_attachment=True, filename=file_name)
-            return response
-        except Exception as e:
-            from core.exceptions import NotFoundError
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error opening file {file_field.name}: {e}")
-            raise NotFoundError("The attached document could not be found on the server.")
+    # @action(detail=True, methods=["get"])
+    # def download(self, request, allocation_id=None):
+    #     allocation = self.get_object()
+    #     
+    #     doc_type = request.query_params.get("doc", "document")
+    #     if doc_type == "chain_sheet":
+    #         file_field = allocation.chain_sheet
+    #         file_name = allocation.chain_sheet_name or f"order_{allocation.allocation_id}_chain_sheet.bin"
+    #     elif doc_type == "search_package":
+    #         file_field = allocation.search_package
+    #         file_name = allocation.search_package_name or f"order_{allocation.allocation_id}_search_package.bin"
+    #     elif doc_type == "report":
+    #         file_field = allocation.report
+    #         file_name = allocation.report_name or f"order_{allocation.allocation_id}_report.bin"
+    #     else:
+    #         file_field = allocation.document_file
+    #         file_name = allocation.document_name or f"order_{allocation.allocation_id}_document.bin"
+    #         
+    #     if not file_field:
+    #         from core.exceptions import NotFoundError
+    #         raise NotFoundError("No document attached to this order.")
+    #         
+    #     try:
+    #         from django.http import FileResponse
+    #         response = FileResponse(file_field.open('rb'), as_attachment=True, filename=file_name)
+    #         return response
+    #     except Exception as e:
+    #         from core.exceptions import NotFoundError
+    #         import logging
+    #         logger = logging.getLogger(__name__)
+    #         logger.error(f"Error opening file {getattr(file_field, 'name', 'unknown')}: {e}")
+    #         raise NotFoundError("The attached document could not be found on the server.")
 
     @action(detail=True, methods=["get"])
     def history(self, request, allocation_id=None):

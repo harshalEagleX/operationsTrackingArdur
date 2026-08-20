@@ -83,9 +83,9 @@ class EndSessionSerializer(serializers.Serializer):
     review = serializers.CharField(
         max_length=500, required=False, allow_blank=True, default=""
     )
-    chain_sheet = serializers.FileField(required=False, allow_null=True)
-    search_package = serializers.FileField(required=False, allow_null=True)
-    report = serializers.FileField(required=False, allow_null=True)
+    # chain_sheet = serializers.FileField(required=False, allow_null=True)
+    # search_package = serializers.FileField(required=False, allow_null=True)
+    # report = serializers.FileField(required=False, allow_null=True)
     employee_comments = serializers.CharField(max_length=2000, required=False, allow_blank=True, default="")
 
 

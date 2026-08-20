@@ -63,7 +63,7 @@ startBtn.addEventListener('click', function () {
     if (startBtn.innerText === "Start") {
         // Disable the button immediately to prevent multiple clicks
         startBtn.disabled = true;
-        
+
         startTime = new Date();
 
         // Hide Breaks Content Section
@@ -87,63 +87,63 @@ startBtn.addEventListener('click', function () {
         };
 
         // Send initial data to server
-                fetch('/api/v1/tracking/sessions/', {
+        fetch('/api/v1/tracking/sessions/', {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
             },
             body: JSON.stringify(data)
         })
-        .then(response => response.json())
-        .then(res => {
-            const result = res.data || res;
-            if (res.ok || result.id) {
-                activeSessionId = result.id;
-                startBtn.innerText = "End";
-                startBtn.disabled = false; // Re-enable the button after successful start
+            .then(response => response.json())
+            .then(res => {
+                const result = res.data || res;
+                if (res.ok || result.id) {
+                    activeSessionId = result.id;
+                    startBtn.innerText = "End";
+                    startBtn.disabled = false; // Re-enable the button after successful start
 
-                // Start the timer
-                timerInterval = setInterval(function () {
-                    elapsedTime = Math.floor((new Date() - startTime) / 1000);
-                    timerDisplay.querySelector('.time-value').textContent = formatTime(elapsedTime);
-                }, 1000);
+                    // Start the timer
+                    timerInterval = setInterval(function () {
+                        elapsedTime = Math.floor((new Date() - startTime) / 1000);
+                        timerDisplay.querySelector('.time-value').textContent = formatTime(elapsedTime);
+                    }, 1000);
 
-                // Enable full screen mode
-                toggleFullScreenMode(true);
+                    // Enable full screen mode
+                    toggleFullScreenMode(true);
 
-                // Keep ProvenAir view active if the project is ProvenAir-AAR
-                try {
-                    const selectedOption = projectSelect.options[projectSelect.selectedIndex];
-                    const selectedProjectName = selectedOption ? selectedOption.textContent : '';
-                    if (selectedProjectName === 'ProvenAir-AAR') {
-                        // Mark PA view active BEFORE any table refreshes
-                        window.isPATodayView = true;
-                        forceProvenAirViewActive();
-                    } else {
-                        // Immediately fetch and update the work data table for non-PA tasks
-                        const today = new Date().toISOString().split('T')[0];
-                        fetchWorkData(today);
+                    // Keep ProvenAir view active if the project is ProvenAir-AAR
+                    try {
+                        const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+                        const selectedProjectName = selectedOption ? selectedOption.textContent : '';
+                        if (selectedProjectName === 'ProvenAir-AAR') {
+                            // Mark PA view active BEFORE any table refreshes
+                            window.isPATodayView = true;
+                            forceProvenAirViewActive();
+                        } else {
+                            // Immediately fetch and update the work data table for non-PA tasks
+                            const today = new Date().toISOString().split('T')[0];
+                            fetchWorkData(today);
+                        }
+                    } catch (e) { }
+
+                    // Make sure the reports content is visible
+                    const reportsContent = document.querySelector('.reports-content');
+                    if (reportsContent) {
+                        reportsContent.style.display = 'block';
                     }
-                } catch (e) {}
-
-                // Make sure the reports content is visible
-                const reportsContent = document.querySelector('.reports-content');
-                if (reportsContent) {
-                    reportsContent.style.display = 'block';
+                } else {
+                    // If start failed, re-enable the button and show error
+                    startBtn.disabled = false;
+                    alert("Error: " + (res.error || "Unknown error"));
                 }
-            } else {
-                // If start failed, re-enable the button and show error
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                // Re-enable the button on error
                 startBtn.disabled = false;
-                alert("Error: " + (res.error || "Unknown error"));
-            }
-        })
-        .catch(error => {
-            console.error("Error:", error);
-            // Re-enable the button on error
-            startBtn.disabled = false;
-            alert("An error occurred while starting the work session. Please try again.");
-        });
+                alert("An error occurred while starting the work session. Please try again.");
+            });
     } else {
         // When End is clicked
         endPopup.classList.remove('hidden');
@@ -164,7 +164,7 @@ startBtn.addEventListener('click', function () {
             adminBtn.disabled = false;
             adminBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Revert to Admin';
         }
-        
+
         const commentsLabel = document.querySelector('label[for="employee-comments"]');
         const commentsInput = document.getElementById('employee-comments');
         if (commentsLabel) {
@@ -185,12 +185,12 @@ endForm.addEventListener('submit', function (event) {
 
     const submitBtn = event.submitter || document.getElementById('submit-qc-btn');
     const originalBtnHTML = submitBtn.innerHTML;
-    
+
     // Disable all buttons to prevent double submission
     endForm.querySelectorAll('button').forEach(btn => btn.disabled = true);
-    
+
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-    
+
     if (submitBtn.id === 'submit-admin-btn') {
         window.activeAllocationTargetStatus = 'on_hold';
     }
@@ -203,7 +203,7 @@ endForm.addEventListener('submit', function (event) {
     if (!startTime) {
         const formData = new FormData(endForm);
         const empComments = formData.get("employee_comments") || "";
-        
+
         fetch('/api/v1/tracking/sessions/current/')
             .then(response => response.json())
             .then(res => {
@@ -224,29 +224,29 @@ endForm.addEventListener('submit', function (event) {
                         } else {
                             formData.append("employee_comments", empComments);
                         }
-                        
+
                         window.activeAllocationIdToComplete = null;
                         fetch(`/api/v1/allocations/${allocId}/status/`, {
                             method: 'POST',
                             headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' },
                             body: formData
                         })
-                        .then(res => res.json())
-                        .then(payload => {
-                            if (!payload.ok && payload.error) {
-                                alert("Error completing order: " + payload.error.message);
+                            .then(res => res.json())
+                            .then(payload => {
+                                if (!payload.ok && payload.error) {
+                                    alert("Error completing order: " + payload.error.message);
+                                    submitBtn.disabled = false;
+                                    submitBtn.innerHTML = originalBtnHTML;
+                                    return;
+                                }
+                                alert("Order completed successfully.");
+                                endPopup.classList.add('hidden');
+                                location.reload();
+                            }).catch(e => {
+                                alert("Network error: " + e);
                                 submitBtn.disabled = false;
                                 submitBtn.innerHTML = originalBtnHTML;
-                                return;
-                            }
-                            alert("Order completed successfully.");
-                            endPopup.classList.add('hidden');
-                            location.reload();
-                        }).catch(e => {
-                            alert("Network error: " + e);
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = originalBtnHTML;
-                        });
+                            });
                     } else {
                         alert("Error: Start time is not available. Please refresh the page and try again.");
                         submitBtn.disabled = false;
@@ -268,7 +268,7 @@ endForm.addEventListener('submit', function (event) {
 // Helper function to submit work data
 function submitWorkData(review) {
     endTime = new Date();
-    
+
     // Calculate total time considering pauses
     let totalTime;
     if (typeof sessionData !== 'undefined' && sessionData && sessionData.paused_elapsed) {
@@ -280,7 +280,7 @@ function submitWorkData(review) {
         // If not paused, use regular calculation
         totalTime = (endTime - startTime) / 1000;
     }
-    
+
     const pagesEl = document.getElementById('pages');
     const pages = pagesEl ? pagesEl.value : "";
 
@@ -306,7 +306,7 @@ function submitWorkData(review) {
     if (pages) formData.append('pages', pages);
 
     const empComments = formData.get("employee_comments") || "";
-    
+
     if (window.activeAllocationIdToComplete) {
         const targetStatus = window.activeAllocationTargetStatus || "in_progress";
         if (targetStatus === "dispatch") {
@@ -320,105 +320,105 @@ function submitWorkData(review) {
 
     fetch(`/api/v1/tracking/sessions/${activeSessionId}/end/`, {
         method: 'POST',
-        headers: { 
+        headers: {
             'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
         },
         body: formData
     })
-    .then(response => response.json())
-    .then(res => {
-        const result = res.data || res;
-        if (res.ok || result.id) {
-            activeSessionId = null;
+        .then(response => response.json())
+        .then(res => {
+            const result = res.data || res;
+            if (res.ok || result.id) {
+                activeSessionId = null;
 
-            // --- Check if we need to also complete an allocated order ---
-            if (window.activeAllocationIdToComplete) {
-                const allocId = window.activeAllocationIdToComplete;
-                const targetStatus = window.activeAllocationTargetStatus || "in_progress";
-                const isQC = targetStatus === "dispatch";
-                
-                // We reuse formData which already contains the files and correct comments
-                formData.append("status", targetStatus);
-                
-                window.activeAllocationIdToComplete = null;
-                fetch(`/api/v1/allocations/${allocId}/status/`, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' },
-                    body: formData
-                })
-                .then(res => res.json())
-                .then(payload => {
-                    if (!payload.ok && payload.error) {
-                        alert("Warning: Tracking session saved, but failed to complete order: " + payload.error.message);
-                    }
-                    if (window.loadAllocatedOrders) window.loadAllocatedOrders();
-                }).catch(e => console.error("Failed to complete allocation:", e));
-            }
+                // --- Check if we need to also complete an allocated order ---
+                if (window.activeAllocationIdToComplete) {
+                    const allocId = window.activeAllocationIdToComplete;
+                    const targetStatus = window.activeAllocationTargetStatus || "in_progress";
+                    const isQC = targetStatus === "dispatch";
 
-            alert("Work data submitted successfully.");
-            
-            // Reset form fields and enable them
-            batchInput.value = '';
-            // Fields removed: review, pages
-            
-            // Also reset file inputs and comments
-            document.getElementById('chain-sheet').value = '';
-            document.getElementById('search-package').value = '';
-            document.getElementById('report').value = '';
-            document.getElementById('employee-comments').value = '';
-            // Enable all form fields
-            projectSelect.disabled = false;
-            clientCodeSelect.disabled = false;
-            workTypeSelect.disabled = false;
-            batchInput.disabled = false;
-            
-            // Reset timer and button states
-            startTime = null;
-            elapsedTime = 0;
-            startBtn.innerText = "Start";
-            startBtn.disabled = false;
-            endPopup.classList.add('hidden');
-            clearInterval(timerInterval);
-            timerDisplay.style.display = 'none';
+                    // We reuse formData which already contains the files and correct comments
+                    formData.append("status", targetStatus);
 
-            // Show Breaks Content Section Again
-            breaksContent.style.display = 'block';
+                    window.activeAllocationIdToComplete = null;
+                    fetch(`/api/v1/allocations/${allocId}/status/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' },
+                        body: formData
+                    })
+                        .then(res => res.json())
+                        .then(payload => {
+                            if (!payload.ok && payload.error) {
+                                alert("Warning: Tracking session saved, but failed to complete order: " + payload.error.message);
+                            }
+                            if (window.loadAllocatedOrders) window.loadAllocatedOrders();
+                        }).catch(e => console.error("Failed to complete allocation:", e));
+                }
 
-            // Disable full screen mode
-            toggleFullScreenMode(false);
+                alert("Work data submitted successfully.");
 
-            // Keep ProvenAir view active by default after submission and refresh PA list immediately
-            try {
-                // Determine selected project name at time of submission
-                const selectedProjectOption = Array.from(projectSelect.options).find(opt => opt.value === data.project);
-                const selectedProjectName = selectedProjectOption ? selectedProjectOption.textContent : '';
-                if (selectedProjectName === 'ProvenAir-AAR' || window.isPATodayView) {
-                    window.isPATodayView = true;
-                    if (typeof window.refreshProvenAirTasksView === 'function') {
-                        window.refreshProvenAirTasksView();
+                // Reset form fields and enable them
+                batchInput.value = '';
+                // Fields removed: review, pages
+
+                // Uploads are disabled, so we don't need to reset them
+                // document.getElementById('chain-sheet').value = '';
+                // document.getElementById('search-package').value = '';
+                // document.getElementById('report').value = '';
+                document.getElementById('employee-comments').value = '';
+                // Enable all form fields
+                projectSelect.disabled = false;
+                clientCodeSelect.disabled = false;
+                workTypeSelect.disabled = false;
+                batchInput.disabled = false;
+
+                // Reset timer and button states
+                startTime = null;
+                elapsedTime = 0;
+                startBtn.innerText = "Start";
+                startBtn.disabled = false;
+                endPopup.classList.add('hidden');
+                clearInterval(timerInterval);
+                timerDisplay.style.display = 'none';
+
+                // Show Breaks Content Section Again
+                breaksContent.style.display = 'block';
+
+                // Disable full screen mode
+                toggleFullScreenMode(false);
+
+                // Keep ProvenAir view active by default after submission and refresh PA list immediately
+                try {
+                    // Determine selected project name at time of submission
+                    const selectedProjectOption = Array.from(projectSelect.options).find(opt => opt.value === data.project);
+                    const selectedProjectName = selectedProjectOption ? selectedProjectOption.textContent : '';
+                    if (selectedProjectName === 'ProvenAir-AAR' || window.isPATodayView) {
+                        window.isPATodayView = true;
+                        if (typeof window.refreshProvenAirTasksView === 'function') {
+                            window.refreshProvenAirTasksView();
+                        } else {
+                            forceProvenAirViewActive();
+                        }
                     } else {
-                        forceProvenAirViewActive();
+                        const today = new Date().toISOString().split('T')[0];
+                        fetchWorkData(today);
                     }
-                } else {
+                } catch (e) {
                     const today = new Date().toISOString().split('T')[0];
                     fetchWorkData(today);
                 }
-            } catch (e) {
-                const today = new Date().toISOString().split('T')[0];
-                fetchWorkData(today);
+            } else {
+                alert("Error: " + (res.error || "Unknown error"));
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHTML;
             }
-        } else {
-            alert("Error: " + (res.error || "Unknown error"));
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("An error occurred while submitting the work data. Please try again.");
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnHTML;
-        }
-    })
-    .catch(error => {
-        console.error("Error:", error);
-        alert("An error occurred while submitting the work data. Please try again.");
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalBtnHTML;
-    });
+        });
 }
 
 // Disable Start button on load
@@ -429,11 +429,12 @@ function toggleFullScreenMode(isFullScreen) {
     const leftSection = document.querySelector('.left-section');
     const reportsContent = document.querySelector('.reports-content');
     const sideNav = document.querySelector('.side-nav ul');
-    
+
     if (isFullScreen) {
-        leftSection.style.display = 'none';
-        reportsContent.style.width = '100%';
-        
+        // Disabled full screen stretching so left sidebar remains visible
+        // leftSection.style.display = 'none';
+        // reportsContent.style.width = '100%';
+
         // Add end button to side nav
         const endButton = document.createElement('li');
         endButton.innerHTML = `
@@ -443,7 +444,7 @@ function toggleFullScreenMode(isFullScreen) {
             </a>
         `;
         sideNav.appendChild(endButton);
-        
+
         // Add click handler for the side nav end button
         document.getElementById('side-nav-end-btn').addEventListener('click', (e) => {
             e.preventDefault();
@@ -456,11 +457,12 @@ function toggleFullScreenMode(isFullScreen) {
         const feedbackSection = document.getElementById('feedback-section');
         const isFeedbackActive = feedbackSection && feedbackSection.style.display === 'block';
         if (!isFeedbackActive) {
-            leftSection.style.display = 'flex';
-            reportsContent.style.width = '78%';
-            reportsContent.style.display = 'block';
+            // Disabled full screen stretching so left sidebar remains visible
+            // leftSection.style.display = 'flex';
+            // reportsContent.style.width = '78%';
+            // reportsContent.style.display = 'block';
         }
-        
+
         // Remove end button from side nav
         const endButton = document.getElementById('side-nav-end-btn');
         if (endButton) {
@@ -498,8 +500,8 @@ function fetchWorkData(date) {
 
     // Update button text based on current view
     const pendingTasksBtn = document.getElementById('pendingTasksBtn');
-    pendingTasksBtn.innerHTML = isPendingView ? 
-        '<i class="fas fa-calendar-day"></i> Today\'s Tasks' : 
+    pendingTasksBtn.innerHTML = isPendingView ?
+        '<i class="fas fa-calendar-day"></i> Today\'s Tasks' :
         `<i class="fas fa-tasks"></i> OverDue Tasks <span id="pendingCount" class="badge badge-light" style="display: none;">0</span>`;
 
     let queryParams = `emp_id=${userId}`;
@@ -514,23 +516,23 @@ function fetchWorkData(date) {
         .then(res => {
             const data = res.data || res;
             const tableBody = document.getElementById('work-data-body');
-            
+
             if (tableBody) tableBody.innerHTML = ''; // Clear existing rows
             else return; // Don't proceed if table body not found
-            
+
             if (!Array.isArray(data)) {
                 console.error("Expected array from API, got:", typeof data);
                 return;
             }
-            
+
             // Destroy existing DataTable instance if it exists
             if ($.fn.DataTable.isDataTable('#work-data-table')) {
                 $('#work-data-table').DataTable().destroy();
             }
-            
+
             data.forEach(row => {
                 const tr = document.createElement('tr');
-                
+
                 // Format times
                 const startTimeStr = row.start_time ? new Date(row.start_time).toLocaleTimeString('en-IN', { hour12: true }) : '';
                 const endTimeStr = row.end_time ? new Date(row.end_time).toLocaleTimeString('en-IN', { hour12: true }) : (row.is_open ? (row.is_paused ? 'Paused' : 'In Progress') : 'Completed');
@@ -585,7 +587,7 @@ function fetchWorkData(date) {
             if (searchInput) {
                 const newSearchInput = searchInput.cloneNode(true);
                 searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-                newSearchInput.addEventListener('keyup', function() {
+                newSearchInput.addEventListener('keyup', function () {
                     dt.search(this.value).draw();
                 });
             }
@@ -599,7 +601,7 @@ function fetchWorkData(date) {
                     const client = row.client_name || row.client_code;
                     if (client && client !== '-') uniqueClients.add(client);
                 });
-                
+
                 clientFilter.innerHTML = '<option value="">All Client Codes</option>';
                 Array.from(uniqueClients).sort().forEach(client => {
                     clientFilter.appendChild(new Option(client, client));
@@ -607,7 +609,7 @@ function fetchWorkData(date) {
 
                 const newClientFilter = clientFilter.cloneNode(true);
                 clientFilter.parentNode.replaceChild(newClientFilter, clientFilter);
-                newClientFilter.addEventListener('change', function() {
+                newClientFilter.addEventListener('change', function () {
                     // Exact match search for client code to avoid partial matches
                     const val = $.fn.dataTable.util.escapeRegex(this.value);
                     dt.column(2).search(val ? '^' + val + '$' : '', true, false).draw();
@@ -646,7 +648,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 // Add event listener for cancel button in end popup
-document.getElementById('end-popup-cancel').addEventListener('click', function() {
+document.getElementById('end-popup-cancel').addEventListener('click', function () {
     const endPopup = document.getElementById('end-popup');
     endPopup.classList.add('hidden');
     const pagesInput = document.getElementById('pages');
@@ -686,7 +688,7 @@ function showPauseNotification(pauserName) {
 
     // Add fade out effect before removing
     const okButton = modal.querySelector('button');
-    okButton.addEventListener('click', function() {
+    okButton.addEventListener('click', function () {
         modal.style.opacity = '0';
         modal.style.transition = 'opacity 0.3s ease-out';
         setTimeout(() => {
@@ -695,7 +697,7 @@ function showPauseNotification(pauserName) {
     });
 
     // Add click outside to close
-    modal.addEventListener('click', function(e) {
+    modal.addEventListener('click', function (e) {
         if (e.target === modal) {
             modal.style.opacity = '0';
             modal.style.transition = 'opacity 0.3s ease-out';
@@ -706,7 +708,7 @@ function showPauseNotification(pauserName) {
     });
 
     // Add escape key to close
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && document.querySelector('.pause-notification-modal')) {
             modal.style.opacity = '0';
             modal.style.transition = 'opacity 0.3s ease-out';
@@ -723,125 +725,125 @@ function resumeWorkSession(startTime) {
     const [hours, minutes, seconds] = startTime.split(':');
     const today = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
     const formattedStartTime = `${today} ${hours}:${minutes}:${seconds}`;
-    
+
     fetch(`/resume_work_entry/${sessionStorage.getItem('emp_id')}/${encodeURIComponent(formattedStartTime)}`, {
         method: 'POST'
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            sessionData = data.data; // Store session data globally
-            
-            // Set project and form fields
-            projectSelect.value = sessionData.project;
-            
-            // First fetch and set client codes
-            fetch(`/get_client_codes_for_project?project=${sessionData.project}`)
-                .then(response => response.json())
-                .then(clientData => {
-                    // Clear existing options
-                    clientCodeSelect.innerHTML = '<option value="">Select Client Code</option>';
-                    
-                    // Add new options
-                    clientData.client_codes.forEach(code => {
-                        const option = document.createElement('option');
-                        option.value = code;
-                        option.textContent = code;
-                        clientCodeSelect.appendChild(option);
-                    });
-                    
-                    // Set the client code
-                    clientCodeSelect.value = sessionData.client_code;
-                    
-                    // Now fetch and set work types
-                    return fetch(`/get_work_types_for_client_code?client_code=${sessionData.client_code}`);
-                })
-                .then(response => response.json())
-                .then(workTypeData => {
-                    // Clear existing options
-                    workTypeSelect.innerHTML = '<option value="">Select Work Type</option>';
-                    
-                    // Add new options
-                    workTypeData.work_types.forEach(type => {
-                        const option = document.createElement('option');
-                        option.value = type;
-                        option.textContent = type;
-                        workTypeSelect.appendChild(option);
-                    });
-                    
-                    // Set the work type
-                    workTypeSelect.value = sessionData.work_type;
-                    
-                    // Set batch value
-                    batchInput.value = sessionData.batch || '';
-                    
-                    // Disable form fields
-                    projectSelect.disabled = true;
-                    clientCodeSelect.disabled = true;
-                    workTypeSelect.disabled = true;
-                    batchInput.disabled = true;
-                    
-                    // Update button state
-                    startBtn.innerText = "End";
-                    startBtn.disabled = false;
-                    
-                    // Show timer
-                    timerDisplay.style.display = 'inline-flex';
-                    timerDisplay.innerHTML = `
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                sessionData = data.data; // Store session data globally
+
+                // Set project and form fields
+                projectSelect.value = sessionData.project;
+
+                // First fetch and set client codes
+                fetch(`/get_client_codes_for_project?project=${sessionData.project}`)
+                    .then(response => response.json())
+                    .then(clientData => {
+                        // Clear existing options
+                        clientCodeSelect.innerHTML = '<option value="">Select Client Code</option>';
+
+                        // Add new options
+                        clientData.client_codes.forEach(code => {
+                            const option = document.createElement('option');
+                            option.value = code;
+                            option.textContent = code;
+                            clientCodeSelect.appendChild(option);
+                        });
+
+                        // Set the client code
+                        clientCodeSelect.value = sessionData.client_code;
+
+                        // Now fetch and set work types
+                        return fetch(`/get_work_types_for_client_code?client_code=${sessionData.client_code}`);
+                    })
+                    .then(response => response.json())
+                    .then(workTypeData => {
+                        // Clear existing options
+                        workTypeSelect.innerHTML = '<option value="">Select Work Type</option>';
+
+                        // Add new options
+                        workTypeData.work_types.forEach(type => {
+                            const option = document.createElement('option');
+                            option.value = type;
+                            option.textContent = type;
+                            workTypeSelect.appendChild(option);
+                        });
+
+                        // Set the work type
+                        workTypeSelect.value = sessionData.work_type;
+
+                        // Set batch value
+                        batchInput.value = sessionData.batch || '';
+
+                        // Disable form fields
+                        projectSelect.disabled = true;
+                        clientCodeSelect.disabled = true;
+                        workTypeSelect.disabled = true;
+                        batchInput.disabled = true;
+
+                        // Update button state
+                        startBtn.innerText = "End";
+                        startBtn.disabled = false;
+
+                        // Show timer
+                        timerDisplay.style.display = 'inline-flex';
+                        timerDisplay.innerHTML = `
                         <span class="work-status">Work In Progress</span>
                         <i class="fas fa-clock" style="color: #e74c3c;"></i>
                         <span class="time-value">${formatTime(sessionData.paused_elapsed)}</span>
                     `;
 
-                    // Start timer considering the elapsed time before pause
-                    activeSessionId = sessionData.id;
-                    startTime = new Date(sessionData.start_time);
-                    const pausedElapsed = sessionData.paused_elapsed || 0;
-                    
-                    // Clear any existing interval
-                    if (timerInterval) {
-                        clearInterval(timerInterval);
-                    }
+                        // Start timer considering the elapsed time before pause
+                        activeSessionId = sessionData.id;
+                        startTime = new Date(sessionData.start_time);
+                        const pausedElapsed = sessionData.paused_elapsed || 0;
 
-                    // Start new timer
-                    timerInterval = setInterval(function () {
-                        const currentTime = new Date();
-                        const resumedAt = new Date(sessionData.resumed_at);
-                        const timeSinceResume = Math.floor((currentTime - resumedAt) / 1000);
-                        const totalElapsed = pausedElapsed + timeSinceResume;
-                        timerDisplay.querySelector('.time-value').textContent = formatTime(totalElapsed);
-                    }, 1000);
+                        // Clear any existing interval
+                        if (timerInterval) {
+                            clearInterval(timerInterval);
+                        }
 
-                    // Hide breaks content
-                    breaksContent.style.display = 'none';
+                        // Start new timer
+                        timerInterval = setInterval(function () {
+                            const currentTime = new Date();
+                            const resumedAt = new Date(sessionData.resumed_at);
+                            const timeSinceResume = Math.floor((currentTime - resumedAt) / 1000);
+                            const totalElapsed = pausedElapsed + timeSinceResume;
+                            timerDisplay.querySelector('.time-value').textContent = formatTime(totalElapsed);
+                        }, 1000);
 
-                    // Enable full screen mode
-                    toggleFullScreenMode(true);
+                        // Hide breaks content
+                        breaksContent.style.display = 'none';
 
-                    // Keep ProvenAir view active for ProvenAir-AAR, otherwise refresh My Tasks
-                    try {
-                        const selectedOption = projectSelect.options[projectSelect.selectedIndex];
-                        const selectedProjectName = selectedOption ? selectedOption.textContent : '';
-                        if (selectedProjectName === 'ProvenAir-AAR') {
-                            window.isPATodayView = true;
-                            forceProvenAirViewActive();
-                        } else {
+                        // Enable full screen mode
+                        toggleFullScreenMode(true);
+
+                        // Keep ProvenAir view active for ProvenAir-AAR, otherwise refresh My Tasks
+                        try {
+                            const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+                            const selectedProjectName = selectedOption ? selectedOption.textContent : '';
+                            if (selectedProjectName === 'ProvenAir-AAR') {
+                                window.isPATodayView = true;
+                                forceProvenAirViewActive();
+                            } else {
+                                const today = new Date().toISOString().split('T')[0];
+                                fetchWorkData(today);
+                            }
+                        } catch (e) {
                             const today = new Date().toISOString().split('T')[0];
                             fetchWorkData(today);
                         }
-                    } catch (e) {
-                        const today = new Date().toISOString().split('T')[0];
-                        fetchWorkData(today);
-                    }
-                });
-        } else {
-            alert('Failed to resume work session: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while resuming the work session');
-    });
+                    });
+            } else {
+                alert('Failed to resume work session: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while resuming the work session');
+        });
 }
 
 // Add this function near the top of userdashboard.js
@@ -852,12 +854,12 @@ function resetDashboard() {
     workTypeSelect.disabled = false;
     batchInput.disabled = false;
     batchInput.value = '';
-    
+
     // Reset selections
     projectSelect.value = '';
     clientCodeSelect.innerHTML = '<option value="">Select Client Code</option>';
     workTypeSelect.innerHTML = '<option value="">Select Work Type</option>';
-    
+
     // Reset timer and button states
     startTime = null;
     elapsedTime = 0;
@@ -876,7 +878,7 @@ function resetDashboard() {
         document.querySelector('.reports-content').style.width = '78%';
         document.querySelector('.reports-content').style.display = 'block';
     }
-    
+
     // Remove end button if it exists
     const endButton = document.getElementById('side-nav-end-btn');
     if (endButton && endButton.parentElement) {
@@ -892,14 +894,14 @@ function resetDashboard() {
 }
 
 // Add this at the beginning of the file, after DOMContentLoaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Seed emp_id from the page's bootstrap blob immediately (replaces /get_current_user)
     if (!sessionStorage.getItem('emp_id')) {
         try {
             const bootstrap = JSON.parse(document.getElementById('bootstrap-data')?.textContent || '{}');
             const empId = bootstrap?.user?.emp_id;
             if (empId) sessionStorage.setItem('emp_id', empId);
-        } catch (e) {}
+        } catch (e) { }
     }
 
     // Check for active work session on page load using the correct API endpoint.
@@ -912,14 +914,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 startTime = new Date(data.start_time);
                 startBtn.innerText = "End";
                 startBtn.disabled = false;
-                
+
                 timerDisplay.style.display = 'inline-flex';
                 timerDisplay.innerHTML = `
                     <span class="work-status">Work In Progress</span>
                     <i class="fas fa-clock" style="color: #e74c3c;"></i>
                     <span class="time-value">00:00:00</span>
                 `;
-                
+
                 timerInterval = setInterval(function () {
                     elapsedTime = Math.floor((new Date() - startTime) / 1000);
                     timerDisplay.querySelector('.time-value').textContent = formatTime(elapsedTime);
@@ -930,7 +932,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Add cleanup when page unloads
-window.addEventListener('beforeunload', function() {
+window.addEventListener('beforeunload', function () {
     // any previous cleanup
 });
 
@@ -946,10 +948,10 @@ function isWorkSessionActive() {
 }
 
 // --- Auto-start Work Sessions for Allocated Orders ---
-window.startAllocatedWorkSession = async function(allocData) {
+window.startAllocatedWorkSession = async function (allocData) {
     // End any existing session first
     if (startBtn.innerText === "End") {
-        toast.show("Please end your current work session first.", {type: "warning"});
+        toast.show("Please end your current work session first.", { type: "warning" });
         return false;
     }
 
@@ -965,7 +967,7 @@ window.startAllocatedWorkSession = async function(allocData) {
     try {
         const res = await fetch('/api/v1/tracking/sessions/', {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
             },
@@ -973,29 +975,29 @@ window.startAllocatedWorkSession = async function(allocData) {
         });
         const payload = await res.json();
         const result = payload.data || payload;
-        
+
         if (payload.ok || result.id) {
             activeSessionId = result.id;
             window.activeAllocationId = allocData.allocation_id;
-            
+
             let targetStatus = "in_progress"; // Default: Keep in progress if no QC is assigned
             if (allocData.is_qc) targetStatus = "dispatch";
             else if (allocData.has_qc) targetStatus = "send_for_qc";
-            
+
             window.activeAllocationIdToComplete = allocData.allocation_id;
             window.activeAllocationTargetStatus = targetStatus;
-            
+
             startTime = new Date();
             startBtn.innerText = "End";
             startBtn.disabled = false;
-            
+
             timerDisplay.style.display = 'inline-flex';
             timerDisplay.innerHTML = `
                 <span class="work-status">Work In Progress</span>
                 <i class="fas fa-clock" style="color: #e74c3c;"></i>
                 <span class="time-value">00:00:00</span>
             `;
-            
+
             timerInterval = setInterval(function () {
                 elapsedTime = Math.floor((new Date() - startTime) / 1000);
                 timerDisplay.querySelector('.time-value').textContent = formatTime(elapsedTime);
@@ -1012,10 +1014,10 @@ window.startAllocatedWorkSession = async function(allocData) {
     }
 };
 
-window.completeAllocatedOrder = function(allocationId, targetStatus = "in_progress") {
+window.completeAllocatedOrder = function (allocationId, targetStatus = "in_progress") {
     window.activeAllocationIdToComplete = allocationId;
     window.activeAllocationTargetStatus = targetStatus;
-    
+
     const endPopup = document.getElementById('end-popup');
     if (endPopup) {
         const commentsLabel = document.querySelector('label[for="employee-comments"]');
@@ -1030,7 +1032,7 @@ window.completeAllocatedOrder = function(allocationId, targetStatus = "in_progre
             }
         }
         endPopup.classList.remove('hidden');
-        
+
         const endForm = document.getElementById('end-form');
         if (endForm) {
             const qcBtn = document.getElementById('submit-qc-btn');
@@ -1063,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = payload.data || payload;
             if (Array.isArray(data)) {
                 tbody.innerHTML = '';
-                
+
                 if (data.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No records for this month</td></tr>';
                     return;
@@ -1071,20 +1073,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 data.forEach(day => {
                     const tr = document.createElement('tr');
-                    
+
                     const dateObj = new Date(day.date);
                     const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                    
+
                     let loginStr = '--:--';
                     if (day.login_time) {
                         loginStr = new Date(day.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     }
-                    
+
                     let logoutStr = '--:--';
                     if (day.logout_time) {
                         logoutStr = new Date(day.logout_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     }
-                    
+
                     const netStr = formatTime(day.net_seconds);
                     const netColor = day.net_seconds > 0 ? '#2ecc71' : 'inherit';
 

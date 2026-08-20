@@ -150,15 +150,15 @@ class WorkSessionService(BaseService):
             from apps.tracking.models import EmployeeSubmission
             
             # Save files to EmployeeSubmission
-            if chain_sheet or search_package or report:
-                submission = EmployeeSubmission(allocation_id=session.allocation_id)
-                if chain_sheet:
-                    submission.chain_sheet = chain_sheet
-                if search_package:
-                    submission.search_package = search_package
-                if report:
-                    submission.report = report
-                submission.save()
+            # if chain_sheet or search_package or report:
+            #     submission = EmployeeSubmission(allocation_id=session.allocation_id)
+            #     if chain_sheet:
+            #         submission.chain_sheet = chain_sheet
+            #     if search_package:
+            #         submission.search_package = search_package
+            #     if report:
+            #         submission.report = report
+            #     submission.save()
 
             # Save employee_comments back to BatchAllocation if provided
             if employee_comments:

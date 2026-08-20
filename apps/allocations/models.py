@@ -90,10 +90,11 @@ class BatchAllocation(models.Model):
     fees = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     margin = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     vendor_rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    document_file = models.FileField(upload_to="order_docs/", blank=True, null=True)
+    document_file = models.FileField(upload_to="order_docs/", max_length=255, blank=True, null=True)
     document_name = models.CharField(max_length=255, blank=True, null=True)
     received_date = models.DateTimeField(blank=True, null=True)
     eta = models.DateTimeField(blank=True, null=True)
+    general_instructions = models.TextField(blank=True, null=True)
 
     quantity = models.IntegerField(default=0)
     completed_quantity = models.IntegerField(default=0)

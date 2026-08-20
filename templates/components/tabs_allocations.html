@@ -40,7 +40,8 @@
 
                         <div class="form-group">
                             <label for="oa_arNumber">AR Number:</label>
-                            <input type="text" id="oa_arNumber" name="arNumber" placeholder="Auto-generated" readonly style="background-color: #f1f5f9; cursor: not-allowed;">
+                            <input type="text" id="oa_arNumber" name="arNumber" placeholder="Auto-generated" readonly
+                                style="background-color: #f1f5f9; cursor: not-allowed;">
                         </div>
 
                         <div class="form-group">
@@ -120,16 +121,23 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="oa_remarks">Instructions:</label>
-                            <input id="oa_remarks" name="remarks" rows="3">
-                        </div>
-
-
-
-                        <div class="form-group">
                             <label for="oa_document">Upload Order Form:</label>
-                            <input type="file" id="oa_document" name="documents[]" accept=".doc,.docx,.pdf" multiple>
+                            <input type="file" id="oa_document" name="documents[]" accept=".doc,.docx,.pdf" multiple disabled>
                         </div>
+
+                        <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="oa_generalInstructions">General Instructions:</label>
+                                <textarea id="oa_generalInstructions" name="generalInstructions" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;">Please ensure all mandatory fields are filled out accurately.&#10;Verify property details against the provided documentation and report any discrepancies immediately.&#10;Chain sheets must include full historical data back to the requested date.</textarea>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="oa_remarks">Special Instructions:</label>
+                                <textarea id="oa_remarks" name="remarks" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                            </div>
+                        </div>
+
+
 
                         <div class="form-group submit-group">
                             <button type="submit" class="submit-btn">
