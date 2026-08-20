@@ -578,6 +578,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             document.getElementById("employee-alternate_phone").value = data.alternate_phone || "";
                             document.getElementById("employee-employee_id").value = data.employee_id;
                             document.getElementById("employee-role").value = data.role.toLowerCase(); // Map nicely
+                            document.getElementById("employee-employee_type").value = data.employee_type ? data.employee_type.toLowerCase() : "employee";
                             document.getElementById("employee-joining_date").value = data.joining_date;
                             document.getElementById("employee-work_location").value = data.work_location;
                             document.getElementById("employee-active_inactive_date").value = data.active_inactive_date;
@@ -946,6 +947,7 @@ document.addEventListener("DOMContentLoaded", function () {
             alternate_phone: document.getElementById("new-employee-alternate_phone").value,
             employee_id: document.getElementById("new-employee-employee_id").value,
             role: document.getElementById("new-employee-role").value,
+            employee_type: document.getElementById("new-employee-employee_type").value,
             joining_date: document.getElementById("new-employee-joining_date").value,
             work_location: document.getElementById("new-employee-work_location").value,
             shift_time: document.getElementById("new-employee-shift_time").value,
@@ -991,6 +993,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const alternatePhone = document.getElementById("employee-alternate_phone").value;
         const employeeId = document.getElementById("employee-employee_id").value;
         const role = document.getElementById("employee-role").value;
+        const employeeType = document.getElementById("employee-employee_type").value;
         const joiningDate = document.getElementById("employee-joining_date").value;
         const workLocation = document.getElementById("employee-work_location").value;
         const shiftTime = document.getElementById("employee-shift_time").value;
@@ -1024,6 +1027,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 alternate_phone: alternatePhone,
                 employee_id: employeeId,
                 role: role,
+                employee_type: employeeType,
                 joining_date: joiningDate,
                 work_location: workLocation,
                 shift_time: shiftTime,

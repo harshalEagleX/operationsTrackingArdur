@@ -9,7 +9,7 @@ from __future__ import annotations
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from apps.accounts.models import Employee, LoginHistory, Role, Status, User
+from apps.accounts.models import Employee, EmployeeType, LoginHistory, Role, Status, User
 from core.validators import validate_emp_id, validate_non_blank
 
 
@@ -65,7 +65,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         fields = [
             "id", "employee_id", "name", "email", "phone", "alternate_phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
-            "status", "has_login", "created_at", "updated_at",
+            "status", "employee_type", "has_login", "created_at", "updated_at",
             "client_code", "work_type", "active_inactive_date",
             "joining_date", "work_location", "projects", "shift_time",
             "project_names", "client_code_names", "work_type_names"
@@ -102,6 +102,7 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
     employee_id = serializers.CharField(max_length=20, required=False, allow_blank=True)
     name = serializers.CharField(max_length=100, validators=[validate_non_blank])
     role = serializers.CharField(max_length=20, default=Role.EMPLOYEE)
+    employee_type = serializers.CharField(max_length=50, default=EmployeeType.EMPLOYEE)
     status = serializers.CharField(max_length=10, default=Status.ACTIVE)
     # Optional: set a login password at creation time.
     password = serializers.CharField(
@@ -124,7 +125,7 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
         fields = [
             "employee_id", "name", "email", "phone", "alternate_phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
-            "status", "password", "client_code", "work_type", "active_inactive_date",
+            "status", "employee_type", "password", "client_code", "work_type", "active_inactive_date",
             "joining_date", "work_location", "projects", "shift_time"
         ]
 

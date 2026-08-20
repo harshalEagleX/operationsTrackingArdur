@@ -29,6 +29,13 @@ class Status(models.TextChoices):
     INACTIVE = "inactive", "Inactive"
 
 
+class EmployeeType(models.TextChoices):
+    EMPLOYEE = "employee", "Employee"
+    CONSULTANT = "consultant", "Consultant"
+    FREELANCER = "freelancer", "Freelancer"
+
+
+
 class User(AbstractBaseUser):
     """Authentication identity, on the existing ot_users table.
 
@@ -140,6 +147,9 @@ class Employee(models.Model):
     shift = models.CharField(max_length=50, blank=True, default="", db_column="shift_time")
     reporting_to = models.CharField(max_length=20, blank=True, default="")
     date_of_joining = models.DateField(null=True, blank=True, db_column="joining_date")
+    employee_type = models.CharField(
+        max_length=50, choices=EmployeeType.choices, default=EmployeeType.EMPLOYEE, db_index=True
+    )
     
     # Legacy fields heavily used by the app but missing from OOP rewrite
     client_code = models.CharField(max_length=150, blank=True, default="")
