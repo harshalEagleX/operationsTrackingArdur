@@ -62,16 +62,49 @@
                                 <th>Project</th>
                                 <th>Client Code</th>
                                 <th>WorkType</th>
-                                <th>Batch</th>
-                                <th>Work Units</th>
+                                <th>Order No.</th>
                                 <th>Total Time</th>
-                                <th>Average Time</th>
                                 <th>Location</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+        <div id="graphsSection" class="graphs-section" style="display:none;">
+            <div class="reports-page-title" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
+                <div class="date-range-filter">
+                    <label for="summaryStartDate">From:</label>
+                    <input type="date" id="summaryStartDate">
+                    <label for="summaryEndDate">To:</label>
+                    <input type="date" id="summaryEndDate">
+                    <label for="projectSelect">Project:</label>
+                    <select id="projectSelect"></select>
+                </div>
+            </div>
+            <div class="summary-filter-card">
+                <div class="chart-section">
+                    <div class="top-charts-row">
+                        <div class="chart-container half-width">
+                            <div class="chart-wrapper">
+                                <canvas id="projectChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container half-width" style="display:none;">
+                            <div class="chart-wrapper">
+                                <canvas id="locationChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bottom-chart-row">
+                        <div class="chart-container full-width">
+                            <div class="chart-wrapper">
+                                <canvas id="productivityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -124,45 +157,7 @@
     </div>
 </div>
 
-<!-- Summary Report Tab -->
-<div id="summarycontent" class="summarycontent">
-    <div id="summaryreports" class="summaryreportscontainer tab-content" style="display:none;">
-        <div class="reports-page-title">
-            <h2><i class="fas fa-chart-pie"></i> Summary Report</h2>
-            <div class="date-range-filter">
-                <label for="summaryStartDate">From:</label>
-                <input type="date" id="summaryStartDate">
-                <label for="summaryEndDate">To:</label>
-                <input type="date" id="summaryEndDate">
-                <label for="projectSelect">Project:</label>
-                <select id="projectSelect"></select>
-            </div>
-        </div>
-        <div class="summary-filter-card">
-            <div class="chart-section">
-                <div class="top-charts-row">
-                    <div class="chart-container half-width">
-                        <div class="chart-wrapper">
-                            <canvas id="projectChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-container half-width" style="display:none;">
-                        <div class="chart-wrapper">
-                            <canvas id="locationChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="bottom-chart-row">
-                    <div class="chart-container full-width">
-                        <div class="chart-wrapper">
-                            <canvas id="productivityChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <!-- Audit / Quality Feedback Submission Tab -->
 <div id="feedbackcontent" class="feedbackcontent">
@@ -315,9 +310,8 @@
                     <option value="50">Show 50 entries</option>
                     <option value="100">Show 100 entries</option>
                 </select>
-                <input type="date" id="auditDate">
-                <input type="date" id="auditStartDate">
-                <input type="date" id="auditEndDate">
+                <input type="date" id="auditStartDate" title="From Date">
+                <input type="date" id="auditEndDate" title="To Date">
                 <input type="text" class="audit-search-field" placeholder="Search...">
                 <span class="audit-clear-search" style="cursor:pointer;">&times;</span>
                 <div style="display:flex;align-items:center;gap:6px;">

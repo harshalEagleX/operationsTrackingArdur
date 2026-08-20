@@ -64,7 +64,7 @@ class EnvelopeMixin:
         # 204 (bare destroy) has no body — nothing to wrap.
         if (
             response.status_code < 400
-            and response.data is not None
+            and getattr(response, "data", None) is not None
             and not (isinstance(response.data, dict) and "ok" in response.data)
         ):
             response.data = {"ok": True, "data": response.data}

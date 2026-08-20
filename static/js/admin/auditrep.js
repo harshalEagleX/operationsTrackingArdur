@@ -7,12 +7,13 @@ window.productivityChart = null;
 let currentPage = 1;
 let entriesPerPage = 10;
 let totalEntries = 0;
-let sortColumn = 'processed_date';
+let sortColumn = 'created_at';
 let sortOrder = 'desc';
 let currentData = [];
 let searchTerm = '';
 let selectedProject = '';
 let selectedWorkType = '';
+let selectedEmployee = '';
 let isProjectView = false;
 let selectedFeedbackRecorded = '';
 let currentImageIndex = 0;
@@ -36,13 +37,16 @@ const entriesDropdown = document.querySelector('.audit-entries-dropdown');
 const searchField = document.querySelector('.audit-search-field');
 const clearSearch = document.querySelector('.audit-clear-search');
 const refreshButton = document.querySelector('.audit-refresh-button');
-const datePicker = document.getElementById('auditDate');
 const modal = document.getElementById('auditDetailModal');
 const closeBtn = document.querySelector('.auditclose-btn');
 const auditStartDate = document.getElementById('auditStartDate');
 const auditEndDate = document.getElementById('auditEndDate');
 const auditDownloadFormat = document.getElementById('auditDownloadFormat');
 const auditDownloadButton = document.getElementById('auditDownloadButton');
+const auditProjectFilter = document.getElementById('auditProjectFilter');
+const auditWorkTypeFilter = document.getElementById('auditWorkTypeFilter');
+const auditEmployeeFilter = document.getElementById('auditEmployeeFilter');
+const auditFeedbackRecordedFilter = document.getElementById('auditFeedbackRecordedFilter');
 
 // Function to set default dates based on view mode
 function setDefaultDates(useGraphMode = false) {
@@ -62,44 +66,79 @@ function setDefaultDates(useGraphMode = false) {
             auditEndDate.value = todayStr;
             defaultDateRange.graph.end = todayStr;
         }
-    } else {
-        // For table view: today's date for both
-        if (auditStartDate && (!auditStartDate.value || defaultDateRange.table.start === null)) {
-            auditStartDate.value = todayStr;
-            defaultDateRange.table.start = todayStr;
+    }
+}
+
+// Function to populate filter dropdowns
+async function populateAuditFilters() {
+    try {
+        if (auditProjectFilter) {
+            const data = await MasterDataCache.getOrFetch('master_projects_v2', '/api/v1/masters/emp_get_projects/');
+            const projects = Array.isArray(data) ? data : (data.projects || data.results || []);
+            auditProjectFilter.innerHTML = '<option value="">All Projects</option>';
+            projects.forEach(p => {
+                const name = typeof p === 'string' ? p : (p.name || p.project_name || p.project);
+                if (name) {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    auditProjectFilter.appendChild(opt);
+                }
+            });
         }
-        if (auditEndDate && (!auditEndDate.value || defaultDateRange.table.end === null)) {
-            auditEndDate.value = todayStr;
-            defaultDateRange.table.end = todayStr;
+        if (auditWorkTypeFilter) {
+            const resp = await MasterDataCache.getOrFetch('master_work_types_v2', '/api/v1/masters/worktypes/?active=true');
+            const workTypes = Array.isArray(resp) ? resp : (resp.results || resp.data || []);
+            auditWorkTypeFilter.innerHTML = '<option value="">All Work Types</option>';
+            workTypes.forEach(wt => {
+                const name = typeof wt === 'string' ? wt : (wt.name || wt.work_type);
+                if (name) {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    auditWorkTypeFilter.appendChild(opt);
+                }
+            });
         }
+        if (auditEmployeeFilter) {
+            const employees = await MasterDataCache.getOrFetch('master_employees', '/api/v1/auth/employees/');
+            auditEmployeeFilter.innerHTML = '<option value="">All Employees</option>';
+            employees.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp.employee_id;
+                opt.textContent = `${emp.name} (${emp.employee_id})`;
+                auditEmployeeFilter.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.error('Error populating audit filters:', e);
     }
 }
 
 // Function to fetch and update audit data
 function fetchAuditData() {
-    const searchQuery = searchField.value;
-    const fromDate = auditStartDate ? auditStartDate.value : (window.isGraphMode ? defaultDateRange.graph.start : defaultDateRange.table.start);
-    const toDate = auditEndDate ? auditEndDate.value : (window.isGraphMode ? defaultDateRange.graph.end : defaultDateRange.table.end);
+    const searchQuery = searchField ? searchField.value.trim() : '';
+    const fromDate = auditStartDate ? auditStartDate.value : '';
+    const toDate = auditEndDate ? auditEndDate.value : '';
 
     // Show loading state
     const tableBody = document.querySelector('.audit-table tbody');
     if (tableBody) {
-        tableBody.innerHTML = '<tr><td colspan="13" class="loading-text">Loading...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="11" class="loading-text" style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading audit data...</td></tr>';
     }
 
-    // Disable the entries dropdown while loading
     if (entriesDropdown) {
         entriesDropdown.disabled = true;
     }
 
-    // Ensure we have valid dates
-    if (!fromDate || !toDate) {
-        setDefaultDates(window.isGraphMode);
-    }
-
-    let url = `/api/v1/feedback/?page=${currentPage}&page_size=${entriesPerPage}&search=${encodeURIComponent(searchQuery)}&from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`;
-    if (selectedProject && selectedProject !== 'All') url += `&project=${encodeURIComponent(selectedProject)}`;
-    if (selectedFeedbackRecorded && selectedFeedbackRecorded !== 'All') url += `&type=${encodeURIComponent(selectedFeedbackRecorded)}`;
+    let url = `/api/v1/feedback/?page=${currentPage}&page_size=${entriesPerPage}`;
+    if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
+    if (fromDate) url += `&from=${encodeURIComponent(fromDate)}`;
+    if (toDate) url += `&to=${encodeURIComponent(toDate)}`;
+    if (selectedProject && selectedProject !== 'All' && selectedProject !== '') url += `&project=${encodeURIComponent(selectedProject)}`;
+    if (selectedWorkType && selectedWorkType !== 'All' && selectedWorkType !== '') url += `&work_type=${encodeURIComponent(selectedWorkType)}`;
+    if (selectedEmployee && selectedEmployee !== 'All' && selectedEmployee !== '') url += `&emp_id=${encodeURIComponent(selectedEmployee)}`;
+    if (selectedFeedbackRecorded && selectedFeedbackRecorded !== 'All' && selectedFeedbackRecorded !== '') url += `&feedback_recorded=${encodeURIComponent(selectedFeedbackRecorded)}`;
     if (sortColumn) url += `&ordering=${sortOrder === 'asc' ? '' : '-'}${sortColumn}`;
     
     fetch(url)
@@ -118,7 +157,7 @@ function fetchAuditData() {
 
             // Update global variables
             currentData = data.data && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
-            totalEntries = data.meta ? data.meta.count : 0;
+            totalEntries = data.meta ? data.meta.count : (currentData.length || 0);
             currentPage = data.meta ? data.meta.page : currentPage;
             entriesPerPage = data.meta ? data.meta.page_size : entriesPerPage;
             
@@ -134,9 +173,8 @@ function fetchAuditData() {
         .catch(error => {
             console.error('Error:', error);
             if (tableBody) {
-                tableBody.innerHTML = `<tr><td colspan="10" class="error-text">Error: ${error.message}</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="11" class="error-text" style="text-align:center;color:#ef4444;padding:20px;">Error: ${error.message}</td></tr>`;
             }
-            // Re-enable the entries dropdown
             if (entriesDropdown) {
                 entriesDropdown.disabled = false;
             }
@@ -150,34 +188,40 @@ function updateTable(reports) {
         reports = [];
     }
 
-    const auditTable = document.querySelector('.audit-table tbody');
-    if (!auditTable) {
+    const tableBody = document.querySelector('.audit-table tbody');
+    if (!tableBody) {
         console.error('Audit table body not found');
         return;
     }
 
-    auditTable.innerHTML = '';
+    tableBody.innerHTML = '';
     
     if (reports.length === 0) {
-        auditTable.innerHTML = '<tr><td colspan="10" class="no-data-text">No records found</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="11" class="no-data-text" style="text-align:center;padding:24px;color:#888;">No audit records found</td></tr>';
         return;
     }
     
     reports.forEach(report => {
-        if (!report) return; // Skip if report is null or undefined
+        if (!report) return;
         
         const row = document.createElement('tr');
+        const displayDate = report.processed_date || (report.created_at ? new Date(report.created_at).toLocaleDateString() : '-');
+        const displayEmp = report.emp_name ? `${report.emp_name} (${report.emp_id})` : (report.emp_id || '-');
+        const isAck = report.is_acknowledged || report.acknowledgment === 1;
+        const ackStatus = isAck ? 'Acknowledged' : (report.acknowledgment === 0 ? 'Not Ack' : 'Pending');
+        const ackClass = isAck ? 'acknowledged' : (report.acknowledgment === 0 ? 'not-acknowledged' : 'pending');
+        
         row.innerHTML = `
-            <td>${report.created_at ? new Date(report.created_at).toLocaleDateString() : '-'}</td>
-            <td>${report.emp_name || report.emp_id || '-'}</td>
+            <td>${displayDate}</td>
+            <td><strong>${displayEmp}</strong></td>
             <td>${report.project || '-'}</td>
-            <td>-</td>
+            <td>${report.client_code || '-'}</td>
             <td>${report.work_type || '-'}</td>
             <td>${report.order_batch_id || '-'}</td>
-            <td><span class="severity-${(report.severity || '').toLowerCase()}">${report.severity || '-'}</span></td>
-            <td>${report.feedback_type || '-'}</td>
-            <td><span class="status-${report.is_acknowledged ? 'acknowledged' : 'pending'}">${report.is_acknowledged ? 'Acknowledged' : 'Pending'}</span></td>
-            <td>${report.description ? 'Yes' : 'No'}</td>
+            <td><span class="severity-${(report.severity || 'low').toLowerCase()}">${report.severity || '-'}</span></td>
+            <td>${report.type || report.feedback_type || '-'}</td>
+            <td><span class="status-${ackClass}">${ackStatus}</span></td>
+            <td>${report.feedback_recorded || (report.feedback ? 'Yes' : 'No')}</td>
             <td class="action-buttons">
                 <button onclick="viewAuditDetail(${report.id})" class="auditview-btn" title="View Details">
                     <i class="fas fa-eye"></i>
@@ -190,72 +234,128 @@ function updateTable(reports) {
                 </button>
             </td>
         `;
-        auditTable.appendChild(row);
+        tableBody.appendChild(row);
     });
 }
 
 // Function to update pagination
 function updatePagination(total) {
-    const totalPages = Math.ceil(total / entriesPerPage);
-    document.getElementById('auditCurrentPage').textContent = currentPage;
-    document.getElementById('auditTotalEntries').textContent = total;
-    document.getElementById('auditStartEntry').textContent = total === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
-    document.getElementById('auditEndEntry').textContent = Math.min(currentPage * entriesPerPage, total);
+    const totalPages = Math.max(1, Math.ceil(total / entriesPerPage));
+    const curPageEl = document.getElementById('auditCurrentPage');
+    const totEntriesEl = document.getElementById('auditTotalEntries');
+    const startEntryEl = document.getElementById('auditStartEntry');
+    const endEntryEl = document.getElementById('auditEndEntry');
+    const prevBtn = document.getElementById('auditPrevPage');
+    const nextBtn = document.getElementById('auditNextPage');
     
-    document.getElementById('auditPrevPage').disabled = currentPage === 1;
-    document.getElementById('auditNextPage').disabled = currentPage >= totalPages;
+    if (curPageEl) curPageEl.textContent = currentPage;
+    if (totEntriesEl) totEntriesEl.textContent = total;
+    if (startEntryEl) startEntryEl.textContent = total === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
+    if (endEntryEl) endEntryEl.textContent = Math.min(currentPage * entriesPerPage, total);
+    
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 }
 
 // Event Listeners
-if (datePicker) {
-    datePicker.addEventListener('change', () => {
+if (auditStartDate) {
+    auditStartDate.addEventListener('change', () => {
+        currentPage = 1;
+        fetchAuditData();
+    });
+}
+if (auditEndDate) {
+    auditEndDate.addEventListener('change', () => {
         currentPage = 1;
         fetchAuditData();
     });
 }
 
-entriesDropdown.addEventListener('change', (e) => {
-    const newValue = parseInt(e.target.value);
-    if (!isNaN(newValue) && newValue > 0) {
-        entriesPerPage = newValue;
-        currentPage = 1; // Reset to first page when changing entries per page
+if (auditProjectFilter) {
+    auditProjectFilter.addEventListener('change', function() {
+        selectedProject = this.value;
+        currentPage = 1;
         fetchAuditData();
-    }
-});
+    });
+}
+if (auditWorkTypeFilter) {
+    auditWorkTypeFilter.addEventListener('change', function() {
+        selectedWorkType = this.value;
+        currentPage = 1;
+        fetchAuditData();
+    });
+}
+if (auditEmployeeFilter) {
+    auditEmployeeFilter.addEventListener('change', function() {
+        selectedEmployee = this.value;
+        currentPage = 1;
+        fetchAuditData();
+    });
+}
+if (auditFeedbackRecordedFilter) {
+    auditFeedbackRecordedFilter.addEventListener('change', function() {
+        selectedFeedbackRecorded = this.value;
+        currentPage = 1;
+        fetchAuditData();
+    });
+}
 
-// Enhanced search functionality
-searchField.addEventListener('input', debounce(() => {
-    currentPage = 1;
-    fetchAuditData();
-}, 500));
+if (entriesDropdown) {
+    entriesDropdown.addEventListener('change', (e) => {
+        const newValue = parseInt(e.target.value);
+        if (!isNaN(newValue) && newValue > 0) {
+            entriesPerPage = newValue;
+            currentPage = 1;
+            fetchAuditData();
+        }
+    });
+}
 
-clearSearch.addEventListener('click', () => {
-    searchField.value = '';
-    if (datePicker) datePicker.value = '';
-    currentPage = 1;
-    fetchAuditData();
-});
+if (searchField) {
+    searchField.addEventListener('input', debounce(() => {
+        currentPage = 1;
+        fetchAuditData();
+    }, 400));
+}
 
-// Enhanced refresh button functionality
-refreshButton.addEventListener('click', () => {
-    // Show loading animation on the refresh button
-    refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    
-    // Reset all filters
-    if (datePicker) datePicker.value = '';
-    searchField.value = '';
-    currentPage = 1;
-    sortColumn = 'processed_date';
-    sortOrder = 'desc';
-    
-    // Fetch fresh data
-    fetchAuditData();
-    
-    // Reset refresh button after a short delay
-    setTimeout(() => {
-        refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
-    }, 1000);
-});
+if (clearSearch) {
+    clearSearch.addEventListener('click', () => {
+        if (searchField) searchField.value = '';
+        currentPage = 1;
+        fetchAuditData();
+    });
+}
+
+if (refreshButton) {
+    refreshButton.addEventListener('click', () => {
+        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        if (searchField) searchField.value = '';
+        if (auditStartDate) auditStartDate.value = '';
+        if (auditEndDate) auditEndDate.value = '';
+        if (auditProjectFilter) auditProjectFilter.value = '';
+        if (auditWorkTypeFilter) auditWorkTypeFilter.value = '';
+        if (auditEmployeeFilter) auditEmployeeFilter.value = '';
+        if (auditFeedbackRecordedFilter) auditFeedbackRecordedFilter.value = '';
+        
+        selectedProject = '';
+        selectedWorkType = '';
+        selectedEmployee = '';
+        selectedFeedbackRecorded = '';
+        currentPage = 1;
+        sortColumn = 'created_at';
+        sortOrder = 'desc';
+        
+        fetchAuditData();
+        
+        setTimeout(() => {
+            refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
+        }, 800);
+    });
+}
+
+// Initialize filters and data on load
+populateAuditFilters();
 
 document.getElementById('auditPrevPage').addEventListener('click', () => {
     if (currentPage > 1) {
@@ -856,7 +956,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // Function to load projects with caching
 async function loadProjects() {
     try {
-        const projects = await MasterDataCache.getOrFetch('master_projects', '/api/v1/masters/emp_get_projects/');
+        const data = await MasterDataCache.getOrFetch('master_projects_v2', '/api/v1/masters/emp_get_projects/');
+        const projects = Array.isArray(data) ? data : (data.projects || data.results || []);
         
         const projectFilter = document.querySelector('.audit-project-filter');
         const workTypeFilter = document.querySelector('.audit-worktype-filter');

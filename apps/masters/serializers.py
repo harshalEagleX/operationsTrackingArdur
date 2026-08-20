@@ -23,17 +23,15 @@ class WorkTypeSerializer(serializers.ModelSerializer):
         )],
     )
     # Legacy alias fields — keep the JS working during migration
-    wt_id = serializers.CharField(read_only=True, default="")
-    worktypename = serializers.CharField(read_only=True, default="")
-
+    wt_id = serializers.CharField(required=False, default="", allow_blank=True)
     class Meta:
         model = WorkType
         fields = [
-            "id", "wt_id", "worktypename",
+            "id", "wt_id",
             "work_type", "description", "standard_rate",
             "is_active", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "wt_id", "worktypename", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -45,9 +43,9 @@ class ProjectSerializer(serializers.ModelSerializer):
         )],
     )
     # Legacy alias fields — keep the JS working during migration
-    project_id = serializers.CharField(read_only=True, default="")
-    client_code = serializers.CharField(read_only=True, default="")
-    worktypes = serializers.CharField(read_only=True, default="")
+    project_id = serializers.CharField(required=False, default="", allow_blank=True)
+    client_code = serializers.CharField(required=False, default="", allow_blank=True)
+    worktypes = serializers.CharField(required=False, default="", allow_blank=True)
 
     class Meta:
         model = Project
@@ -56,7 +54,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "client_code", "worktypes",
             "start_date", "end_date", "is_active", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "project_id", "client_code", "worktypes", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
     def validate(self, attrs):
         start = attrs.get("start_date") or getattr(self.instance, "start_date", None)
@@ -77,8 +75,8 @@ class ClientCodeSerializer(serializers.ModelSerializer):
         )],
     )
     # Legacy alias fields — keep the JS working during migration
-    cc_id = serializers.CharField(read_only=True, default="")
-    worktypes = serializers.CharField(read_only=True, default="")
+    cc_id = serializers.CharField(required=False, default="", allow_blank=True)
+    worktypes = serializers.CharField(required=False, default="", allow_blank=True)
 
     class Meta:
         model = ClientCode
@@ -86,7 +84,7 @@ class ClientCodeSerializer(serializers.ModelSerializer):
             "id", "cc_id", "client_code", "client_name", "project",
             "worktypes", "is_active", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "cc_id", "worktypes", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class ShiftSerializer(serializers.ModelSerializer):

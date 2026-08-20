@@ -42,7 +42,7 @@ class WorkType(MasterRecord):
     class Meta:
         managed = legacy_managed()
         db_table = "ot_worktypes"
-        ordering = ["work_type"]
+        ordering = ["wt_id"]
         verbose_name = "work type"
 
     def __str__(self) -> str:
@@ -63,7 +63,7 @@ class Project(MasterRecord):
     class Meta:
         managed = legacy_managed()
         db_table = "ot_projects"
-        ordering = ["project_name"]
+        ordering = ["project_id"]
 
     def __str__(self) -> str:
         return self.project_name
@@ -80,7 +80,7 @@ class ClientCode(MasterRecord):
     class Meta:
         managed = legacy_managed()
         db_table = "ot_clientcode"
-        ordering = ["client_code"]
+        ordering = ["cc_id"]
 
     def __str__(self) -> str:
         return self.client_code
@@ -88,9 +88,9 @@ class ClientCode(MasterRecord):
 
 class Shift(MasterRecord):
     id = models.AutoField(primary_key=True)
-    shift_name = models.CharField(max_length=50, unique=True)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    shift_name = models.CharField(max_length=50, unique=True, db_column='shift')
+    start_time = models.TimeField(db_column='startedAt')
+    end_time = models.TimeField(db_column='endedAt')
     # Total paid break minutes for this shift. The per-break allowances that
     # the app actually enforces live in apps/breaks/constants.py.
     break_minutes = models.IntegerField(default=0)

@@ -35,13 +35,13 @@ REGISTRY: dict[str, NotificationType] = {
     for t in [
         NotificationType(
             "allocation.assigned",
-            "New order {task_id} assigned to you",
+            "New order {ar_number} assigned to you",
             description="Work has been allocated to you",
             priority=Priority.HIGH,
         ),
         NotificationType(
             "allocation.sla_breach",
-            "SLA breach risk on {task_id}",
+            "SLA breach risk on {ar_number}",
             description="An allocation is close to its due time",
             priority=Priority.CRITICAL,
             default_email=True,

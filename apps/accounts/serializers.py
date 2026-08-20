@@ -9,7 +9,7 @@ from __future__ import annotations
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from apps.accounts.models import Employee, LoginHistory, Role, Status, User
+from apps.accounts.models import Employee, EmployeeType, LoginHistory, Role, Status, User
 from core.validators import validate_emp_id, validate_non_blank
 
 
@@ -63,9 +63,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = [
-            "id", "employee_id", "name", "email", "phone", "role", "designation",
+            "id", "employee_id", "name", "email", "phone", "alternate_phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
-            "status", "has_login", "created_at", "updated_at",
+            "status", "employee_type", "has_login", "created_at", "updated_at",
             "client_code", "work_type", "active_inactive_date",
             "joining_date", "work_location", "projects", "shift_time",
             "project_names", "client_code_names", "work_type_names"
@@ -82,7 +82,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         if not p_ids:
             return []
         from apps.masters.models import Project
-        return list(Project.objects.filter(project_code__in=p_ids).values_list("project_name", flat=True))
+        return list(Project.objects.filter(project_id__in=p_ids).values_list("project_name", flat=True))
 
     def get_client_code_names(self, obj) -> list[str]:
         return [c.strip() for c in obj.client_code.split("|") if c.strip()] if obj.client_code else []
@@ -99,14 +99,20 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
     row nobody can find again.
     """
 
-    employee_id = serializers.CharField(max_length=20, validators=[validate_emp_id])
+    employee_id = serializers.CharField(max_length=20, required=False, allow_blank=True)
     name = serializers.CharField(max_length=100, validators=[validate_non_blank])
-    role = serializers.ChoiceField(choices=Role.choices, default=Role.EMPLOYEE)
-    status = serializers.ChoiceField(choices=Status.choices, default=Status.ACTIVE)
+    role = serializers.CharField(max_length=20, default=Role.EMPLOYEE)
+    employee_type = serializers.CharField(max_length=50, default=EmployeeType.EMPLOYEE)
+    status = serializers.CharField(max_length=10, default=Status.ACTIVE)
     # Optional: set a login password at creation time.
     password = serializers.CharField(
         max_length=128, write_only=True, required=False, allow_blank=True
     )
+
+    def validate_employee_id(self, value: str) -> str:
+        if value:
+            validate_emp_id(value)
+        return value
     
     # Legacy aliases for JS compatibility
     joining_date = serializers.DateField(source="date_of_joining", required=False, allow_null=True)
@@ -117,11 +123,23 @@ class EmployeeWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = [
-            "employee_id", "name", "email", "phone", "role", "designation",
+            "employee_id", "name", "email", "phone", "alternate_phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
-            "status", "password", "client_code", "work_type", "active_inactive_date",
+            "status", "employee_type", "password", "client_code", "work_type", "active_inactive_date",
             "joining_date", "work_location", "projects", "shift_time"
         ]
+
+    def validate_role(self, value: str) -> str:
+        val = (value or "").strip().lower()
+        if val in [r.value for r in Role]:
+            return val
+        return value
+
+    def validate_status(self, value: str) -> str:
+        val = (value or "").strip().lower()
+        if val in [s.value for s in Status]:
+            return val
+        return value
 
     def validate_employee_id(self, value: str) -> str:
         qs = Employee.objects.filter(employee_id=value)

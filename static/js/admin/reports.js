@@ -8,8 +8,7 @@ $(document).ready(function () {
             { data: 'project_name', title: 'Project Name' },
             { data: 'active_users', title: 'Active Users' },
             { data: 'completed_tasks', title: 'Completed Tasks' },
-            { data: 'completed_work_units', title: 'Completed Work Units' },
-            { data: 'avg_processtime_perunit', title: 'Avg Process Time/Unit' },
+            { data: 'avg_processtime_perunit', title: 'Avg Process Time/Task' },
             { data: 'inprogress_tasks', title: 'In Progress Tasks' },
             { data: 'onhold_tasks', title: 'On Hold Tasks' }
         ]
@@ -25,6 +24,7 @@ $(document).ready(function () {
         $('.graphs-btn').removeClass('active');
         $('#summaryTableSection').show();
         $('#reportsSection').hide();
+        $('#graphsSection').hide();
         fetchSummaryData();
     });
 
@@ -34,6 +34,7 @@ $(document).ready(function () {
         $('.graphs-btn').removeClass('active');
         $('#summaryTableSection').hide();
         $('#reportsSection').show();
+        $('#graphsSection').hide();
         // Refresh reports data
         const startDate = $('#startDate').val();
         const endDate = $('#endDate').val();
@@ -48,12 +49,7 @@ $(document).ready(function () {
         $('.report-btn').removeClass('active');
         $('#summaryTableSection').hide();
         $('#reportsSection').hide();
-
-        // Trigger the summary reports content display
-        const summaryReportsLink = document.querySelector('a[href="#summaryreports"]');
-        if (summaryReportsLink) {
-            showContent('summaryreports');
-        }
+        $('#graphsSection').show();
         
         // Initialize summary dashboard if not already initialized
         if (!window.projectChart) {
@@ -68,111 +64,241 @@ $(document).ready(function () {
     // Function to fetch summary data using existing route
     function fetchSummaryData() {
         const today = new Date().toISOString().split('T')[0];
-        
-        // First fetch targets for all projects
-                    $.ajax({
-                url: '/api/v1/reports/run/',
+        const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+        const summaryGrid = $('.summary-grid');
+        summaryGrid.html('<div class="loading" style="text-align:center; padding: 40px; font-size:16px; color:#6b7280;"><i class="fas fa-spinner fa-spin"></i> Loading projects summary...</div>');
+
+        // Fetch master projects and report metrics in parallel
+        Promise.all([
+            fetch('/api/v1/masters/projects/?active=true', { credentials: 'same-origin' }).then(r => r.json()),
+            fetch('/api/v1/reports/run/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
-                },
-                data: JSON.stringify({
-                    report_key: 'productivity',
-                    date_from: today,
-                    date_to: today
-                }),
-                success: function(res) {
-                    const data = res.data || res;
-                    const summaryGrid = $('.summary-grid');
-                    summaryGrid.empty();
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ report_key: 'summary', date_from: today, date_to: today })
+            }).then(r => r.json()).catch(() => ({ data: [] })),
+            fetch('/api/v1/reports/run/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ report_key: 'productivity', date_from: today, date_to: today })
+            }).then(r => r.json()).catch(() => ({ data: [] }))
+        ])
+        .then(([projRes, sumRes, prodRes]) => {
+            const rawProjects = Array.isArray(projRes) ? projRes : (projRes.results || projRes.data || []);
+            const summarySessions = Array.isArray(sumRes) ? sumRes : (sumRes.data || sumRes.results || []);
+            const prodRows = Array.isArray(prodRes) ? prodRes : (prodRes.data || prodRes.results || []);
+            window.lastDetailedData = prodRows;
 
-                    if (!data || data.length === 0) {
-                        summaryGrid.html('<div class="no-data">No project data available for today</div>');
-                        return;
-                    }
+            summaryGrid.empty();
 
-                    // Group by project
-                    const projectTotals = {};
-                    data.forEach(row => {
-                        const p = row.project || 'Unknown';
-                        if (!projectTotals[p]) projectTotals[p] = 0;
-                        projectTotals[p] += (row.total_units || 0);
+            if (!rawProjects || rawProjects.length === 0) {
+                summaryGrid.html(`
+                    <div class="empty-state-card">
+                        <i class="fas fa-folder-open"></i>
+                        <h4>No Projects Found</h4>
+                        <p>No active projects found in the system.</p>
+                    </div>
+                `);
+                return;
+            }
+
+            // Adjust grid classes for single/double cards
+            summaryGrid.removeClass('single-card double-card empty-state');
+            if (rawProjects.length === 1) summaryGrid.addClass('single-card');
+            else if (rawProjects.length === 2) summaryGrid.addClass('double-card');
+
+            rawProjects.forEach(project => {
+                const pId = project.project_id || '';
+                const pName = project.project_name || pId;
+
+                // Match sessions
+                const matchingSessions = summarySessions.filter(s => 
+                    (s.project && (s.project === pName || s.project === pId)) ||
+                    (s.project_name && (s.project_name === pName || s.project_name === pId)) ||
+                    (s.project_code && (s.project_code === pId || s.project_code === pName))
+                );
+
+                // Match productivity entries
+                const matchingProd = prodRows.filter(r => 
+                    (r.project && (r.project === pName || r.project === pId)) ||
+                    (r.project_name && (r.project_name === pName || r.project_name === pId))
+                );
+
+                const activeUserIds = new Set();
+                matchingSessions.forEach(s => { if (s.emp_id) activeUserIds.add(s.emp_id); });
+                matchingProd.forEach(r => { if (r.emp_id) activeUserIds.add(r.emp_id); });
+                const activeUsers = activeUserIds.size;
+
+                let completedTasks = 0;
+                let inProgressTasks = 0;
+                let onHoldTasks = 0;
+                let totalWorkUnits = 0;
+                let totalSeconds = 0;
+
+                if (matchingSessions.length > 0) {
+                    matchingSessions.forEach(s => {
+                        const units = parseInt(s.work_units || s.unit_cnt || s.total_units || 0) || 0;
+                        totalWorkUnits += units;
+                        
+                        const status = (s.status || '').toLowerCase();
+                        if (s.end_time || status === 'completed' || s.is_started === 2) {
+                            completedTasks++;
+                        } else if (s.is_paused || status === 'on hold' || status === 'paused') {
+                            onHoldTasks++;
+                        } else {
+                            inProgressTasks++;
+                        }
                     });
+                } else if (matchingProd.length > 0) {
+                    matchingProd.forEach(r => {
+                        totalWorkUnits += (r.total_units || 0);
+                        completedTasks += (r.session_count || 1);
+                    });
+                }
 
-                    Object.keys(projectTotals).forEach(proj => {
-                        const achieved = projectTotals[proj];
-                        const target = 100; // Mock target since DRF doesn't provide it
-                        const targetMissing = Math.max(0, target - achieved);
-                        const completionRate = Math.min(100, (achieved / target) * 100);
+                const totalTasks = completedTasks + inProgressTasks + onHoldTasks;
+                const completedPercent = totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(1) : 0;
+                const inProgressPercent = totalTasks > 0 ? ((inProgressTasks / totalTasks) * 100).toFixed(1) : 0;
+                const onHoldPercent = totalTasks > 0 ? ((onHoldTasks / totalTasks) * 100).toFixed(1) : 0;
 
-                        const card = $(`
-                            <div class="summary-card" data-project-id="${proj}" data-project-name="${proj}">
-                                <div class="card-header">
-                                    <h3>${proj}</h3>
+                const tasksPerUser = activeUsers > 0 ? (completedTasks / activeUsers).toFixed(2) : "0.00";
+                const dailyTarget = 0;
+                const targetCompletion = dailyTarget > 0 ? Math.min(100, (completedTasks / dailyTarget) * 100).toFixed(1) : 0;
+
+                // Format avg time
+                let avgTimePerTask = "00:00:00";
+                if (completedTasks > 0 && totalSeconds > 0) {
+                    const avgSec = Math.round(totalSeconds / completedTasks);
+                    const h = String(Math.floor(avgSec / 3600)).padStart(2, '0');
+                    const m = String(Math.floor((avgSec % 3600) / 60)).padStart(2, '0');
+                    const s = String(avgSec % 60).padStart(2, '0');
+                    avgTimePerTask = `${h}:${m}:${s}`;
+                }
+
+                const efficiencyRate = parseFloat(tasksPerUser) || (completedTasks > 0 ? 5 : 0);
+                const efficiencyClass = getEfficiencyClass(efficiencyRate);
+                const efficiencyLabel = getEfficiencyLabel(efficiencyRate);
+
+                const card = $(`
+                    <div class="project-card project-card--expanded" data-project-id="${pId}" data-project-name="${pName}">
+                        <div class="card-header">
+                            <h3>${pName}</h3>
+                            <span class="project-id">${pId}</span>
+                        </div>
+                        <div class="card-stats">
+                            <div class="stat-group">
+                                <div class="summary-stat-item">
+                                    <div class="stat-value">${activeUsers}</div>
+                                    <div class="stat-label">Active Users</div>
                                 </div>
-                                <div class="card-body">
-                                    <div class="stat-row">
-                                        <span class="label">Target:</span>
-                                        <span class="value">${target}</span>
+                                <div class="summary-stat-item">
+                                    <div class="stat-value">${completedTasks}</div>
+                                    <div class="stat-label">Completed Tasks</div>
+                                </div>
+                            </div>
+
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-header">
+                                        <i class="fas fa-chart-line"></i> Productivity Metrics
                                     </div>
-                                    <div class="stat-row">
-                                        <span class="label">Achieved:</span>
-                                        <span class="value achieved">${achieved}</span>
-                                    </div>
-                                    <div class="stat-row">
-                                        <span class="label">Target Missing:</span>
-                                        <span class="value missing">${targetMissing}</span>
-                                    </div>
-                                    <div class="progress-container">
-                                        <div class="progress-bar">
-                                            <div class="progress" style="width: ${completionRate}%"></div>
+                                    <div class="metric-content">
+                                        <div class="metric-row">
+                                            <span>Tasks/User:</span>
+                                            <span class="metric-value">${tasksPerUser}</span>
                                         </div>
-                                        <span class="progress-text">${completionRate.toFixed(1)}%</span>
+                                        <div class="metric-row">
+                                            <span>Daily Target:</span>
+                                            <span class="metric-value">${dailyTarget}</span>
+                                        </div>
+                                        <div class="metric-row">
+                                            <span>Avg Time/Task:</span>
+                                            <span class="metric-value">${avgTimePerTask}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="metric-item">
+                                    <div class="metric-header">
+                                        <i class="fas fa-tasks"></i> Task Distribution
+                                    </div>
+                                    <div class="task-distribution">
+                                        <div class="distribution-legend">
+                                            <span><i class="fas fa-circle completed"></i> Completed</span>
+                                            <span><i class="fas fa-circle in-progress"></i> In Progress</span>
+                                            <span><i class="fas fa-circle on-hold"></i> On Hold</span>
+                                        </div>
+                                        <div class="distribution-bar">
+                                            <div class="completed" style="width: ${completedPercent}%"></div>
+                                            <div class="in-progress" style="width: ${inProgressPercent}%"></div>
+                                            <div class="on-hold" style="width: ${onHoldPercent}%"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        `);
 
-                        if (completionRate >= 100) {
-                            card.find('.progress').addClass('target-met');
-                        } else if (completionRate >= 75) {
-                            card.find('.progress').addClass('target-near');
-                        } else if (completionRate < 50) {
-                            card.find('.progress').addClass('target-behind');
+                            <div class="progress-section">
+                                <div class="progress-info">
+                                    <span>Target Completion</span>
+                                    <span class="progress-percentage">${targetCompletion}%</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress" style="width: ${Math.min(targetCompletion, 100)}%"></div>
+                                </div>
+                            </div>
+
+                            <div class="task-metrics">
+                                <div class="task-status">
+                                    <div class="status-item">
+                                        <span class="status-dot in-progress"></span>
+                                        <span class="status-label">In Progress:</span>
+                                        <span class="status-value">${inProgressTasks}</span>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-dot on-hold"></span>
+                                        <span class="status-label">On Hold:</span>
+                                        <span class="status-value">${onHoldTasks}</span>
+                                    </div>
+                                </div>
+                                <div class="efficiency-indicator ${efficiencyClass}">
+                                    <i class="fas fa-tachometer-alt"></i> Efficiency: ${efficiencyLabel}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+
+                card.click(function() {
+                    const projectName = $(this).data('project-name');
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    
+                    fetch('/api/v1/reports/run/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            report_key: 'productivity',
+                            date_from: todayStr,
+                            date_to: todayStr
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(res2 => {
+                        window.lastDetailedData = res2.data || res2.results || res2 || [];
+                        if (typeof window.showDetailedView === 'function') {
+                            window.showDetailedView(projectName);
                         }
-
-                        card.click(function() {
-                            const projectName = $(this).data('project-name');
-                            const todayStr = new Date().toISOString().split('T')[0];
-                            
-                            fetch('/api/v1/reports/run/', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
-                                },
-                                body: JSON.stringify({
-                                    report_key: 'productivity',
-                                    date_from: todayStr,
-                                    date_to: todayStr
-                                })
-                            })
-                                .then(response => response.json())
-                                .then(res2 => {
-                                    window.lastDetailedData = res2.data || res2;
-                                    showDetailedView(projectName);
-                                });
-                        });
-
-                        summaryGrid.append(card);
                     });
-                },
-                error: function(xhr, status, error) {
-                    console.error("Error fetching summary data:", error);
-                    alert("An error occurred while fetching summary data. Please try again.");
-                }
+                });
+
+                summaryGrid.append(card);
             });
+        })
+        .catch(error => {
+            console.error("Error fetching summary data:", error);
+            summaryGrid.html('<div class="no-data" style="text-align:center; padding: 30px; color:#ef4444;">Failed to load project summary data.</div>');
+        });
     }
 
     // Helper functions for efficiency calculations
@@ -388,7 +514,8 @@ $(document).ready(function () {
 
             .task-status {
                 display: flex;
-                justify-content: space-between;
+                flex-direction: column;
+                gap: 5px;
                 margin-top: 15px;
             }
 
@@ -614,13 +741,11 @@ $(document).ready(function () {
      'date': 'Date',
      'start_time': 'Start',
      'end_time': 'End',
-     'project': 'Project',
+     'project_name': 'Project',
      'client_code': 'Client Code',
      'work_type': 'WorkType',
-     'batch': 'Batch',
-     'work_units': 'Work Units',
+     'batch': 'Order No.',
      'total_time': 'Total Time',
-     'average_time': 'Average Time',
      'work_location': 'Location',
      'status': 'Status',
      'review': 'Review',
@@ -651,19 +776,12 @@ $(document).ready(function () {
                  return data ? data.split('T')[1].substring(0,8) : '';
              }
          },
-         { data: 'project' },
+         { data: 'project_name', defaultContent: '' },
          { data: 'client_code' },
          { data: 'work_type' },
          { data: 'batch' },
-         { data: 'work_units' },
          { 
              data: 'total_time',
-             render: function (data) {
-                 return formatTime(data);
-             }
-         },
-         { 
-             data: 'average_time',
              render: function (data) {
                  return formatTime(data);
              }
@@ -839,7 +957,7 @@ $(document).ready(function () {
  // Work Location filter change event
  $('#workLocationFilter').on('change', function () {
      const selectedWorkLocation = $(this).val();
-     table.column(12).search(selectedWorkLocation).draw(); // Assuming work_location is the 13th column
+     table.column(11).search(selectedWorkLocation).draw(); // Assuming work_location is the 12th column
  });
 
  // Search field keyup event
@@ -884,7 +1002,7 @@ $(document).ready(function () {
              table.rows.add(rows).draw();
 
              // Populate project dropdown
-             const projects = [...new Set(rows.map(item => item.project).filter(Boolean))];
+             const projects = [...new Set(rows.map(item => item.project_name || item.project).filter(Boolean))];
              const projectFilter = $('#projectFilter');
              projectFilter.empty();
              projectFilter.append('<option value="">All Projects</option>');
@@ -935,6 +1053,7 @@ $(document).ready(function () {
  // ⚡ Extend row click to toggle end button
  $('#reportsTable tbody').on('click', 'tr', function () {
     const rowData = table.row(this).data();
+    if (!rowData) return;
     currentRowData = rowData;
     currentRowIndex = table.row(this).index(); // Store the DataTables row index
 
@@ -1024,18 +1143,12 @@ $('.end-popup-submit').off('click').on('click', function () {
         alert('You must resume the paused work before ending it.');
         return;
     }
-    const work_units = parseInt($('#endWorkUnits').val());
     const pages = parseInt($('#endPages').val());
     const review = $('#endReview').val().trim();
     const emp_id = currentRowData.emp_id;
     // Combine date and time in the format 'YYYY-MM-DD HH:MM:SS' to match DB
     const start_time = `${currentRowData.date} ${currentRowData.start_time}`;
     const end_time = new Date().toISOString();
-
-    if (!work_units || work_units <= 0) {
-        alert('Work units must be greater than 0.');
-        return;
-    }
 
         const session_id = currentRowData.id;
     if (!session_id) {
@@ -1051,9 +1164,8 @@ $('.end-popup-submit').off('click').on('click', function () {
         },
         contentType: 'application/json',
         data: JSON.stringify({
-            work_units,
             review,
-            pages
+            pages: pages || null
         }),
         success: function (res) {
             const result = res.data || res;
@@ -1095,6 +1207,7 @@ $('.end-popup-submit').off('click').on('click', function () {
  // Handle row click events
  $('#reportsTable tbody').on('click', 'tr', function(e) {
      const rowData = table.row(this).data();
+     if (!rowData) return;
      currentRowData = rowData;
      
      // Remove selected class from all rows and add to clicked row
@@ -1113,7 +1226,7 @@ $('.end-popup-submit').off('click').on('click', function () {
              value = rowData.start_time ? rowData.start_time.split('T')[1].substring(0,8) : '';
          } else if (key === 'end_time') {
              value = rowData.end_time ? rowData.end_time.split('T')[1].substring(0,8) : '';
-         } else if (key === 'total_time' || key === 'average_time') {
+         } else if (key === 'total_time') {
              value = formatTime(value);
          } else if (key === 'status') {
              value = rowData.end_time ? 'Completed' : 'In Progress';

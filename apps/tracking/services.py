@@ -113,19 +113,18 @@ class WorkSessionService(BaseService):
         self,
         session_id: int,
         *,
-        work_units: int,
         review: str = "",
-        pages: int | None = None,
+        chain_sheet=None,
+        search_package=None,
+        report=None,
+        employee_comments: str = "",
     ) -> WorkSession:
         session = self._locked_open_session(session_id)
-
-        if work_units is None or work_units < 0:
-            raise ValidationError("Work units must be zero or more.")
 
         end = now_ist()  # server clock, always
 
         # A session ended while paused should not be billed for the pause.
-        paused_elapsed = session.paused_elapsed or 0
+        paused_elapsed = float(session.paused_elapsed) if session.paused_elapsed else 0.0
         if session.is_paused and session.paused_at:
             paused_elapsed += elapsed_seconds(session.paused_at, end)
 
@@ -133,25 +132,48 @@ class WorkSessionService(BaseService):
         total = max(gross - paused_elapsed, 0.0)
 
         session.end_time = end
-        session.work_units = work_units
         session.total_time = round(total, 2)
-        session.average_time = round(total / work_units, 2) if work_units else None
         session.paused_elapsed = round(paused_elapsed, 2)
         session.is_started = SessionState.COMPLETED
         session.is_paused = False
         session.paused_at = None
-        session.review = (review or "")[:255]
-        session.pages = pages
+        session.review = (review or "")[:500]
         session.save(
             update_fields=[
-                "end_time", "work_units", "total_time", "average_time", "paused_elapsed",
-                "is_started", "is_paused", "paused_at", "review", "pages",
+                "end_time", "total_time", "paused_elapsed",
+                "is_started", "is_paused", "paused_at", "review",
             ]
         )
 
+        if session.allocation_id:
+            from apps.allocations.models import BatchAllocation
+            from apps.tracking.models import EmployeeSubmission
+            
+            # Save files to EmployeeSubmission
+            # if chain_sheet or search_package or report:
+            #     submission = EmployeeSubmission(allocation_id=session.allocation_id)
+            #     if chain_sheet:
+            #         submission.chain_sheet = chain_sheet
+            #     if search_package:
+            #         submission.search_package = search_package
+            #     if report:
+            #         submission.report = report
+            #     submission.save()
+
+            # Save employee_comments back to BatchAllocation if provided
+            if employee_comments:
+                alloc = BatchAllocation.objects.filter(allocation_id=session.allocation_id).first()
+                if alloc:
+                    # Append or overwrite? Usually append or just overwrite if empty
+                    if alloc.employee_comments:
+                        alloc.employee_comments = f"{alloc.employee_comments}\n{employee_comments}"
+                    else:
+                        alloc.employee_comments = employee_comments
+                    alloc.save(update_fields=['employee_comments'])
+
         self._roll_up_target(session)
 
-        self.log("session_ended", id=session.id, total=session.total_time, units=work_units)
+        self.log("session_ended", id=session.id, total=session.total_time)
         self.on_commit(lambda: self._announce_completion(session))
         return session
 
@@ -214,7 +236,7 @@ class WorkSessionService(BaseService):
 
         was_met = target.is_met
         Target.objects.filter(pk=target.pk).update(
-            achieved_units=target.achieved_units + session.work_units,
+            achieved_units=target.achieved_units + 1,
             updated_at=now_ist(),
         )
         target.refresh_from_db()
@@ -262,8 +284,6 @@ class WorkSessionService(BaseService):
             data={
                 "id": session.id,
                 "total_time": session.total_time,
-                "work_units": session.work_units,
-                "average_time": session.average_time,
             },
         )
 

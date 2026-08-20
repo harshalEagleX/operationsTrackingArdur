@@ -31,6 +31,9 @@ class AllocationService(BaseService):
         ).exists():
             raise ConflictError(f"Allocation {allocation_id} already exists.")
 
+        if not data.get("ar_number"):
+            data["ar_number"] = BatchAllocation.generate_ar_number()
+
         allocation = BatchAllocation.objects.create(
             allocated_by=self.actor_emp_id or "",
             allocated_at=now_ist(),
@@ -63,17 +66,19 @@ class AllocationService(BaseService):
     @transaction.atomic
     def update_status(self, allocation_pk: int, status: str,
                       completed_quantity: int | None = None,
-                      remarks: str = "") -> BatchAllocation:
+                      remarks: str = "",
+                      employee_comments: str = "",
+                      qc_comments: str = "",
+                      chain_sheet=None,
+                      search_package=None,
+                      report=None) -> BatchAllocation:
         allocation = self.require_found(
             BatchAllocation.objects.select_for_update().filter(pk=allocation_pk).first(),
             "No such allocation.",
         )
 
-        # An employee may progress their own work; changing anyone else's is
-        # a supervisor action.
-        self.require_owner_or_supervisor(
-            allocation.employee_id, "That allocation is assigned to someone else."
-        )
+        if not (self.actor and (self.actor.is_supervisor or self.actor_emp_id in (allocation.employee_id, allocation.qc_id))):
+            raise ConflictError("That allocation is assigned to someone else.")
 
         if status not in AllocationStatus.values:
             raise ValidationError(f"'{status}' is not a valid status.")
@@ -95,13 +100,52 @@ class AllocationService(BaseService):
 
         if status == AllocationStatus.IN_PROGRESS and not allocation.started_at:
             allocation.started_at = now_ist()
-        if status == AllocationStatus.COMPLETED:
+        if status in (AllocationStatus.COMPLETED, AllocationStatus.SEND_FOR_QC, AllocationStatus.DISPATCH) and not allocation.completed_at:
             allocation.completed_at = now_ist()
+            if allocation.started_at:
+                delta = allocation.completed_at - allocation.started_at
+                total_seconds = int(delta.total_seconds())
+                hours, remainder = divmod(total_seconds, 3600)
+                minutes, _ = divmod(remainder, 60)
+                
+                parts = []
+                if hours > 0:
+                    parts.append(f"{hours}h")
+                if minutes > 0 or hours == 0:
+                    parts.append(f"{minutes}m")
+                allocation.time_taken = " ".join(parts)
 
         if remarks:
             allocation.remarks = remarks[:500]
+            
+        if employee_comments:
+            allocation.employee_comments = employee_comments
 
-        allocation.save()
+        if qc_comments:
+            allocation.qc_comments = qc_comments
+
+        # if chain_sheet:
+        #     allocation.chain_sheet = chain_sheet
+        #     allocation.chain_sheet_name = chain_sheet.name
+        # if search_package:
+        #     allocation.search_package = search_package
+        #     allocation.search_package_name = search_package.name
+        # if report:
+        #     allocation.report = report
+        #     allocation.report_name = report.name
+
+        update_fields = [
+            "status", "completed_quantity", "started_at", "completed_at", 
+            "remarks", "employee_comments", "qc_comments", "time_taken"
+        ]
+        # if chain_sheet:
+        #     update_fields.extend(['chain_sheet', 'chain_sheet_name'])
+        # if search_package:
+        #     update_fields.extend(['search_package', 'search_package_name'])
+        # if report:
+        #     update_fields.extend(['report', 'report_name'])
+
+        allocation.save(update_fields=update_fields)
 
         self._record(
             allocation, f"status_{status}", from_status=previous,
@@ -150,10 +194,32 @@ class AllocationService(BaseService):
             notif_type="allocation.assigned",
             context={
                 "task_id": allocation.allocation_id,
+                "ar_number": allocation.ar_number,
                 "project": allocation.project,
                 "quantity": allocation.quantity,
+            }
+        )
+        # Also push the live event so the user-dashboard panel refreshes
+        # immediately without waiting for the notification to arrive.
+        AllocationService._announce_assigned(allocation)
+
+    @staticmethod
+    def _announce_assigned(allocation: BatchAllocation) -> None:
+        from apps.realtime.groups import user_group
+        from core.events import publish
+
+        publish(
+            group=user_group(allocation.employee_id),
+            event="allocation.assigned",
+            data={
+                "id": allocation.id,
+                "allocation_id": allocation.allocation_id,
+                "ar_number": allocation.ar_number,
+                "status": allocation.status,
+                "project": allocation.project,
+                "client_code": allocation.client_code,
+                "work_type": allocation.work_type,
             },
-            link=f"/userdashboard?tab=tasks&allocation={allocation.allocation_id}",
         )
 
     @staticmethod

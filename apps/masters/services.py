@@ -111,6 +111,7 @@ class WorkTypeService(MasterDataService):
     model = WorkType
     label = "work type"
 
+
     @property
     def references(self):
         from apps.tracking.models import WorkSession

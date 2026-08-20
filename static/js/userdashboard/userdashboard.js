@@ -36,12 +36,13 @@ document.addEventListener("DOMContentLoaded", function () {
         fetch('/api/v1/auth/logout/', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                'Content-Type': 'application/json',
+                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
             }
         })
         .then(response => {
             if (response.ok) {
-                window.location.href = '/login'; // Redirect to login page
+                window.location.href = '/login/'; // Redirect to login page
             } else {
                 alert('Error logging out. Please try again.');
             }
@@ -138,7 +139,10 @@ document.addEventListener("DOMContentLoaded", function () {
             isSubmitting = true;
             fetch('/reset_password', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                },
                 body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
             })
             .then(r => r.json())

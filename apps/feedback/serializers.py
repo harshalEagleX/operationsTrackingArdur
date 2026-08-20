@@ -33,25 +33,31 @@ class FeedbackSerializer(serializers.ModelSerializer):
         model = Feedback
         fields = [
             "id", "emp_id", "emp_name", "feedback_type", "severity",
-            "project", "order_batch_id", "work_type", "subject", "description",
+            "project", "client_code", "order_batch_id", "work_type",
+            "feedback_recorded", "processed_date", "feedback_received_date",
+            "feedback_received_mode", "feedback_provided_by", "feedback",
+            "type", "comments", "action_taken", "status",
+            "open_date", "closure_date",
+            "subject", "description",
             "error_count", "sample_size", "accuracy_percent",
             "created_by", "created_by_name", "created_at",
+            "updated_by", "updated_at",
+            "acknowledgment", "acknowledgment_comment", "acknowledgment_date",
             "acknowledged_at", "is_acknowledged", "response", "images",
         ]
         read_only_fields = [
             "id", "created_by", "created_by_name", "created_at",
-            "acknowledged_at", "is_acknowledged", "response",
+            "updated_by", "updated_at", "acknowledgment_date",
+            "acknowledged_at", "is_acknowledged",
             "images", "accuracy_percent",
         ]
 
 
 class FeedbackWriteSerializer(serializers.ModelSerializer):
-    emp_id = serializers.CharField(max_length=20, validators=[validate_emp_id])
-    subject = serializers.CharField(max_length=200, validators=[validate_non_blank])
-    feedback_type = serializers.ChoiceField(
-        choices=FeedbackType.choices, default=FeedbackType.QUALITY
-    )
-    severity = serializers.ChoiceField(choices=Severity.choices, default=Severity.INFO)
+    emp_id = serializers.CharField(max_length=50, validators=[validate_emp_id])
+    subject = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
+    feedback_type = serializers.CharField(max_length=20, required=False, allow_blank=True, default=FeedbackType.QUALITY)
+    severity = serializers.CharField(max_length=20, required=False, allow_blank=True, default=Severity.INFO)
     # Upload first via /api/v1/files/, then reference the ids here.
     file_ids = serializers.ListField(
         child=serializers.IntegerField(), required=False, write_only=True, default=list,
@@ -60,9 +66,12 @@ class FeedbackWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
         fields = [
-            "emp_id", "emp_name", "feedback_type", "severity", "project",
-            "order_batch_id", "work_type", "subject", "description",
-            "error_count", "sample_size", "file_ids",
+            "emp_id", "emp_name", "feedback_type", "severity", "project", "client_code",
+            "order_batch_id", "work_type", "feedback_recorded", "processed_date",
+            "feedback_received_date", "feedback_received_mode", "feedback_provided_by",
+            "feedback", "type", "comments", "action_taken", "status",
+            "open_date", "closure_date", "acknowledgment", "acknowledgment_comment",
+            "subject", "description", "error_count", "sample_size", "file_ids",
         ]
 
     def validate_emp_id(self, value: str) -> str:
@@ -75,7 +84,7 @@ class FeedbackWriteSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         errors = attrs.get("error_count", 0)
         sample = attrs.get("sample_size", 0)
-        if sample and errors > sample:
+        if sample and errors and errors > sample:
             raise serializers.ValidationError(
                 {"error_count": "The error count cannot exceed the sample size."}
             )

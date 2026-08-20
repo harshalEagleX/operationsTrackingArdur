@@ -132,6 +132,11 @@ class EmployeeViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(project__icontains=project)
         return queryset
 
+    from rest_framework.decorators import action
+    @action(detail=False, methods=["get"])
+    def next_id(self, request):
+        return self.ok({"next_id": Employee.generate_employee_id()})
+
     def perform_create(self, serializer):
         serializer.instance = self.service.create(dict(serializer.validated_data))
 
@@ -187,7 +192,7 @@ class CheckEmployeeView(EnvelopeMixin, APIView):
         serializer.is_valid(raise_exception=True)
         emp_id = serializer.validated_data["emp_id"]
 
-        employee = Employee.objects.filter(employee_id=emp_id, status="active").first()
+        employee = Employee.objects.filter(employee_id=emp_id, status__iexact="active").first()
         if not employee:
             raise NotFoundError("Employee ID not found.")
         return self.ok({"name": employee.name})

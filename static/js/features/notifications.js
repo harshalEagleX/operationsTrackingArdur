@@ -26,7 +26,7 @@ export function initNotifications() {
   });
 
   document.addEventListener("click", (event) => {
-    if (!centre.hidden && !centre.contains(event.target) && event.target !== bell) {
+    if (!centre.hidden && !centre.contains(event.target) && !bell.contains(event.target)) {
       centre.hidden = true;
       bell.setAttribute("aria-expanded", "false");
     }
@@ -119,11 +119,15 @@ function renderNotification(notification) {
   time.textContent = relativeTime(notification.created_at);
   item.appendChild(time);
 
-  if (notification.link_url) {
-    item.classList.add("nc-clickable");
+  // Allow clicking to mark as read, but don't redirect
+  if (!notification.is_read) {
     item.addEventListener("click", async () => {
-      await api.post("/notifications/read/", { ids: [notification.id] });
-      window.location.href = notification.link_url;
+      if (item.classList.contains("nc-unread")) {
+        try {
+          await api.post("/notifications/read/", { ids: [notification.id] });
+          item.classList.remove("nc-unread");
+        } catch (err) {}
+      }
     });
   }
 

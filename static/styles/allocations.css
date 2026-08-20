@@ -621,6 +621,20 @@
     color: #1976d2;
 }
 
+.status-badge.in_progress,
+.status-badge.in__progress {
+    background-color: #E3F2FD;
+    color: #1976D2;
+    border: 1px solid #BBDEFB;
+}
+
+.status-badge.send_for_qc,
+.status-badge.send__for__qc {
+    background-color: #FFF3CD;
+    color: #856404;
+    border: 1px solid #FFEEBA;
+}
+
 /* Cancelled status */
 .status-badge.cancelled {
     background-color: #fdecea;
@@ -1692,10 +1706,18 @@ input[type="file"]:hover {
     transition: all 0.2s ease;
 }
 
-.status-badge.send {
+.status-badge.send,
+.status-badge.send_for_qc,
+.status-badge.send__for__qc {
     background-color: #FFF3CD;
     color: #856404;
     border: 1px solid #FFEEBA;
+}
+
+.status-badge.dispatch {
+    background-color: #f3e5f5;
+    color: #8e24aa;
+    border: 1px solid #e1bee7;
 }
 
 .status-badge.pending {
@@ -1704,7 +1726,9 @@ input[type="file"]:hover {
     border: 1px solid #FFE0B2;
 }
 
-.status-badge.in.progress {
+.status-badge.in.progress,
+.status-badge.in_progress,
+.status-badge.in__progress {
     background-color: #E3F2FD;
     color: #1976D2;
     border: 1px solid #BBDEFB;
@@ -1919,4 +1943,46 @@ input[type="file"]:hover {
     .allocation-search-container .search-wrapper {
         width: 100%;
     }
+}
+
+/* ==========================================================================
+   INLINE EMPLOYEE ASSIGNMENT (oa-assign-trigger)
+   ========================================================================== */
+
+/* The clickable element inside the "Assigned To" table cell */
+.oa-assign-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    user-select: none;
+}
+
+/* Amber badge for unassigned orders */
+.oa-assign-trigger.oa-unassigned {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px dashed #f59e0b;
+}
+.oa-assign-trigger.oa-unassigned:hover {
+    background: #fde68a;
+    transform: scale(1.03);
+}
+
+/* Subtle style for already-assigned (shows pencil on hover) */
+.oa-assign-trigger.oa-assigned {
+    background: transparent;
+    color: #374151;
+    border: 1px solid transparent;
+}
+.oa-assign-trigger.oa-assigned:hover {
+    background: #ede9fe;
+    color: #4c1d95;
+    border-color: #c4b5fd;
+    transform: scale(1.02);
 }

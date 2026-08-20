@@ -386,7 +386,7 @@ def test_mixed_workload_500_users_across_different_projects_end_tasks_while_othe
         try:
             barrier.wait(timeout=30)
             WorkSessionService(actor=user).end_session(
-                sessions[user.emp_id].id, work_units=(i % 20) + 1
+                sessions[user.emp_id].id
             )
         except Exception as exc:  # noqa: BLE001
             errors[i] = exc

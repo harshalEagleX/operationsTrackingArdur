@@ -106,7 +106,7 @@ class AuthService(BaseService):
         an "employee" with no real Employee record behind it.
         """
         employee = self.require_found(
-            Employee.objects.filter(employee_id=emp_id, status="active").first(),
+            Employee.objects.filter(employee_id=emp_id, status__iexact="active").first(),
             "No active employee record found for that ID. Ask your supervisor to add you first.",
         )
 
@@ -164,7 +164,11 @@ class EmployeeService(BaseService):
         self.require_supervisor("Only a supervisor can add an employee.")
 
         password = data.pop("password", None)
-        employee_id = data["employee_id"]
+        employee_id = data.get("employee_id")
+        
+        if not employee_id:
+            employee_id = Employee.generate_employee_id()
+            data["employee_id"] = employee_id
 
         if Employee.objects.filter(employee_id=employee_id).exists():
             raise ConflictError(f"An employee with ID {employee_id} already exists.")

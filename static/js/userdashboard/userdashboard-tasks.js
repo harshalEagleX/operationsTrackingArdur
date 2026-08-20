@@ -1,5 +1,5 @@
 // Add click listener to "View" buttons
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (e.target.closest('.status-badge.allocated.view-btn')) {
         const viewBtn = e.target.closest('.status-badge.allocated.view-btn');
         const allocationId = viewBtn.dataset.allocationId;
@@ -19,7 +19,7 @@ document.addEventListener('click', function(e) {
                 });
         }
     }
-    
+
     // Add handler for start-action button
     if (e.target.closest('.action-btn.start-action')) {
         const clickedBtn = e.target.closest('.action-btn.start-action');
@@ -29,7 +29,7 @@ document.addEventListener('click', function(e) {
 
         const row = clickedBtn.closest('tr');
         const cells = row.getElementsByTagName('td');
-        
+
         // Get data from the row
         const projectName = cells[1].textContent;
         const clientCode = cells[2].textContent;
@@ -44,7 +44,7 @@ document.addEventListener('click', function(e) {
             clickedBtn.innerHTML = originalBtnHTML;
             return;
         }
-        
+
         // Use an async function to handle the sequential population
         (async () => {
             try {
@@ -150,6 +150,10 @@ function displayOrderDetails(order) {
                                 <div class="oa-detail-value">${order.batch_id || '-'}</div>
                             </div>
                             <div class="oa-detail-item">
+                                <div class="oa-detail-label">AR Number</div>
+                                <div class="oa-detail-value">${order.ar_number || '-'}</div>
+                            </div>
+                            <div class="oa-detail-item">
                                 <div class="oa-detail-label">Order Type</div>
                                 <div class="oa-detail-value editable">
                                     <select class="editable-input" data-original="${order.order_details || ''}">
@@ -203,9 +207,15 @@ function displayOrderDetails(order) {
                                 <div class="oa-detail-value">$${order.fees || '0'}</div>
                             </div>
                             <div class="oa-detail-item">
-                                <div class="oa-detail-label">Remarks</div>
+                                <div class="oa-detail-label">Instructions</div>
+                                <div class="oa-detail-value">
+                                    <span class="oa-display-value" style="white-space: pre-wrap;">${order.remarks || '-'}</span>
+                                </div>
+                            </div>
+                            <div class="oa-detail-item">
+                                <div class="oa-detail-label">Employee Comments</div>
                                 <div class="oa-detail-value editable">
-                                    <textarea class="editable-input" data-original="${order.remarks || ''}">${order.remarks || ''}</textarea>
+                                    <textarea class="editable-input" data-original="${order.employee_comments || ''}">${order.employee_comments || ''}</textarea>
                                 </div>
                             </div>
                             <div class="oa-detail-item">
@@ -233,32 +243,32 @@ function displayOrderDetails(order) {
                 </div>
             `;
 
-    // Add helper function to determine document icon
-    function getDocumentIcon(filename) {
-        const ext = filename.split('.').pop().toLowerCase();
-        switch(ext) {
-            case 'pdf':
-                return 'fa-file-pdf';
-            case 'doc':
-            case 'docx':
-                return 'fa-file-word';
-            case 'xls':
-            case 'xlsx':
-                return 'fa-file-excel';
-            case 'txt':
-                return 'fa-file-alt';
-            case 'jpg':
-            case 'jpeg':
-            case 'png':
-            case 'gif':
-                return 'fa-file-image';
-            default:
-                return 'fa-file';
-        }
-    }
+            // Add helper function to determine document icon
+            function getDocumentIcon(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                switch (ext) {
+                    case 'pdf':
+                        return 'fa-file-pdf';
+                    case 'doc':
+                    case 'docx':
+                        return 'fa-file-word';
+                    case 'xls':
+                    case 'xlsx':
+                        return 'fa-file-excel';
+                    case 'txt':
+                        return 'fa-file-alt';
+                    case 'jpg':
+                    case 'jpeg':
+                    case 'png':
+                    case 'gif':
+                        return 'fa-file-image';
+                    default:
+                        return 'fa-file';
+                }
+            }
 
-    // First append the popup to the document
-    document.body.appendChild(popup);
+            // First append the popup to the document
+            document.body.appendChild(popup);
 
             // Force a reflow to ensure the transition works
             popup.offsetHeight;
@@ -271,15 +281,15 @@ function displayOrderDetails(order) {
             // Handle save button click
             const saveBtn = popup.querySelector('.oa-details-save');
             if (saveBtn) {
-                saveBtn.addEventListener('click', async function() {
+                saveBtn.addEventListener('click', async function () {
                     const orderTypeSelect = popup.querySelector('select.editable-input');
                     const remarksInput = popup.querySelector('textarea.editable-input');
-                    
+
                     const newOrderType = orderTypeSelect.value;
                     const newRemarks = remarksInput.value.trim();
-                    
+
                     // Check if there are any changes
-                    if (newOrderType === orderTypeSelect.dataset.original && 
+                    if (newOrderType === orderTypeSelect.dataset.original &&
                         newRemarks === remarksInput.dataset.original &&
                         newDocuments.length === 0) {
                         showNotification('No changes to save', 'error');
@@ -299,7 +309,7 @@ function displayOrderDetails(order) {
                     try {
                         // Prepare form data for multipart upload
                         const formData = new FormData();
-                        
+
                         // Add basic update data
                         const updateData = {
                             task_id: order.task_id,
@@ -308,11 +318,11 @@ function displayOrderDetails(order) {
                             search_type: order.search_type,
                             fees: order.fees,
                             order_details: newOrderType,
-                            remarks: newRemarks
+                            employee_comments: newRemarks
                         };
-                        
+
                         formData.append('data', JSON.stringify(updateData));
-                        
+
                         // Add new documents if any
                         newDocuments.forEach((doc, index) => {
                             // Convert base64 to Blob
@@ -324,7 +334,7 @@ function displayOrderDetails(order) {
                                 ia[i] = byteString.charCodeAt(i);
                             }
                             const blob = new Blob([ab], { type: mimeString });
-                            
+
                             // Create a File object from the Blob
                             const file = new File([blob], doc.name, { type: mimeString });
                             formData.append(`file_${index}`, file);
@@ -383,12 +393,12 @@ function displayOrderDetails(order) {
             // Handle close button click
             const closeBtn = popup.querySelector('.oa-details-close');
             if (closeBtn) {
-                closeBtn.addEventListener('click', function() {
+                closeBtn.addEventListener('click', function () {
                     // Check for unsaved changes using more reliable selectors
                     const orderTypeSelect = popup.querySelector('select.editable-input');
                     const remarksInput = popup.querySelector('textarea.editable-input');
-                    
-                    if (orderTypeSelect.value !== orderTypeSelect.dataset.original || 
+
+                    if (orderTypeSelect.value !== orderTypeSelect.dataset.original ||
                         remarksInput.value.trim() !== remarksInput.dataset.original) {
                         if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
                             return;
@@ -421,11 +431,11 @@ function displayOrderDetails(order) {
             // Function to handle closing the popup
             function closePopup(popup) {
                 popup.classList.remove('show');
-                
+
                 // Remove event listeners
                 document.removeEventListener('click', handleOutsideClick);
                 document.removeEventListener('keydown', handleEscKey);
-                
+
                 // Remove the popup after the animation
                 setTimeout(() => {
                     popup.remove();
@@ -453,7 +463,7 @@ function displayOrderDetails(order) {
                         <div class="oa-document-info">
                             <span class="oa-document-name" title="${doc.name}">${doc.name}</span>
                             <div class="oa-document-actions">
-                                <a href="/api/download-document/${order.task_id}/${encodeURIComponent(doc.name)}" 
+                                <a href="/api/v1/allocations/${order.allocation_id || order.id}/download/?doc=${doc.type}" 
                                    class="oa-document-download" 
                                    target="_blank">
                                     <i class="fas fa-download"></i> Download
@@ -506,7 +516,7 @@ function displayOrderDetails(order) {
 
             if (addDocumentBtn && fileInput) {
                 addDocumentBtn.addEventListener('click', () => fileInput.click());
-                fileInput.addEventListener('change', function(e) {
+                fileInput.addEventListener('change', function (e) {
                     const files = Array.from(e.target.files);
                     const allowedTypes = [
                         'image/jpeg', 'image/png', 'image/jpg', 'image/gif',
@@ -520,8 +530,8 @@ function displayOrderDetails(order) {
                     const validFiles = files.filter(file => {
                         const fileType = file.type.toLowerCase();
                         const fileExtension = file.name.split('.').pop().toLowerCase();
-                        return allowedTypes.includes(fileType) || 
-                               ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'].includes(fileExtension);
+                        return allowedTypes.includes(fileType) ||
+                            ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'].includes(fileExtension);
                     });
                     if (validFiles.length !== files.length) {
                         showNotification('Only images, PDF, Word, Excel, and text files are allowed', 'error');
@@ -533,7 +543,7 @@ function displayOrderDetails(order) {
                             return;
                         }
                         const reader = new FileReader();
-                        reader.onload = function(e) {
+                        reader.onload = function (e) {
                             newDocuments.push({
                                 data: e.target.result,
                                 name: file.name,
@@ -591,7 +601,7 @@ function checkPendingTasks() {
     const userId = sessionStorage.getItem('emp_id');
     if (!userId) return;
 
-        fetch(`/api/v1/tracking/sessions/?emp_id=${userId}&open=true`)
+    fetch(`/api/v1/tracking/sessions/?emp_id=${userId}&open=true`)
         .then(response => response.json())
         .then(res => {
             const data = res.data || res;
@@ -599,28 +609,28 @@ function checkPendingTasks() {
             const pendingCountBadge = document.getElementById('pendingCount');
             const pendingTasksBtn = document.getElementById('pendingTasksBtn');
 
-            if (pendingCount > 0) {
-                pendingCountBadge.textContent = pendingCount;
-                pendingCountBadge.style.display = 'inline';
-                
-                if (!isPendingView) {
-                    pendingTasksBtn.classList.add('blinking');
-                }
-            } else {
-                pendingCountBadge.style.display = 'none';
-                pendingTasksBtn.classList.remove('blinking');
-            }
+            // if (pendingCount > 0) {
+            //     pendingCountBadge.textContent = pendingCount;
+            //     pendingCountBadge.style.display = 'inline';
+
+            //     if (!isPendingView) {
+            //         pendingTasksBtn.classList.add('blinking');
+            //     }
+            // } else {
+            //     pendingCountBadge.style.display = 'none';
+            //     pendingTasksBtn.classList.remove('blinking');
+            // }
         })
         .catch(error => console.error('Error checking pending tasks:', error));
 }
 
 // Add this to your existing DOMContentLoaded event listener, right after it starts
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize pending tasks functionality
     const pendingTasksBtn = document.getElementById('pendingTasksBtn');
     if (pendingTasksBtn) {
-        pendingTasksBtn.addEventListener('click', function() {
+        pendingTasksBtn.addEventListener('click', function () {
             isPendingView = !isPendingView;
             const dateFilter = document.getElementById('date-filter');
             fetchWorkData(dateFilter.value);
@@ -647,7 +657,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add click handlers for view buttons
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         if (e.target.closest('.view-btn')) {
             const viewBtn = e.target.closest('.view-btn');
             const allocationId = viewBtn.dataset.allocationId;
@@ -666,7 +676,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Add this after your existing feedback-related code
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Initialize feedback form functionality
     initializeFeedbackForm();
 });
@@ -676,8 +686,8 @@ let feedbackFormInitialized = false;
 function initializeFeedbackForm() {
     if (feedbackFormInitialized) {
         return;
-    }   
-    
+    }
+
     const newFeedbackBtn = document.getElementById('newFeedbackBtn');
     const newFeedbackSection = document.getElementById('newFeedbackSection');
     const closeFeedbackForm = document.querySelector('.close-feedback-form');
@@ -693,12 +703,12 @@ function initializeFeedbackForm() {
     today.setHours(today.getHours() + 5);
     today.setMinutes(today.getMinutes() + 30);
     const istDate = today.toISOString().split('T')[0];
-    
+
     // Set the dates
     $('#new_processedDate').val(istDate);
     $('#new_feedbackReceivedDate').val(istDate);
     $('#new_openDate').val(istDate);
-    
+
     // Set the feedback provider as the logged-in user
     const loggedInUser = $('#user-name').text().trim().replace(/^\s*[\r\n]/gm, '').split('\n')[0];
     $('#new_feedbackProvidedBy').val(loggedInUser);
@@ -717,9 +727,9 @@ function initializeFeedbackForm() {
 
                 const projectDropdown = $('#new_project');
                 projectDropdown.empty().append('<option value="">Select a project</option>');
-                
+
                 if (Array.isArray(data) && data.length > 0) {
-                data.forEach(project => {
+                    data.forEach(project => {
                         projectDropdown.append(new Option(project.project_name, project.project_name, false, false));
                     });
                     projectsLoaded = true;
@@ -741,30 +751,30 @@ function initializeFeedbackForm() {
     $('#new_workType').off('change');
 
     // Project change handler
-    $('#new_project').on('change', function(e) {
+    $('#new_project').on('change', function (e) {
         // Prevent the handler from running on programmatic changes
         if (e.originalEvent === undefined) return;
 
         const selectedProject = $(this).val();
-        
+
         // Reset and disable dependent dropdowns
         $('#new_empIdName').prop('disabled', true).empty().append('<option value="">Select employee(s)</option>');
         $('#new_clientCode').prop('disabled', true).empty().append('<option value="">Select client code</option>');
         $('#new_workType').prop('disabled', true).empty().append('<option value="">Select work type</option>');
-        
+
         if (!selectedProject) return;
 
         // Fetch employees for the selected project
-            fetch(`/get_project_employees/${encodeURIComponent(selectedProject)}`)
+        fetch(`/get_project_employees/${encodeURIComponent(selectedProject)}`)
             .then(response => {
                 if (!response.ok) throw new Error('Network response was not ok');
                 return response.json();
             })
-                .then(data => {
+            .then(data => {
                 const empDropdown = $('#new_empIdName');
-                    
+
                 if (Array.isArray(data) && data.length > 0) {
-                        data.forEach(emp => {
+                    data.forEach(emp => {
                         empDropdown.append(new Option(
                             `${emp.employee_id} - ${emp.name}`,
                             emp.employee_id,
@@ -774,8 +784,8 @@ function initializeFeedbackForm() {
                     });
                     empDropdown.prop('disabled', false);
                 }
-                })
-                .catch(error => {
+            })
+            .catch(error => {
                 console.error('Error:', error);
                 $('#new_empIdName')
                     .html('<option value="">Error loading employees</option>')
@@ -784,25 +794,25 @@ function initializeFeedbackForm() {
     });
 
     // Employee change handler
-    $('#new_empIdName').on('change', function(e) {
+    $('#new_empIdName').on('change', function (e) {
         // Prevent the handler from running on programmatic changes
         if (e.originalEvent === undefined) return;
 
         const selectedValues = $(this).val();
         const selectedProject = $('#new_project').val();
-        
+
         // Reset dependent dropdowns
         $('#new_clientCode').prop('disabled', true).empty().append('<option value="">Select client code</option>');
         $('#new_workType').prop('disabled', true).empty().append('<option value="">Select work type</option>');
-        
+
         if (!selectedValues || selectedValues.length === 0 || !selectedProject) {
             $('#new_empId, #new_empName').val('');
             return;
         }
 
-            const firstEmpId = selectedValues[0];
+        const firstEmpId = selectedValues[0];
         $('#new_empId').val(firstEmpId);
-            
+
         // Only make the API call if we have both employee ID and project
         if (firstEmpId && selectedProject) {
             fetch(`/get_employee_project_details/${encodeURIComponent(firstEmpId)}/${encodeURIComponent(selectedProject)}`)
@@ -812,16 +822,16 @@ function initializeFeedbackForm() {
                 })
                 .then(data => {
                     if (data.error) throw new Error(data.error);
-                    
+
                     const clientCodeDropdown = $('#new_clientCode');
-                    
+
                     if (data.client_codes && data.client_codes.length > 0) {
                         data.client_codes.forEach(code => {
                             clientCodeDropdown.append(new Option(code, code, false, false));
                         });
                         clientCodeDropdown.prop('disabled', false);
                     }
-                    
+
                     $('#new_empName').val(data.emp_name);
                 })
                 .catch(error => {
@@ -834,35 +844,35 @@ function initializeFeedbackForm() {
     });
 
     // Client code change handler
-    $('#new_clientCode').on('change', function() {
+    $('#new_clientCode').on('change', function () {
         const selectedClientCode = $(this).val();
         const selectedProject = $('#new_project').val();
         const selectedEmployees = $('#new_empIdName').val();
-        
+
         $('#new_workType').prop('disabled', true).val(null).trigger('change');
-        
+
         if (!selectedClientCode || !selectedProject || !selectedEmployees || selectedEmployees.length === 0) return;
 
-            const firstEmpId = selectedEmployees[0];
-            
+        const firstEmpId = selectedEmployees[0];
+
         $('#new_workType')
             .html('<option value="">Loading work types...</option>')
             .prop('disabled', true);
-            
-            fetch(`/get_work_types/${encodeURIComponent(firstEmpId)}/${encodeURIComponent(selectedProject)}/${encodeURIComponent(selectedClientCode)}`)
-                .then(response => response.json())
-                .then(data => {
+
+        fetch(`/get_work_types/${encodeURIComponent(firstEmpId)}/${encodeURIComponent(selectedProject)}/${encodeURIComponent(selectedClientCode)}`)
+            .then(response => response.json())
+            .then(data => {
                 const workTypeDropdown = $('#new_workType');
                 workTypeDropdown.empty().append('<option value="">Select a work type</option>');
-                    
-                    if (data.work_types && data.work_types.length > 0) {
-                        data.work_types.forEach(type => {
+
+                if (data.work_types && data.work_types.length > 0) {
+                    data.work_types.forEach(type => {
                         workTypeDropdown.append(new Option(type, type, false, false));
-                        });
+                    });
                     workTypeDropdown.prop('disabled', false);
-                    }
-                })
-                .catch(error => {
+                }
+            })
+            .catch(error => {
                 console.error('Error:', error);
                 $('#new_workType')
                     .html('<option value="">Error loading work types</option>')
@@ -877,14 +887,14 @@ function initializeFeedbackForm() {
             placeholder: 'Select a project',
             allowClear: true,
             width: '100%'
-        }).on('select2:select', function(e) {
+        }).on('select2:select', function (e) {
             const selectedProject = e.params.data.id;
-            
+
             // Reset and disable dependent dropdowns
             $('#new_empIdName').prop('disabled', true).empty().append('<option value="">Select employee(s)</option>');
             $('#new_clientCode').prop('disabled', true).empty().append('<option value="">Select client code</option>');
             $('#new_workType').prop('disabled', true).empty().append('<option value="">Select work type</option>');
-            
+
             if (!selectedProject) return;
 
             // Fetch employees for the selected project
@@ -893,9 +903,9 @@ function initializeFeedbackForm() {
                     if (!response.ok) throw new Error('Network response was not ok');
                     return response.json();
                 })
-    .then(data => {
+                .then(data => {
                     const empDropdown = $('#new_empIdName');
-                    
+
                     if (Array.isArray(data) && data.length > 0) {
                         data.forEach(emp => {
                             empDropdown.append(new Option(
@@ -906,10 +916,10 @@ function initializeFeedbackForm() {
                             ));
                         });
                         empDropdown.prop('disabled', false).trigger('change.select2');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
                     $('#new_empIdName')
                         .html('<option value="">Error loading employees</option>')
                         .prop('disabled', true);
@@ -923,14 +933,14 @@ function initializeFeedbackForm() {
             multiple: true,
             width: '100%',
             closeOnSelect: false
-        }).on('select2:select select2:unselect', function(e) {
+        }).on('select2:select select2:unselect', function (e) {
             const selectedValues = $(this).val();
             const selectedProject = $('#new_project').val();
-            
+
             // Reset dependent dropdowns
             $('#new_clientCode').prop('disabled', true).empty().append('<option value="">Select client code</option>');
             $('#new_workType').prop('disabled', true).empty().append('<option value="">Select work type</option>');
-            
+
             if (!selectedValues || selectedValues.length === 0 || !selectedProject) {
                 $('#new_empId, #new_empName').val('');
                 return;
@@ -948,16 +958,16 @@ function initializeFeedbackForm() {
                     })
                     .then(data => {
                         if (data.error) throw new Error(data.error);
-                        
+
                         const clientCodeDropdown = $('#new_clientCode');
-                        
+
                         if (data.client_codes && data.client_codes.length > 0) {
                             data.client_codes.forEach(code => {
                                 clientCodeDropdown.append(new Option(code, code, false, false));
                             });
                             clientCodeDropdown.prop('disabled', false).trigger('change.select2');
                         }
-                        
+
                         $('#new_empName').val(data.emp_name);
                     })
                     .catch(error => {
@@ -974,17 +984,17 @@ function initializeFeedbackForm() {
             placeholder: 'Select client code',
             allowClear: true,
             width: '100%'
-        }).on('select2:select', function(e) {
+        }).on('select2:select', function (e) {
             const selectedClientCode = e.params.data.id;
             const selectedProject = $('#new_project').val();
             const selectedEmployees = $('#new_empIdName').val();
-            
+
             $('#new_workType').prop('disabled', true).empty().append('<option value="">Select work type</option>');
-            
+
             if (!selectedClientCode || !selectedProject || !selectedEmployees || selectedEmployees.length === 0) return;
 
             const firstEmpId = selectedEmployees[0];
-            
+
             fetch(`/get_work_types/${encodeURIComponent(firstEmpId)}/${encodeURIComponent(selectedProject)}/${encodeURIComponent(selectedClientCode)}`)
                 .then(response => {
                     if (!response.ok) throw new Error('Network response was not ok');
@@ -992,7 +1002,7 @@ function initializeFeedbackForm() {
                 })
                 .then(data => {
                     const workTypeDropdown = $('#new_workType');
-                    
+
                     if (data.work_types && data.work_types.length > 0) {
                         data.work_types.forEach(type => {
                             workTypeDropdown.append(new Option(type, type, false, false));
@@ -1027,8 +1037,8 @@ function initializeFeedbackForm() {
 // Add this at the beginning of the file, before any other code
 let initializeSelect2, loadInitialData;
 
-document.addEventListener('DOMContentLoaded', function() {
-    
+document.addEventListener('DOMContentLoaded', function () {
+
     const newFeedbackBtn = document.getElementById('newFeedbackBtn');
     const newFeedbackSection = document.getElementById('newFeedbackSection');
     const closeFeedbackForm = document.querySelector('.close-feedback-form');
@@ -1041,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle form submission - single source of truth
     const feedbackForm = document.getElementById('newFeedbackForm');
     if (feedbackForm) {
-        feedbackForm.addEventListener('submit', function(event) {
+        feedbackForm.addEventListener('submit', function (event) {
             event.preventDefault();
 
             const formData = new FormData(this);
@@ -1050,15 +1060,15 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('orderBatchId', document.getElementById('new_orderBatchId').value);
             formData.append('feedbackRecorded', 'internalAudit');
             formData.append('project', document.getElementById('new_project').value);
-            
+
             // Handle employee selection - convert to array format
             const selectedEmployees = $('#new_empIdName').val() || [];
             formData.append('selectedEmployees', JSON.stringify(selectedEmployees));
-            
+
             // Add employee details
             formData.append('empId', document.getElementById('new_empId').value);
             formData.append('empName', document.getElementById('new_empName').value);
-            
+
             // Add other form fields
             formData.append('clientCode', document.getElementById('new_clientCode').value);
             formData.append('workType', document.getElementById('new_workType').value);
@@ -1103,29 +1113,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Feedback submitted successfully!');
-                    // Don't clear any form fields or file inputs
-                    // Just show success message and keep form data
-                } else {
-                    alert('Failed to submit feedback: ' + (data.error || 'Unknown error'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while submitting feedback');
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Feedback submitted successfully!');
+                        // Don't clear any form fields or file inputs
+                        // Just show success message and keep form data
+                    } else {
+                        alert('Failed to submit feedback: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while submitting feedback');
+                });
         });
     }
 
     // Define initializeSelect2 function
-    initializeSelect2 = function() {
+    initializeSelect2 = function () {
 
         if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
             try {
-                
+
                 $('#new_project').select2({
                     placeholder: 'Select a project',
                     allowClear: true,
@@ -1166,8 +1176,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Define loadInitialData function
-    loadInitialData = function() {
-        
+    loadInitialData = function () {
+
         fetch('/api/v1/masters/selections/')
             .then(response => response.json())
             .then(data => {
@@ -1179,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const projectDropdown = document.getElementById('new_project');
                 if (projectDropdown && data.projects) {
                     projectDropdown.innerHTML = '<option value="">Select a project</option>';
-                    
+
                     // Add projects to dropdown
                     data.projects.forEach(project => {
                         const option = document.createElement('option');
@@ -1191,7 +1201,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // If there's only one project, auto-select it
                     if (data.projects.length === 1) {
                         projectDropdown.value = data.projects[0].project_name;
-                        
+
                         // Fetch employees for the selected project
                         fetch(`/get_project_employees/${encodeURIComponent(data.projects[0].project_name)}`)
                             .then(response => {
@@ -1201,7 +1211,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             .then(empData => {
                                 const empDropdown = $('#new_empIdName');
                                 empDropdown.empty().append('<option value="">Select employee(s)</option>');
-                                
+
                                 if (Array.isArray(empData) && empData.length > 0) {
                                     empData.forEach(emp => {
                                         empDropdown.append(new Option(
@@ -1232,14 +1242,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Show/hide feedback form
     if (newFeedbackBtn) {
-        newFeedbackBtn.addEventListener('click', function(event) {
+        newFeedbackBtn.addEventListener('click', function (event) {
             event.preventDefault();
-            
+
             try {
                 feedbackReports.style.display = 'none';
                 feedbackDetailPreview.style.display = 'none';
                 newFeedbackSection.style.display = 'block';
-                
+
                 initializeSelect2();
                 loadInitialData();
 
@@ -1257,29 +1267,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add close button functionality
     if (closeFeedbackForm) {
-        closeFeedbackForm.addEventListener('click', function() {
+        closeFeedbackForm.addEventListener('click', function () {
             // Reset form
             const feedbackForm = document.getElementById('newFeedbackForm');
             if (feedbackForm) {
                 feedbackForm.reset();
-                
+
                 // Reset Select2 dropdowns
                 $('#new_project').val('').trigger('change');
                 $('#new_empIdName').val('').trigger('change');
                 $('#new_clientCode').val('').trigger('change');
                 $('#new_workType').val('').trigger('change');
-                
+
                 // Clear file preview
                 const previewContainer = document.getElementById('new_previewContainer');
                 if (previewContainer) {
                     previewContainer.innerHTML = '';
                 }
             }
-            
+
             // Hide form and show reports
             newFeedbackSection.style.display = 'none';
             feedbackReports.style.display = 'block';
-            
+
             // Refresh feedback reports
             fetchFeedbackReports();
         });
@@ -1337,7 +1347,7 @@ function initializeFileUpload() {
             const activeElement = document.activeElement;
             const isTextInput = activeElement.tagName === 'INPUT' && activeElement.type === 'text';
             const isTextArea = activeElement.tagName === 'TEXTAREA';
-            
+
             if (isTextInput || isTextArea) return;
 
             if (e.clipboardData.files.length > 0) {
@@ -1361,20 +1371,20 @@ function initializeFileUpload() {
             }
 
             uploadedFiles.add(file.name);
-            
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 const wrapper = document.createElement("div");
                 wrapper.className = "preview-image-wrapper new-feedback-preview";
-                
+
                 const img = document.createElement("img");
                 img.src = e.target.result;
                 img.className = 'preview-image';
                 img.setAttribute('data-filename', file.name);
-                
+
                 // Add click event for full-screen preview
                 img.onclick = () => showFullScreenImage(e.target.result, Array.from(previewContainer.querySelectorAll('img')).indexOf(img));
-                
+
                 const removeBtn = document.createElement("button");
                 removeBtn.className = "remove-image";
                 removeBtn.innerHTML = '<i class="fas fa-times"></i>';
@@ -1383,7 +1393,7 @@ function initializeFileUpload() {
                     e.stopPropagation();
                     removeFile(file.name, wrapper);
                 };
-                
+
                 wrapper.appendChild(img);
                 wrapper.appendChild(removeBtn);
                 previewContainer.appendChild(wrapper);
@@ -1397,7 +1407,7 @@ function initializeFileUpload() {
     function removeFile(fileName, wrapper) {
         uploadedFiles.delete(fileName);
         wrapper.remove();
-        
+
         const newFileList = Array.from(fileInput.files).filter(file => file.name !== fileName);
         updateFileInputFiles(newFileList);
     }
@@ -1413,46 +1423,46 @@ function initializeFileUpload() {
 function showFullScreenImage(src, currentIndex) {
     const modal = document.createElement('div');
     modal.className = 'image-preview-modal';
-    
+
     const modalContent = document.createElement('div');
     modalContent.className = 'modal-content';
-    
+
     const img = document.createElement('img');
     img.src = src;
-    
+
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-modal';
     closeBtn.innerHTML = '<i class="fas fa-times"></i>';
     closeBtn.onclick = () => modal.remove();
-    
+
     const images = Array.from(document.querySelectorAll('.preview-image'));
-    
+
     if (images.length > 1) {
         const prevBtn = document.createElement('button');
         prevBtn.className = 'nav-btn prev';
         prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
         prevBtn.onclick = () => navigateImages((currentIndex - 1 + images.length) % images.length);
-        
+
         const nextBtn = document.createElement('button');
         nextBtn.className = 'nav-btn next';
         nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
         nextBtn.onclick = () => navigateImages((currentIndex + 1) % images.length);
-        
+
         modalContent.appendChild(prevBtn);
         modalContent.appendChild(nextBtn);
     }
-    
+
     modalContent.appendChild(closeBtn);
     modalContent.appendChild(img);
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
-    
+
     function navigateImages(newIndex) {
         const newSrc = images[newIndex].src;
         img.src = newSrc;
         currentIndex = newIndex;
     }
-    
+
     // Handle keyboard navigation
     function handleKeyPress(e) {
         if (e.key === 'Escape') {
@@ -1463,7 +1473,7 @@ function showFullScreenImage(src, currentIndex) {
             navigateImages((currentIndex + 1) % images.length);
         }
     }
-    
+
     document.addEventListener('keydown', handleKeyPress);
     modal.onclick = (e) => {
         if (e.target === modal) {
@@ -1615,16 +1625,16 @@ function updateFields(projectName) {
 }
 
 // Update project change handler in initializeFeedbackForm
-$('#new_project').on('change', function() {
+$('#new_project').on('change', function () {
     const selectedProject = $(this).find('option:selected').text();
     updateFields(selectedProject);
     updateTypeDropdown(selectedProject);
-    
+
     // ... rest of the existing project change handler code ...
 });
 
 // Add type change handler to update feedback text
-$('#new_type').on('change', function() {
+$('#new_type').on('change', function () {
     const selectedType = $(this).find('option:selected').text();
     $('#new_feedbackText').val(selectedType);
 });
@@ -1637,7 +1647,7 @@ function handleNewProjectChange() {
 }
 
 // Attach the handler to the project dropdown
-$(document).ready(function() {
+$(document).ready(function () {
     // On change
     $('#new_project').off('change').on('change', handleNewProjectChange);
     // On initial load (in case a project is pre-selected)
@@ -1695,7 +1705,7 @@ function showOrderDetailsFromApi(orderData) {
 }
 
 // --- Pending Acknowledgment Modal Logic ---
-(function() {
+(function () {
     // Inject modal HTML and CSS if not present
     function injectPendingAckModal() {
         if (document.getElementById('pendingAckModal')) return;
@@ -1737,14 +1747,14 @@ function showOrderDetailsFromApi(orderData) {
         document.body.style.overflow = 'hidden';
         // Add button listeners
         modal.querySelectorAll('.pending-ack-btn').forEach(btn => {
-            btn.onclick = function() {
+            btn.onclick = function () {
                 // Switch to feedback tab and highlight the feedback
                 showContent('feedback');
                 setTimeout(() => {
                     // Optionally scroll to the feedback row
                     const row = Array.from(document.querySelectorAll('#feedback-table tbody tr')).find(r => r.textContent.includes(`Report-${btn.dataset.id}`));
                     if (row) {
-                        row.scrollIntoView({behavior:'smooth', block:'center'});
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         row.classList.add('pending-ack-highlight');
                         setTimeout(() => row.classList.remove('pending-ack-highlight'), 2000);
                     }
@@ -1765,9 +1775,10 @@ function showOrderDetailsFromApi(orderData) {
         // Only run if not on feedback tab
         const feedbackSection = document.getElementById('feedback-section');
         if (feedbackSection && feedbackSection.style.display !== 'block') {
-            const res = await fetch('/get_user_feedback');
+            const res = await fetch('/api/v1/feedback/');
             if (!res.ok) return;
-            const data = await res.json();
+            const payload = await res.json();
+            const data = payload.data || payload; // handle envelope
             // Only consider pending feedbacks where 24h have passed since created_at
             const now = Date.now();
             const pending = data.filter(fb => {
@@ -1793,7 +1804,7 @@ function showOrderDetailsFromApi(orderData) {
     }
     // Hook into tab switching
     const origShowContent = window.showContent;
-    window.showContent = function(contentId) {
+    window.showContent = function (contentId) {
         origShowContent.apply(this, arguments);
         if (contentId !== 'feedback') {
             setTimeout(() => checkPendingAcknowledgments(), 200);
@@ -1802,11 +1813,11 @@ function showOrderDetailsFromApi(orderData) {
         }
     };
     // On page load
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => checkPendingAcknowledgments(), 400);
     });
     // Prevent tab switch if modal is open
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         const modal = document.getElementById('pendingAckModal');
         if (modal && modal.style.display === 'block') {
             // Only allow clicks inside the modal
@@ -1819,13 +1830,13 @@ function showOrderDetailsFromApi(orderData) {
 })();
 
 // --- ProvenAir Tasks Button Logic ---
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const paTasksBtn = document.getElementById('paTasksBtn');
     let isPATodayView = false; // Track toggle state
     let allPaTasksData = [];
     const dateFilter = document.getElementById('date-filter');
     if (paTasksBtn) {
-        paTasksBtn.addEventListener('click', function() {
+        paTasksBtn.addEventListener('click', function () {
             document.getElementById('pendingTasksBtn')?.classList.remove('active');
             isPATodayView = !isPATodayView;
             window.isPATodayView = isPATodayView;
@@ -1908,7 +1919,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add event listeners for Start buttons
         document.querySelectorAll('.pa-task-start-btn').forEach(btn => {
-            btn.addEventListener('click', async function() {
+            btn.addEventListener('click', async function () {
                 const clickedBtn = this;
                 const paTaskId = clickedBtn.getAttribute('data-pa-task-id');
                 // Validate latest status to avoid duplicates/conflicts
@@ -1930,7 +1941,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert('This task is already completed.');
                         return;
                     }
-                } catch(e) {
+                } catch (e) {
                     console.error('Failed to validate task status:', e);
                     alert('Unable to validate task status. Please try again.');
                     return;
@@ -1940,7 +1951,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const originalBtnHTML = clickedBtn.innerHTML;
                 clickedBtn.disabled = true;
                 clickedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                
+
                 try {
                     // Pre-fill the work form
                     const projectSelect = document.getElementById('project-select');
@@ -1992,11 +2003,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     batchInput.value = task.batch || '';
                     pagesInput.value = task.pages || '';
-                    
+
                     if (task.project === 'ProvenAir-AAR' && task.pages) {
                         localStorage.setItem('lastProvenAirPages', task.pages);
                     }
-                    
+
                     // 4. Click the Start button
                     document.getElementById('start-btn').click();
                     // Keep PA view active and refresh PA list with latest statuses
@@ -2013,7 +2024,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }, 800);
 
-                } catch(error) {
+                } catch (error) {
                     console.error("Failed to start ProvenAir task:", error);
                     alert("Could not start the task automatically. Please check the form and try again.\n" + error.message);
                     clickedBtn.disabled = false;
@@ -2024,7 +2035,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Expose a global refresh for PA view so other flows (submit/end) can update immediately
-    window.refreshProvenAirTasksView = async function() {
+    window.refreshProvenAirTasksView = async function () {
         try {
             const data = await fetch('/get_pa_tasks').then(r => r.json());
             if (Array.isArray(data)) {
@@ -2038,11 +2049,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Assignment popup for newly assigned orders (persistent until acknowledged)
-(function(){
+(function () {
     let assignmentQueue = [];
     let isShowingAssignment = false;
 
-    function createAssignmentModal(item){
+    function createAssignmentModal(item) {
         const modal = document.createElement('div');
         modal.className = 'assignment-popup';
         modal.innerHTML = `
@@ -2075,15 +2086,18 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         // Prevent closing without ack
-        modal.querySelector('.oa-details-close').addEventListener('click', (e)=>{
+        modal.querySelector('.oa-details-close').addEventListener('click', (e) => {
             e.stopPropagation();
         });
         // Acknowledge button
-        modal.querySelector('.assignment-ack-btn').addEventListener('click', async ()=>{
+        modal.querySelector('.assignment-ack-btn').addEventListener('click', async () => {
             try {
                 await fetch(`/api/v1/allocations/${item.allocation_id}/status/`, {
                     method: 'POST',
-                    headers: {'Content-Type':'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''},
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
                     body: JSON.stringify({ status: 'in_progress' })
                 });
             } catch (e) {
@@ -2091,18 +2105,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             document.body.style.overflow = '';
             modal.classList.remove('show');
-            setTimeout(()=>{ modal.remove(); showNextAssignment(); }, 200);
+            setTimeout(() => { modal.remove(); showNextAssignment(); }, 200);
         });
         document.body.appendChild(modal);
-        requestAnimationFrame(()=>{
+        requestAnimationFrame(() => {
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
         });
         return modal;
     }
 
-    function showNextAssignment(){
-        if (assignmentQueue.length === 0){
+    function showNextAssignment() {
+        if (assignmentQueue.length === 0) {
             isShowingAssignment = false;
             return;
         }
@@ -2111,25 +2125,28 @@ document.addEventListener('DOMContentLoaded', function() {
         createAssignmentModal(item);
     }
 
-    async function fetchPendingAssignments(){
+    async function fetchPendingAssignments() {
         try {
             const res = await fetch('/api/v1/allocations/?open=true&status=pending');
             if (!res.ok) return;
             const data = await res.json();
-            if (data && Array.isArray(data.data || data) && (data.data || data).length > 0){
+            if (data && Array.isArray(data.data || data) && (data.data || data).length > 0) {
                 data.assignments = data.data || data;
                 // If currently showing, queue up newly fetched unseen items behind existing ones
-                const idsInQueue = new Set(assignmentQueue.map(a=>a.history_id));
-                const newly = data.assignments.filter(a=>!idsInQueue.has(a.allocation_id));
+                const idsInQueue = new Set(assignmentQueue.map(a => a.history_id));
+                const newly = data.assignments.filter(a => !idsInQueue.has(a.allocation_id));
                 assignmentQueue = assignmentQueue.concat(newly);
                 if (!isShowingAssignment) showNextAssignment();
             }
-        } catch(e){
+        } catch (e) {
             console.error('Error fetching pending assignments', e);
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function(){
+    // Assignment popup disabled — new orders appear in the bell notification
+    // centre instead of a blocking modal popup.
+    document.addEventListener('DOMContentLoaded', function () {
+        // fetchPendingAssignments(); // disabled: use bell notifications instead
     });
 })();
 
@@ -2164,67 +2181,7 @@ function patchEndPopupPagesField() {
 }
 document.addEventListener('DOMContentLoaded', patchEndPopupPagesField);
 
-document.addEventListener('DOMContentLoaded', function() {
-    const globalSearchInput = document.getElementById('global-search-input');
-    const clientCodeFilter = document.getElementById('client-code-filter');
-    const workDataTable = document.getElementById('work-data-table');
-
-    // Helper to get all unique client codes from the table
-    function getUniqueClientCodes() {
-        const codes = new Set();
-        workDataTable.querySelectorAll('tbody tr').forEach(row => {
-            const codeCell = row.children[2];
-            if (codeCell && codeCell.textContent && codeCell.textContent !== '-') {
-                codes.add(codeCell.textContent.trim());
-            }
-        });
-        return Array.from(codes);
-    }
-
-    // Populate client code filter
-    function populateClientCodeFilter() {
-        const codes = getUniqueClientCodes();
-        clientCodeFilter.innerHTML = '<option value="">All Client Codes</option>';
-        codes.forEach(code => {
-            const option = document.createElement('option');
-            option.value = code;
-            option.textContent = code;
-            clientCodeFilter.appendChild(option);
-        });
-    }
-
-    // Filtering logic
-    function filterTable() {
-        const searchValue = globalSearchInput.value.toLowerCase();
-        const selectedClientCode = clientCodeFilter.value;
-        workDataTable.querySelectorAll('tbody tr').forEach(row => {
-            const rowText = row.textContent.toLowerCase();
-            const codeCell = row.children[2];
-            const matchesSearch = !searchValue || rowText.includes(searchValue);
-            const matchesClientCode = !selectedClientCode || (codeCell && codeCell.textContent.trim() === selectedClientCode);
-            row.style.display = (matchesSearch && matchesClientCode) ? '' : 'none';
-        });
-    }
-
-    // Event listeners
-    if (globalSearchInput) {
-        globalSearchInput.addEventListener('input', filterTable);
-    }
-    if (clientCodeFilter) {
-        clientCodeFilter.addEventListener('change', filterTable);
-    }
-
-    // Re-populate client code filter whenever table data changes
-    const observer = new MutationObserver(() => {
-        populateClientCodeFilter();
-        filterTable();
-    });
-    observer.observe(workDataTable.querySelector('tbody'), { childList: true, subtree: false });
-
-    // Initial population
-    populateClientCodeFilter();
-});
-
+// Custom table filtering removed in favor of DataTables pagination and search
 function styleProvenAirProjectCells() {
     const workDataTable = document.getElementById('work-data-table');
     if (!workDataTable) return;
@@ -2251,7 +2208,7 @@ if (workDataTable) {
     styleProvenAirProjectCells();
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Enhance ProvenAir Tasks button style
     const paTasksBtn = document.getElementById('paTasksBtn');
     if (paTasksBtn) {
@@ -2267,29 +2224,29 @@ document.addEventListener('DOMContentLoaded', function() {
         paTasksBtn.style.alignItems = 'center';
         paTasksBtn.style.gap = '8px';
         paTasksBtn.style.transition = 'background 0.2s, box-shadow 0.2s';
-        paTasksBtn.onmouseover = function() {
+        paTasksBtn.onmouseover = function () {
             paTasksBtn.style.background = 'linear-gradient(90deg, #1565c0 0%, #1976d2 100%)';
             paTasksBtn.style.boxShadow = '0 4px 16px rgba(25, 118, 210, 0.18)';
         };
-        paTasksBtn.onmouseout = function() {
+        paTasksBtn.onmouseout = function () {
             paTasksBtn.style.background = 'linear-gradient(90deg, #1976d2 0%, #2196f3 100%)';
             paTasksBtn.style.boxShadow = '0 2px 8px rgba(25, 118, 210, 0.10)';
         };
     }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const uploadTaskTab = document.getElementById('upload-task-tab');
     if (uploadTaskTab) {
-        uploadTaskTab.addEventListener('click', function(e) {
+        uploadTaskTab.addEventListener('click', function (e) {
             e.preventDefault();
             window.open('http://192.168.1.250:8002', '_blank');
         });
     }
-    
+
     const chatTab = document.getElementById('chat-tab');
     if (chatTab) {
-        chatTab.addEventListener('click', function(e) {
+        chatTab.addEventListener('click', function (e) {
             e.preventDefault();
             fetch('/chat_url')
                 .then(r => r.json())

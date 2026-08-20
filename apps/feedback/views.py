@@ -7,8 +7,12 @@ Two layers of access control, both needed:
 
 from __future__ import annotations
 
+from datetime import date
+
+from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter, SearchFilter
 
 from apps.feedback.models import Feedback
 from apps.feedback.serializers import (
@@ -19,6 +23,7 @@ from apps.feedback.serializers import (
 from apps.feedback.services import FeedbackService
 from core.mixins import EnvelopeMixin, ServiceMixin
 from core.permissions import IsAdminOrSupervisor, IsAuthenticatedEmployee
+from core.timezone import day_bounds
 
 
 class FeedbackViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
@@ -27,8 +32,9 @@ class FeedbackViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
     serializer_class = FeedbackSerializer
     service_class = FeedbackService
     permission_classes = [IsAuthenticatedEmployee]
-    search_fields = ["subject", "description", "order_batch_id", "emp_id"]
-    ordering_fields = ["created_at", "severity"]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["subject", "description", "order_batch_id", "emp_id", "emp_name", "project", "work_type", "feedback", "client_code"]
+    ordering_fields = ["created_at", "processed_date", "severity", "emp_id", "emp_name", "project", "work_type", "order_batch_id"]
     ordering = ["-created_at"]
 
     def get_permissions(self):
@@ -51,15 +57,33 @@ class FeedbackViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         if emp_id := params.get("emp_id"):
             queryset = queryset.filter(emp_id=emp_id)
         if feedback_type := params.get("type"):
-            queryset = queryset.filter(feedback_type=feedback_type)
+            queryset = queryset.filter(Q(feedback_type=feedback_type) | Q(type=feedback_type))
         if severity := params.get("severity"):
             queryset = queryset.filter(severity=severity)
+        if project := params.get("project"):
+            queryset = queryset.filter(project=project)
+        if work_type := params.get("work_type"):
+            queryset = queryset.filter(work_type=work_type)
+        if status := params.get("status"):
+            queryset = queryset.filter(status=status)
+        if fb_rec := params.get("feedback_recorded"):
+            queryset = queryset.filter(feedback_recorded=fb_rec)
         if params.get("unacknowledged") == "true":
             queryset = queryset.unacknowledged()
         if date_from := params.get("from"):
-            queryset = queryset.filter(created_at__date__gte=date_from)
+            try:
+                d = date.fromisoformat(date_from)
+                start, _ = day_bounds(d)
+                queryset = queryset.filter(Q(created_at__gte=start) | Q(processed_date__gte=d))
+            except (ValueError, TypeError):
+                pass
         if date_to := params.get("to"):
-            queryset = queryset.filter(created_at__date__lte=date_to)
+            try:
+                d = date.fromisoformat(date_to)
+                _, end = day_bounds(d)
+                queryset = queryset.filter(Q(created_at__lt=end) | Q(processed_date__lte=d))
+            except (ValueError, TypeError):
+                pass
         return queryset
 
     def get_object(self):

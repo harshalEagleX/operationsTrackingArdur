@@ -347,23 +347,11 @@ document.addEventListener('DOMContentLoaded', function() {
             productivityChart.update();
         }
 
-        // Update stats
-        const totalUnits = filteredData.reduce((sum, d) => sum + (d.total_units || 0), 0);
-        const avgUnits = totalEmps > 0 ? (totalUnits / totalEmps).toFixed(2) : 0;
-        
         const statsHtml = `
             <div class="summary-stats">
                 <div class="stat-item">
                     <h5>Total Employees</h5>
                     <p>${totalEmps}</p>
-                </div>
-                <div class="stat-item">
-                    <h5>Total Work Units</h5>
-                    <p>${totalUnits}</p>
-                </div>
-                <div class="stat-item">
-                    <h5>Avg. Work Units</h5>
-                    <p>${avgUnits}</p>
                 </div>
             </div>
         `;
@@ -480,8 +468,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update loadProjects to return a promise with caching
     function loadProjects() {
-        return MasterDataCache.getOrFetch('master_projects', '/api/v1/masters/emp_get_projects/')
-            .then(projects => {
+        return MasterDataCache.getOrFetch('master_projects_v2', '/api/v1/masters/emp_get_projects/')
+            .then(data => {
+                const projects = Array.isArray(data) ? data : (data.projects || data.results || []);
                 const projectSelect = document.getElementById('projectSelect');
                 projectSelect.innerHTML = ''; // Clear existing options
                 
@@ -560,9 +549,10 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.className = 'detailed-chart-modal';
         
         // Calculate project statistics
-        const projectData = window.lastDetailedData.filter(item => item.project_name === projectName);
+        const rawData = window.lastDetailedData || [];
+        const projectData = rawData.filter(item => (item.project_name === projectName || item.project === projectName));
         const totalEmployees = projectData.length;
-        const totalUnits = projectData.reduce((sum, item) => sum + parseInt(item.unit_cnt), 0);
+        const totalUnits = projectData.reduce((sum, item) => sum + (parseInt(item.unit_cnt || item.total_units || item.work_units || 0) || 0), 0);
         
         // Calculate dynamic height based on number of employees (minimum 400px, 30px per employee)
         const chartHeight = Math.max(400, totalEmployees * 30);
@@ -570,7 +560,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.innerHTML = `
             <div class="detailed-chart-content">
                 <div class="detailed-header">
-                    <h3>${projectName.toUpperCase()} - EMPLOYEE DETAILS</h3>
+                    <h3>${(projectName || '').toUpperCase()} - EMPLOYEE DETAILS</h3>
                     <div class="detailed-actions">
                         <button class="refresh-detailed-btn" title="Refresh Data">
                             <i class="fas fa-sync-alt"></i>
@@ -582,10 +572,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="stat-item">
                         <h5>Total Employees</h5>
                         <p>${formatNumber(totalEmployees)}</p>
-                    </div>
-                    <div class="stat-item">
-                        <h5>Total Work Units</h5>
-                        <p>${formatNumber(totalUnits)}</p>
                     </div>
                 </div>
                 <div class="detailed-chart-container" style="height: ${chartHeight}px;">
@@ -607,12 +593,13 @@ document.addEventListener('DOMContentLoaded', function() {
             fetchSummaryData()
                 .then(() => {
                     // Get fresh data for this project only
-                    const updatedProjectData = window.lastDetailedData.filter(item => item.project_name === projectName);
-                    updatedProjectData.sort((a, b) => b.unit_cnt - a.unit_cnt);
+                    const rawUpdated = window.lastDetailedData || [];
+                    const updatedProjectData = rawUpdated.filter(item => (item.project_name === projectName || item.project === projectName));
+                    updatedProjectData.sort((a, b) => (b.unit_cnt || b.total_units || 0) - (a.unit_cnt || a.total_units || 0));
 
                     // Update statistics
                     const updatedTotalEmployees = updatedProjectData.length;
-                    const updatedTotalUnits = updatedProjectData.reduce((sum, item) => sum + parseInt(item.unit_cnt), 0);
+                    const updatedTotalUnits = updatedProjectData.reduce((sum, item) => sum + (parseInt(item.unit_cnt || item.total_units || item.work_units || 0) || 0), 0);
 
                     // Update statistics display
                     modal.querySelector('.stat-item:first-child p').textContent = formatNumber(updatedTotalEmployees);
@@ -623,8 +610,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     modal.querySelector('.detailed-chart-container').style.height = `${newChartHeight}px`;
 
                     // Update chart
-                    detailedChart.data.labels = updatedProjectData.map(item => item.name.toUpperCase());
-                    detailedChart.data.datasets[0].data = updatedProjectData.map(item => item.unit_cnt);
+                    detailedChart.data.labels = updatedProjectData.map(item => (item.name || item.emp_id || '').toUpperCase());
+                    detailedChart.data.datasets[0].data = updatedProjectData.map(item => (item.unit_cnt || item.total_units || 0));
                     detailedChart.update();
                 })
                 .finally(() => {
@@ -638,7 +625,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Work Units',
+                    label: 'Sessions',
                     data: [],
                     backgroundColor: '#4CAF50',
                     borderColor: '#4CAF50',
@@ -677,7 +664,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'WORK UNITS',
+                            text: 'SESSIONS',
                             font: {
                                 weight: 'bold',
                                 size: 14
@@ -733,9 +720,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Initial chart population
-        projectData.sort((a, b) => b.unit_cnt - a.unit_cnt);
+        projectData.sort((a, b) => b.sessions - a.sessions);
         detailedChart.data.labels = projectData.map(item => item.name.toUpperCase());
-        detailedChart.data.datasets[0].data = projectData.map(item => item.unit_cnt);
+        detailedChart.data.datasets[0].data = projectData.map(item => item.sessions);
         detailedChart.update();
     }
 
@@ -777,10 +764,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <th>Project</th>
                                 <th>Client Code</th>
                                 <th>Work Type</th>
-                                <th>Batch</th>
-                                <th>Work Units</th>
+                                <th>Order No.</th>
                                 <th>Total Time</th>
-                                <th>Average Time</th>
                                 <th>Review</th>
                             </tr>
                         </thead>
@@ -832,9 +817,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>${record.client_code || '-'}</td>
                         <td>${record.work_type || '-'}</td>
                         <td>${record.batch || '-'}</td>
-                        <td>${record.work_units || '0'}</td>
                         <td>${formatTimeToHHMMSS(record.total_time)}</td>
-                        <td>${formatTimeToHHMMSS(record.average_time)}</td>
                         <td>${record.review || '-'}</td>
                     </tr>
                 `).join('');

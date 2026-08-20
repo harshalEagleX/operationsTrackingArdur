@@ -62,7 +62,16 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.instance = self.service.create(dict(serializer.validated_data))
+        data = dict(serializer.validated_data)
+        
+        # Handle uploaded document(s) sent from the frontend
+        # documents = self.request.FILES.getlist('documents[]')
+        # if documents:
+        #     # We currently only support saving one document in the BatchAllocation model.
+        #     data['document_file'] = documents[0]
+        #     data['document_name'] = documents[0].name
+            
+        serializer.instance = self.service.create(data)
 
     def perform_destroy(self, instance):
         self.service.cancel(instance, reason="Cancelled by supervisor")
@@ -100,6 +109,39 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         )
         return self.ok(AllocationSerializer(allocation).data)
 
+    # @action(detail=True, methods=["get"])
+    # def download(self, request, allocation_id=None):
+    #     allocation = self.get_object()
+    #     
+    #     doc_type = request.query_params.get("doc", "document")
+    #     if doc_type == "chain_sheet":
+    #         file_field = allocation.chain_sheet
+    #         file_name = allocation.chain_sheet_name or f"order_{allocation.allocation_id}_chain_sheet.bin"
+    #     elif doc_type == "search_package":
+    #         file_field = allocation.search_package
+    #         file_name = allocation.search_package_name or f"order_{allocation.allocation_id}_search_package.bin"
+    #     elif doc_type == "report":
+    #         file_field = allocation.report
+    #         file_name = allocation.report_name or f"order_{allocation.allocation_id}_report.bin"
+    #     else:
+    #         file_field = allocation.document_file
+    #         file_name = allocation.document_name or f"order_{allocation.allocation_id}_document.bin"
+    #         
+    #     if not file_field:
+    #         from core.exceptions import NotFoundError
+    #         raise NotFoundError("No document attached to this order.")
+    #         
+    #     try:
+    #         from django.http import FileResponse
+    #         response = FileResponse(file_field.open('rb'), as_attachment=True, filename=file_name)
+    #         return response
+    #     except Exception as e:
+    #         from core.exceptions import NotFoundError
+    #         import logging
+    #         logger = logging.getLogger(__name__)
+    #         logger.error(f"Error opening file {getattr(file_field, 'name', 'unknown')}: {e}")
+    #         raise NotFoundError("The attached document could not be found on the server.")
+
     @action(detail=True, methods=["get"])
     def history(self, request, allocation_id=None):
         allocation = self.get_object()
@@ -108,12 +150,34 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="mine")
     def mine(self, request):
-        """The caller's open allocations — the 'my tasks' panel."""
-        queryset = BatchAllocation.objects.for_employee(request.user.emp_id).open()
+        """The caller's actionable allocations, based on their role."""
+        from django.db.models import Q
+        
+        emp_id = request.user.emp_id
+        base_qs = BatchAllocation.objects.open_or_completed_today()
+        
+        # User is the searcher
+        cond_searcher = Q(employee_id=emp_id)
+        
+        # User is the QC person, only show when it reaches QC or later
+        from apps.allocations.models import AllocationStatus
+        cond_qc = Q(qc_id=emp_id) & Q(status__in=[
+            AllocationStatus.SEND_FOR_QC,
+            AllocationStatus.QC_IN_PROGRESS,
+            AllocationStatus.COMPLETED,
+            AllocationStatus.DISPATCH,
+        ])
+        
+        queryset = base_qs.filter(cond_searcher | cond_qc)
         return self.ok(AllocationSerializer(queryset, many=True).data)
 
+    @action(detail=False, methods=["get"], url_path="next_ar_number")
+    def next_ar_number(self, request):
+        """Return the next auto-generated ar_number."""
+        return self.ok({"next_ar_number": BatchAllocation.generate_ar_number()})
 
-class OrderHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+
+class OrderHistoryViewSet(EnvelopeMixin, viewsets.ReadOnlyModelViewSet):
     """/api/v1/allocations/history/ — the audit trail, supervisors only."""
 
     serializer_class = OrderHistorySerializer

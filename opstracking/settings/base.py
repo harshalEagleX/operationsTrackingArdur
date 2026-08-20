@@ -295,7 +295,10 @@ STATIC_ROOT = Path(env("STATIC_ROOT", default=str(BASE_DIR / "staticfiles")))
 PRIVATE_STORAGE_ROOT = Path(env("PRIVATE_STORAGE_ROOT", default=str(BASE_DIR / "storage")))
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
-FILE_UPLOAD_PERMISSIONS = 0o640
+_upload_perms = env("FILE_UPLOAD_PERMISSIONS", default="0o640")
+FILE_UPLOAD_PERMISSIONS = None if _upload_perms.lower() in ("none", "") else int(_upload_perms, 8)
+_dir_perms = env("FILE_UPLOAD_DIRECTORY_PERMISSIONS", default="0o750")
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = None if _dir_perms.lower() in ("none", "") else int(_dir_perms, 8)
 
 STORAGES = {
     "default": {"BACKEND": "apps.files.storage.PrivateStorage"},

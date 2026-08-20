@@ -52,31 +52,51 @@ class FeedbackQuerySet(OwnedQuerySet):
 
 class Feedback(models.Model):
     id = models.AutoField(primary_key=True)
-    emp_id = models.CharField(max_length=20, db_index=True, help_text="Who the feedback is about")
+    emp_id = models.CharField(max_length=50, db_index=True, help_text="Who the feedback is about")
     emp_name = models.CharField(max_length=100, blank=True, default="")
 
     feedback_type = models.CharField(
-        max_length=20, choices=FeedbackType.choices, default=FeedbackType.QUALITY
+        max_length=20, choices=FeedbackType.choices, default=FeedbackType.QUALITY, blank=True
     )
     severity = models.CharField(
-        max_length=10, choices=Severity.choices, default=Severity.INFO
+        max_length=10, choices=Severity.choices, default=Severity.INFO, blank=True
     )
 
     project = models.CharField(max_length=150, blank=True, default="")
-    order_batch_id = models.CharField(max_length=100, blank=True, default="", db_index=True)
-    work_type = models.CharField(max_length=100, blank=True, default="")
+    client_code = models.CharField(max_length=150, blank=True, default="")
+    order_batch_id = models.CharField(max_length=100, blank=True, default="", null=True, db_index=True)
+    work_type = models.CharField(max_length=150, blank=True, default="")
 
-    subject = models.CharField(max_length=200)
-    description = models.TextField(blank=True, default="")
-    error_count = models.IntegerField(default=0)
-    sample_size = models.IntegerField(default=0)
+    feedback_recorded = models.CharField(max_length=50, blank=True, default="internalAudit")
+    processed_date = models.DateField(null=True, blank=True)
+    feedback_received_date = models.DateField(null=True, blank=True)
+    feedback_received_mode = models.CharField(max_length=50, blank=True, default="email")
+    feedback_provided_by = models.CharField(max_length=100, blank=True, default="")
+    feedback = models.TextField(blank=True, default="")
+    type = models.CharField(max_length=100, blank=True, default="")
+    comments = models.TextField(blank=True, default="", null=True)
+    action_taken = models.TextField(blank=True, default="", null=True)
+    status = models.CharField(max_length=20, blank=True, default="open")
+    open_date = models.DateField(null=True, blank=True)
+    closure_date = models.DateField(null=True, blank=True)
 
-    created_by = models.CharField(max_length=20, blank=True, default="", db_index=True)
+    subject = models.CharField(max_length=200, blank=True, default="")
+    description = models.TextField(blank=True, default="", null=True)
+    error_count = models.IntegerField(default=0, null=True, blank=True)
+    sample_size = models.IntegerField(default=0, null=True, blank=True)
+
+    created_by = models.CharField(max_length=50, blank=True, default="", null=True, db_index=True)
     created_by_name = models.CharField(max_length=100, blank=True, default="")
-    created_at = models.DateTimeField(default=now_ist, db_index=True)
+    created_at = models.DateTimeField(default=now_ist, db_index=True, null=True, blank=True)
+    updated_by = models.CharField(max_length=50, blank=True, default="", null=True)
+    updated_at = models.DateTimeField(default=now_ist, null=True, blank=True)
+
+    acknowledgment = models.IntegerField(null=True, blank=True)
+    acknowledgment_comment = models.TextField(blank=True, default="", null=True)
+    acknowledgment_date = models.DateTimeField(null=True, blank=True)
 
     acknowledged_at = models.DateTimeField(null=True, blank=True)
-    response = models.TextField(blank=True, default="")
+    response = models.TextField(blank=True, default="", null=True)
 
     objects = FeedbackQuerySet.as_manager()
 
@@ -91,17 +111,17 @@ class Feedback(models.Model):
         verbose_name_plural = "feedback"
 
     def __str__(self) -> str:
-        return f"{self.feedback_type} for {self.emp_id}: {self.subject}"
+        return f"{self.feedback_type or self.type} for {self.emp_id}: {self.subject or self.feedback}"
 
     @property
     def is_acknowledged(self) -> bool:
-        return self.acknowledged_at is not None
+        return self.acknowledged_at is not None or self.acknowledgment == 1
 
     @property
     def accuracy_percent(self) -> float | None:
         if not self.sample_size:
             return None
-        return round((1 - self.error_count / self.sample_size) * 100, 2)
+        return round((1 - (self.error_count or 0) / self.sample_size) * 100, 2)
 
 
 class FeedbackImage(models.Model):

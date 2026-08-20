@@ -66,7 +66,7 @@ def test_owner_cannot_delete_their_own_completed_session(employee, masters):
     already have been reviewed."""
     service = WorkSessionService(actor=employee)
     session = service.start_session(project="Test Project", work_type="Data entry")
-    service.end_session(session.id, work_units=5)
+    service.end_session(session.id)
 
     with pytest.raises(ConflictError):
         service.delete_session(session.id)
@@ -112,23 +112,15 @@ def test_deleting_a_session_over_http(as_employee, employee, masters):
 
 # ── ending a session: validation ─────────────────────────────
 
-def test_negative_work_units_is_rejected(employee, masters):
-    service = WorkSessionService(actor=employee)
-    session = service.start_session(project="Test Project", work_type="Data entry")
-
-    with pytest.raises(ValidationError):
-        service.end_session(session.id, work_units=-1)
-
-
 def test_ending_an_already_ended_session_is_not_found(employee, masters):
     """_locked_open_session filters end_time__isnull=True, so a second `end`
     call finds nothing rather than double-billing the session."""
     service = WorkSessionService(actor=employee)
     session = service.start_session(project="Test Project", work_type="Data entry")
-    service.end_session(session.id, work_units=5)
+    service.end_session(session.id)
 
     with pytest.raises(NotFoundError):
-        service.end_session(session.id, work_units=5)
+        service.end_session(session.id)
 
 
 def test_resuming_a_session_that_is_not_paused_is_a_conflict(employee, masters):
@@ -271,25 +263,10 @@ def test_live_elapsed_seconds_freezes_while_paused(employee, masters):
     assert 470 < first < 490  # ~8 minutes of real work before the pause
 
 
-def test_units_per_hour_is_none_before_the_session_ends(employee, masters):
-    session = WorkSession.objects.create(emp_id=employee.emp_id, project="Test Project")
-    assert session.units_per_hour is None
-
-
-def test_units_per_hour_is_derived_correctly(employee, masters):
-    session = WorkSession.objects.create(
-        emp_id=employee.emp_id, project="Test Project",
-        total_time=1800, work_units=10,  # 10 units in 30 minutes -> 20/hr
-    )
-    assert session.units_per_hour == 20.0
-
-
-# ── daily targets ─────────────────────────────────────────────
-
 def test_only_a_supervisor_can_set_a_target(employee):
     with pytest.raises(PermissionDeniedError):
         TargetService(actor=employee).set_target(
-            emp_id=employee.emp_id, target_date=today_ist(), target_units=100
+            emp_id=employee.emp_id, target_date=today_ist(), target_units=10
         )
 
 
@@ -302,7 +279,7 @@ def test_a_negative_target_is_rejected(supervisor, employee):
 
 def test_setting_a_target_twice_for_the_same_day_updates_it(supervisor, employee):
     service = TargetService(actor=supervisor)
-    service.set_target(emp_id=employee.emp_id, target_date=today_ist(), target_units=100)
+    service.set_target(emp_id=employee.emp_id, target_date=today_ist(), target_units=10)
     updated = service.set_target(emp_id=employee.emp_id, target_date=today_ist(), target_units=150)
 
     assert Target.objects.filter(emp_id=employee.emp_id, target_date=today_ist()).count() == 1
@@ -324,10 +301,10 @@ def test_ending_a_session_rolls_up_into_todays_target(supervisor, employee, mast
 
     service = WorkSessionService(actor=employee)
     session = service.start_session(project="Test Project", work_type="Data entry")
-    service.end_session(session.id, work_units=8)
+    service.end_session(session.id)
 
     target = Target.objects.get(emp_id=employee.emp_id, project="Test Project", target_date=today_ist())
-    assert target.achieved_units == 8
+    assert target.achieved_units == 1
     assert target.is_met is False
 
 
@@ -341,14 +318,14 @@ def test_hitting_the_target_notifies_the_employee(
     from apps.notifications.models import Notification
 
     TargetService(actor=supervisor).set_target(
-        emp_id=employee.emp_id, project="Test Project", target_date=today_ist(), target_units=10
+        emp_id=employee.emp_id, project="Test Project", target_date=today_ist(), target_units=1
     )
 
     service = WorkSessionService(actor=employee)
     session = service.start_session(project="Test Project", work_type="Data entry")
 
     with django_capture_on_commit_callbacks(execute=True):
-        service.end_session(session.id, work_units=10)
+        service.end_session(session.id)
 
     assert Notification.objects.filter(
         recipient_emp_id=employee.emp_id, notif_type="work.target_met"
@@ -357,7 +334,7 @@ def test_hitting_the_target_notifies_the_employee(
 
 def test_target_completion_percent_is_capped(employee):
     target = Target.objects.create(
-        emp_id=employee.emp_id, target_date=today_ist(), target_units=10, achieved_units=1000,
+        emp_id=employee.emp_id, target_date=today_ist(), target_units=1, achieved_units=100,
     )
     assert target.completion_percent <= 999
 
@@ -376,18 +353,18 @@ def test_dashboard_summary_shape(as_employee, employee, masters):
     assert response.status_code == 200
     body = response.data["data"]
     assert set(body) == {
-        "emp_id", "open_session", "today_sessions", "today_units",
+        "emp_id", "open_session", "today_sessions",
         "today_seconds", "target", "on_break",
     }
 
 
 def test_dashboard_summary_totals_only_todays_completed_sessions(as_employee, employee, masters):
     WorkSession.objects.create(
-        emp_id=employee.emp_id, project="Test Project", work_units=5,
+        emp_id=employee.emp_id, project="Test Project",
         total_time=100, is_started=SessionState.COMPLETED, end_time=now_ist(),
     )
     WorkSession.objects.create(  # yesterday — must not be counted
-        emp_id=employee.emp_id, project="Test Project", work_units=99,
+        emp_id=employee.emp_id, project="Test Project",
         total_time=999, is_started=SessionState.COMPLETED, end_time=now_ist(),
         start_time=now_ist() - timedelta(days=1),
     )
@@ -396,9 +373,6 @@ def test_dashboard_summary_totals_only_todays_completed_sessions(as_employee, em
     body = response.data["data"]
 
     assert body["today_sessions"] == 1
-    assert body["today_units"] == 5
-
-
 def test_dashboard_summary_reports_on_break(as_employee, employee):
     from apps.breaks.services import BreakService
 
@@ -452,8 +426,8 @@ def test_session_date_to_filter(as_employee, employee, masters):
 
 
 def test_target_emp_id_filter(as_supervisor, employee, other_employee):
-    mine = Target.objects.create(emp_id=employee.emp_id, target_date=today_ist(), target_units=10)
-    Target.objects.create(emp_id=other_employee.emp_id, target_date=today_ist(), target_units=10)
+    mine = Target.objects.create(emp_id=employee.emp_id, target_date=today_ist(), target_units=1)
+    Target.objects.create(emp_id=other_employee.emp_id, target_date=today_ist(), target_units=1)
 
     response = as_supervisor.get("/api/v1/tracking/targets/", {"emp_id": employee.emp_id})
     ids = [row["id"] for row in response.data["data"]]
@@ -464,10 +438,10 @@ def test_target_today_filter(as_employee, employee):
     from datetime import timedelta as td
 
     today_target = Target.objects.create(
-        emp_id=employee.emp_id, target_date=today_ist(), target_units=10
+        emp_id=employee.emp_id, target_date=today_ist(), target_units=1
     )
     Target.objects.create(
-        emp_id=employee.emp_id, target_date=today_ist() - td(days=1), target_units=10
+        emp_id=employee.emp_id, target_date=today_ist() - td(days=1), target_units=1
     )
 
     response = as_employee.get("/api/v1/tracking/targets/", {"today": "true"})
@@ -496,7 +470,7 @@ def test_end_over_http(as_employee, employee, masters):
         emp_id=employee.emp_id, project="Test Project", is_started=SessionState.RUNNING,
     )
     response = as_employee.post(
-        f"/api/v1/tracking/sessions/{session.id}/end/", {"work_units": 5}
+        f"/api/v1/tracking/sessions/{session.id}/end/", {}
     )
     assert response.status_code == 200
     assert response.data["data"]["state"] == "completed"
@@ -521,9 +495,9 @@ def test_work_session_str(employee, masters):
 
 def test_target_str(employee):
     target = Target.objects.create(
-        emp_id=employee.emp_id, target_date=today_ist(), target_units=10, achieved_units=4,
+        emp_id=employee.emp_id, target_date=today_ist(), target_units=1, achieved_units=4,
     )
-    assert "4/10" in str(target)
+    assert "4/1" in str(target)
 
 
 def test_work_session_between_queryset(employee, masters):

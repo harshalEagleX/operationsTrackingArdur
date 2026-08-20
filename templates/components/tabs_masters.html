@@ -47,7 +47,11 @@
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-code"></i> Client Code:</label>
-                        <div id="editClientCodesContainer" class="clientcodes-container"></div>
+                        <div id="edit-client-codes-container" class="clientcodes-container"></div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tasks"></i> Work Types:</label>
+                        <div id="edit-worktypes-container" class="worktypes-container"></div>
                     </div>
                     <button type="submit" class="submit-btn"><i class="fas fa-save"></i> Save Changes</button>
                 </form>
@@ -83,7 +87,11 @@
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-code"></i> Client Code:</label>
-                        <div id="clientCodesContainer" class="clientcodes-container"></div>
+                        <div id="add-client-codes-container" class="clientcodes-container"></div>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tasks"></i> Work Types:</label>
+                        <div id="add-worktypes-container" class="worktypes-container"></div>
                     </div>
                     <button type="submit" class="submit-btn"><i class="fas fa-plus"></i> Add Project</button>
                 </form>
@@ -113,6 +121,7 @@
                     <th>Sr. No</th>
                     <th>CC ID</th>
                     <th>Client Code</th>
+                    <th>Client Name</th>
                     <th>Work Types</th>
                     <th>Actions</th>
                 </tr>
@@ -133,6 +142,10 @@
                     <div class="form-group">
                         <label><i class="fas fa-code"></i> Client Code:</label>
                         <input type="text" id="add-cclient_code" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-building"></i> Client Name:</label>
+                        <input type="text" id="add-client_name">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-tasks"></i> Work Types:</label>
@@ -159,6 +172,10 @@
                         <input type="text" id="clientcode-client_code" required>
                     </div>
                     <div class="form-group">
+                        <label><i class="fas fa-building"></i> Client Name:</label>
+                        <input type="text" id="clientcode-client_name">
+                    </div>
+                    <div class="form-group">
                         <label><i class="fas fa-tasks"></i> Work Types:</label>
                         <div id="editWorkTypesContainer" class="worktypes-container"></div>
                     </div>
@@ -177,6 +194,23 @@
                     <button id="confirmDeleteClientCodeBtn" class="submit-btn"><i class="fas fa-trash"></i> Delete</button>
                     <button id="cancelDeleteClientCodeBtn" class="submit-btn" style="background:#888;">Cancel</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Work Types Viewer Modal (used by clientcode.js) -->
+        <div id="workTypesModal" class="modal">
+            <div class="modal-content">
+                <span id="closeWorkTypesModal" class="close-btn">&times;</span>
+                <h2 id="workTypesHeader"><i class="fas fa-tasks"></i> Work Types</h2>
+                <table class="reports-data-table" style="margin-top:15px;">
+                    <thead>
+                        <tr>
+                            <th>Sr. No</th>
+                            <th>Work Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workTypesTableBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -220,8 +254,8 @@
                         <input type="text" id="add-wt_id" readonly required>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-tasks"></i> Work Type Name:</label>
-                        <input type="text" id="add-worktypename" required>
+                        <label for="add-work_type">Work Type Name:</label>
+                        <input type="text" id="add-work_type" required>
                     </div>
                     <button type="submit" class="submit-btn"><i class="fas fa-plus"></i> Add Work Type</button>
                 </form>
@@ -239,28 +273,11 @@
                         <input type="text" id="worktype-wt_id" readonly required>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-tasks"></i> Work Type Name:</label>
-                        <input type="text" id="worktype-worktypename" required>
+                        <label for="worktype-work_type">Work Type Name:</label>
+                        <input type="text" id="worktype-work_type" required>
                     </div>
                     <button type="submit" class="submit-btn"><i class="fas fa-save"></i> Save Changes</button>
                 </form>
-            </div>
-        </div>
-
-        <!-- Work Types Viewer Modal (used by clientcode.js) -->
-        <div id="workTypesModal" class="modal">
-            <div class="modal-content">
-                <span id="closeWorkTypesModal" class="close-btn">&times;</span>
-                <h2 id="workTypesHeader"><i class="fas fa-tasks"></i> Work Types</h2>
-                <table class="reports-data-table" style="margin-top:15px;">
-                    <thead>
-                        <tr>
-                            <th>Sr. No</th>
-                            <th>Work Type</th>
-                        </tr>
-                    </thead>
-                    <tbody id="workTypesTableBody"></tbody>
-                </table>
             </div>
         </div>
 

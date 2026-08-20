@@ -29,6 +29,13 @@ class Status(models.TextChoices):
     INACTIVE = "inactive", "Inactive"
 
 
+class EmployeeType(models.TextChoices):
+    EMPLOYEE = "employee", "Employee"
+    CONSULTANT = "consultant", "Consultant"
+    FREELANCER = "freelancer", "Freelancer"
+
+
+
 class User(AbstractBaseUser):
     """Authentication identity, on the existing ot_users table.
 
@@ -89,12 +96,12 @@ class User(AbstractBaseUser):
 
     @property
     def is_admin(self) -> bool:
-        return self.role == Role.ADMIN
+        return self.role.lower() == Role.ADMIN if self.role else False
 
     @property
     def is_supervisor(self) -> bool:
         """Supervisor *or above* — admins are supervisors for every purpose."""
-        return self.role in (Role.ADMIN, Role.SUPERVISOR)
+        return self.role.lower() in (Role.ADMIN, Role.SUPERVISOR) if self.role else False
 
     @property
     def is_active(self) -> bool:
@@ -130,6 +137,7 @@ class Employee(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=150, blank=True, default="")
     phone = models.CharField(max_length=20, blank=True, default="")
+    alternate_phone = models.CharField(max_length=20, blank=True, default="")
     role = models.CharField(
         max_length=20, choices=Role.choices, default=Role.EMPLOYEE, db_index=True
     )
@@ -139,6 +147,9 @@ class Employee(models.Model):
     shift = models.CharField(max_length=50, blank=True, default="", db_column="shift_time")
     reporting_to = models.CharField(max_length=20, blank=True, default="")
     date_of_joining = models.DateField(null=True, blank=True, db_column="joining_date")
+    employee_type = models.CharField(
+        max_length=50, choices=EmployeeType.choices, default=EmployeeType.EMPLOYEE, db_index=True
+    )
     
     # Legacy fields heavily used by the app but missing from OOP rewrite
     client_code = models.CharField(max_length=150, blank=True, default="")
@@ -166,7 +177,22 @@ class Employee(models.Model):
 
     @property
     def is_supervisor(self) -> bool:
-        return self.role in (Role.ADMIN, Role.SUPERVISOR)
+        return self.role.lower() in (Role.ADMIN, Role.SUPERVISOR) if self.role else False
+
+    @classmethod
+    def generate_employee_id(cls) -> str:
+        """Auto-generate the next employee ID, e.g., AT0010."""
+        last_emp = cls.objects.filter(employee_id__startswith="AT").order_by("-employee_id").first()
+        if not last_emp:
+            return "AT0001"
+        
+        try:
+            # Extract numeric part (e.g., '0009' from 'AT0009')
+            num_part = int(last_emp.employee_id[2:])
+            return f"AT{num_part + 1:04d}"
+        except ValueError:
+            # Fallback if something weird is in the DB
+            return "AT0001"
 
 
 class LoginHistory(models.Model):

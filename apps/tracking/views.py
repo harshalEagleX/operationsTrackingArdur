@@ -53,9 +53,16 @@ class WorkSessionViewSet(ServiceMixin, EnvelopeMixin, viewsets.ReadOnlyModelView
         if params.get("today") == "true":
             queryset = queryset.for_day()
         if date_from := params.get("from"):
-            queryset = queryset.filter(start_time__date__gte=date_from)
+            from datetime import datetime
+            from core.timezone import start_of_day
+            dt = datetime.strptime(date_from, "%Y-%m-%d").date()
+            queryset = queryset.filter(start_time__gte=start_of_day(dt))
         if date_to := params.get("to"):
-            queryset = queryset.filter(start_time__date__lte=date_to)
+            from datetime import datetime
+            from core.timezone import day_bounds
+            dt = datetime.strptime(date_to, "%Y-%m-%d").date()
+            _, end_dt = day_bounds(dt)
+            queryset = queryset.filter(start_time__lt=end_dt)
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -121,25 +128,49 @@ class DashboardSummaryView(EnvelopeMixin, APIView):
 
         today = WorkSession.objects.filter(emp_id=emp_id).for_day().completed()
         totals = today.aggregate(
-            sessions=Count("id"), units=Sum("work_units"), seconds=Sum("total_time")
+            sessions=Count("id"), seconds=Sum("total_time")
         )
 
         open_session = WorkSession.objects.filter(emp_id=emp_id).open().first()
         target = Target.objects.filter(emp_id=emp_id, target_date=today_ist()).first()
 
         from apps.breaks.models import BreakTime
+        from apps.accounts.models import LoginHistory
+        from core.timezone import now_ist
 
-        on_break = BreakTime.objects.filter(user_id=emp_id, end_time__isnull=True).exists()
+        today_breaks = BreakTime.objects.filter(user_id=emp_id, start_time__date=today_ist())
+        on_break = today_breaks.filter(end_time__isnull=True).exists()
+
+        break_seconds = 0
+        for b in today_breaks:
+            end_val = b.end_time or now_ist()
+            break_seconds += (end_val - b.start_time).total_seconds()
+            
+        login_record = LoginHistory.objects.filter(emp_id=emp_id, date=today_ist()).order_by('login_time').first()
+        login_time = login_record.login_time if login_record else None
+        logout_time = login_record.logout_time if login_record else None
+        
+        gross_seconds = 0
+        if login_time:
+            end_val = logout_time or now_ist()
+            gross_seconds = (end_val - login_time).total_seconds()
+            
+        net_seconds = max(0, gross_seconds - break_seconds)
 
         return self.ok(
             {
                 "emp_id": emp_id,
                 "open_session": WorkSessionSerializer(open_session).data if open_session else None,
                 "today_sessions": totals["sessions"] or 0,
-                "today_units": totals["units"] or 0,
                 "today_seconds": round(totals["seconds"] or 0, 2),
                 "target": TargetSerializer(target).data if target else None,
                 "on_break": on_break,
+                "attendance": {
+                    "login_time": login_time.isoformat() if login_time else None,
+                    "logout_time": logout_time.isoformat() if logout_time else None,
+                    "break_seconds": round(break_seconds),
+                    "net_seconds": round(net_seconds),
+                }
             }
         )
 
@@ -168,5 +199,68 @@ class TargetViewSet(ServiceMixin, EnvelopeMixin, viewsets.ReadOnlyModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = TargetWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        target = self.service.set_target(**serializer.validated_data)
-        return self.ok(TargetSerializer(target).data, status=201)
+        target = self.service_class.assign_target(
+            serializer.validated_data, request.user.emp_id
+        )
+        return self.created(TargetSerializer(target).data)
+
+
+class MonthlyAttendanceView(EnvelopeMixin, APIView):
+    """GET /api/v1/tracking/attendance-history/"""
+    permission_classes = [IsAuthenticatedEmployee]
+
+    def get(self, request):
+        emp_id = request.query_params.get("emp_id") or request.user.emp_id
+        if emp_id != request.user.emp_id and not request.user.is_supervisor:
+            from core.exceptions import PermissionDeniedError
+            raise PermissionDeniedError("You can only view your own attendance.")
+
+        from apps.breaks.models import BreakTime
+        from apps.accounts.models import LoginHistory
+        from core.timezone import now_ist
+        
+        now = now_ist()
+        start_date = now.replace(day=1).date()
+        
+        logins = LoginHistory.objects.filter(emp_id=emp_id, date__gte=start_date).order_by('date', 'login_time')
+        breaks = BreakTime.objects.filter(user_id=emp_id, start_time__date__gte=start_date)
+        
+        daily_data = {}
+        for b in breaks:
+            b_date = b.start_time.date()
+            if b_date not in daily_data:
+                daily_data[b_date] = {'breaks': 0, 'login': None, 'logout': None}
+            end_val = b.end_time or now
+            daily_data[b_date]['breaks'] += (end_val - b.start_time).total_seconds()
+            
+        for l in logins:
+            l_date = l.date
+            if l_date not in daily_data:
+                daily_data[l_date] = {'breaks': 0, 'login': None, 'logout': None}
+            
+            if not daily_data[l_date]['login']:
+                daily_data[l_date]['login'] = l.login_time
+            daily_data[l_date]['logout'] = l.logout_time
+            
+        results = []
+        for d in sorted(daily_data.keys(), reverse=True):
+            data = daily_data[d]
+            login_time = data['login']
+            logout_time = data['logout']
+            break_secs = data['breaks']
+            
+            gross_secs = 0
+            if login_time:
+                end_val = logout_time or (now if d == now.date() else login_time)
+                gross_secs = (end_val - login_time).total_seconds()
+            net_secs = max(0, gross_secs - break_secs)
+            
+            results.append({
+                "date": d.isoformat(),
+                "login_time": login_time.isoformat() if login_time else None,
+                "logout_time": logout_time.isoformat() if logout_time else None,
+                "break_seconds": round(break_secs),
+                "net_seconds": round(net_secs)
+            })
+            
+        return self.ok(results)

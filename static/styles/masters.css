@@ -524,7 +524,9 @@ button {
     height: 100px;
 }
 
-.form-group input[type="text"] {
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="date"] {
     width: 100%;
     padding: 8px;
     border: 1px solid #ddd;

@@ -36,54 +36,7 @@
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody>
-            {% if employees %}
-                {% for employee in employees %}
-                <tr>
-                    <td>{{ loop.index }}</td>
-                    <td>{{ employee.name }}</td>
-                    <td>{{ employee.employee_id }}</td>
-                    <td>{{ employee.role }}</td>
-                    <td>{{ employee.joining_date }}</td>
-                    <td>{{ employee.work_location }}</td>
-                    <td>{{ employee.shift_time }}</td>
-                    <td>
-                        <a href="#" title="View Projects" class="project-link" data-employee-id="{{ employee.employee_id }}">
-                            <i class="fas fa-project-diagram"></i> {{ employee.projects.split('|')|length if employee.projects else 0 }}
-                        </a>
-                    </td>
-                    <td>
-                        <a href="#" title="View Client Codes" class="empclient-code-link" data-employee-id="{{ employee.employee_id }}">
-                            <i class="fas fa-cubes"></i> {{ employee.client_code.split('|')|length if employee.client_code else 0 }}
-                        </a>
-                    </td>
-                    <td>
-                        <a href="#" title="View Work Types" class="work-type-link" data-employee-id="{{ employee.employee_id }}">
-                            <i class="fas fa-tasks"></i> {{ employee.work_type_count or 0 }}
-                        </a>
-                    </td>
-                    <td>
-                        <span class="status-badge {% if employee.status == 'Active' %}active{% else %}inactive{% endif %}">
-                            <i class="fas fa-circle"></i> {{ employee.status }}
-                        </span>
-                    </td>
-                    <td>{{ employee.active_inactive_date }}</td>
-                    <td>
-                        <button title="Edit Employee" class="edit-btn" data-id="{{ employee.employee_id }}">
-                            <img src="{{ static('icons/edit.png') }}" alt="Edit">
-                        </button>
-                        <button title="Delete Employee" class="delete-btn" data-id="{{ employee.employee_id }}">
-                            <img src="{{ static('icons/delete.png') }}" alt="Delete">
-                        </button>
-                    </td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="13" class="no-data">No employees found.</td>
-                </tr>
-            {% endif %}
-        </tbody>
+        <tbody></tbody>
     </table>
 </div>
 

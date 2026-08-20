@@ -173,7 +173,7 @@ class EmployeeUser(ApiSession, HttpUser):
             work_units = random.randint(1, 25)
             self.api_post(
                 f"/api/v1/tracking/sessions/{session_id}/end/",
-                json={"work_units": work_units, "pages": random.randint(1, 50)},
+                json={"pages": random.randint(1, 50)},
                 name="/tracking/sessions/{id}/end/",
             )
             allocation_id = session.get("allocation_id")

@@ -1,3 +1,11 @@
+function formatStatusDisplay(statusStr) {
+    if (!statusStr) return '-';
+    let s = statusStr.toLowerCase();
+    if (s === 'send_for_qc' || s === 'send__for__qc') return 'Send for QC';
+    if (s === 'in_progress' || s === 'in__progress') return 'In Progress';
+    return statusStr.replace(/_+/g, ' ');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add toggle form functionality
     const toggleFormBtn = document.getElementById('toggleFormBtn');
@@ -17,7 +25,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
                     const isVisible = orderAllocationTab.style.display !== 'none';
                     if (isVisible) {
-                        fetchExistingOrders();
+                        if (typeof window.fetchExistingOrders === 'function') {
+                            window.fetchExistingOrders();
+                        }
                     }
                 }
             });
@@ -30,7 +40,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Also fetch if the tab is already visible
         if (orderAllocationTab.style.display !== 'none') {
-            fetchExistingOrders();
+            setTimeout(() => {
+                if (typeof window.fetchExistingOrders === 'function') {
+                    window.fetchExistingOrders();
+                }
+            }, 0);
         }
     }
 
@@ -70,8 +84,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedOrderType = orderDetailsSelect.value;
         const selectedStateOption = this.value;
         
-        // Extract actual state name from the format "stateabr - state"
-        const selectedState = selectedStateOption.split(' - ')[1];
+        // Extract actual state name from the format "stateabr - state" if it has one, else use the raw value
+        const selectedState = selectedStateOption.includes(' - ') ? selectedStateOption.split(' - ')[1] : selectedStateOption;
         
         if (selectedOrderType && selectedState) {
             // Load counties for selected state with caching
@@ -222,15 +236,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const isHidden = formContainer.style.display === 'none';
             formContainer.style.display = isHidden ? 'block' : 'none';
             toggleFormBtn.classList.toggle('active');
-            if (isHidden && typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
-                setTimeout(() => {
-                    $('#oa_empIdName').select2({
-                        placeholder: 'Select an employee',
-                        allowClear: true,
-                        width: '100%'
-                    });
-                }, 50);
-            }
         });
     }
 
@@ -408,7 +413,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const projectSelect = document.getElementById('oa_project');
         const clientCodeSelect = document.getElementById('oa_clientCode');
         const workTypeSelect = document.getElementById('oa_workType');
-        const employeeSelect = document.getElementById('oa_empIdName');
         const feesInput = document.getElementById('oa_fees');
         const receivedDateInput = document.getElementById('oa_receivedDate');
         const etaInput = document.getElementById('oa_eta');
@@ -416,9 +420,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const vendorRatesContainer = document.getElementById('vendor-rates-container');
         let currentOrderId = 1;
 
-        // Store project and employee mappings
+        // Store project mapping; employeeMap is declared at outer scope
+        // and shared with inlineAssignEmployee().
         let projectMap = new Map();
-        let employeeMap = new Map();
 
     // Function to format date and time as required by datetime-local input
     function formatDateTimeForInput(date) {
@@ -471,12 +475,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Fetch project data and populate dropdowns with MasterDataCache
-    MasterDataCache.getOrFetch('oa_projects', '/api/v1/masters/projects/')
-        .then(data => {
+    Promise.all([
+        MasterDataCache.getOrFetch('oa_projects', '/api/v1/masters/projects/'),
+        MasterDataCache.getOrFetch('master_clientcodes', '/api/v1/masters/clientcodes/?active=true')
+    ])
+        .then(([data, clientCodesData]) => {
             if (data.error) {
                 throw new Error(data.error);
             }
             
+            // Build a map of client_code -> client_name
+            const ccMap = new Map();
+            const ccs = Array.isArray(clientCodesData) ? clientCodesData : (clientCodesData.results || clientCodesData.data || []);
+            ccs.forEach(cc => {
+                if (cc.client_code) {
+                    ccMap.set(cc.client_code, cc.client_name || '');
+                }
+            });
+            window.clientCodeMap = ccMap;
+
             let clientCodes = [];
             let workTypes = [];
             let defaultProjectId = '';
@@ -529,7 +546,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (clientCodeSelect) {
                 if (clientCodes.length > 0) {
                     clientCodeSelect.innerHTML = '<option value="">Select client code</option>' +
-                        clientCodes.map(code => `<option value="${code}">${code}</option>`).join('');
+                        clientCodes.map(code => {
+                            const name = ccMap.get(code);
+                            const display = name ? `${code} - ${name}` : code;
+                            return `<option value="${code}">${display}</option>`;
+                        }).join('');
                 } else {
                     clientCodeSelect.innerHTML = '<option value="">No client codes found</option>';
                 }
@@ -551,77 +572,33 @@ document.addEventListener('DOMContentLoaded', function() {
             if (workTypeSelect) workTypeSelect.innerHTML = '<option value="">Error loading work types</option>';
         });
 
-    // Helper function to initialize Select2 combo box on Assign To field
-    function initEmployeeSelect2() {
-        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
-            $('#oa_empIdName').select2({
-                placeholder: 'Select an employee',
-                allowClear: true,
-                width: '100%',
-                matcher: function(params, data) {
-                    if ($.trim(params.term) === '') {
-                        return data;
-                    }
-                    if (typeof data.text === 'undefined') {
-                        return null;
-                    }
-                    const term = params.term.toLowerCase();
-                    const text = data.text.toLowerCase();
-                    const empId = (data.id || '').toString().toLowerCase();
-                    if (text.indexOf(term) > -1 || empId.indexOf(term) > -1) {
-                        return data;
-                    }
-                    return null;
-                }
-            });
-        }
-    }
-
-    // Fetch and populate employees with mapping using MasterDataCache
+    // Fetch and cache employee list into the outer-scope employeeMap so that
+    // both the table display and the inline assignment dropdown can use it.
     MasterDataCache.getOrFetch('oa_employees', '/api/v1/auth/employees/')
         .then(employees => {
-            if (employees.data) {
-                employees = employees.data;
-            }
-            if (!Array.isArray(employees)) {
-                if (employees.error) {
-                    throw new Error(employees.error);
-                }
-                throw new Error('Invalid response format');
-            }
-            
-            if (employees.length === 0) {
-                employeeSelect.innerHTML = '<option value="">No employees found</option>';
-                initEmployeeSelect2();
-                if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
-                    $('#oa_empIdName').trigger('change.select2');
-                }
-                return;
-            }
-
-            // Store employee mapping
+            if (employees.data) employees = employees.data;
+            if (!Array.isArray(employees)) return;
             employees.forEach(emp => {
                 employeeMap.set(emp.employee_id.toString(), emp.name);
             });
-
-            employeeSelect.innerHTML = '<option value="">Select an employee</option>' +
-                employees.map(emp => `<option value="${emp.employee_id}">${emp.name} (${emp.employee_id})</option>`).join('');
-
-            initEmployeeSelect2();
-            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
-                $('#oa_empIdName').trigger('change.select2');
-            }
         })
-        .catch(error => {
-            console.error('Error fetching employees:', error);
-            employeeSelect.innerHTML = '<option value="">Error loading employees</option>';
-            initEmployeeSelect2();
-            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
-                $('#oa_empIdName').trigger('change.select2');
-            }
-            console.error('Error loading employees: ' + error.message);
-        });
+        .catch(error => console.error('Error fetching employees:', error));
 
+
+    // Fetch next AR Number and set it as placeholder
+    function updateArNumberPlaceholder() {
+        fetch('/api/v1/allocations/next_ar_number/')
+            .then(res => res.json())
+            .then(data => {
+                const arInput = document.getElementById('oa_arNumber');
+                const nextNumber = data.data ? data.data.next_ar_number : data.next_ar_number;
+                if (arInput && nextNumber) {
+                    arInput.placeholder = nextNumber;
+                }
+            })
+            .catch(error => console.error('Error fetching next AR Number:', error));
+    }
+    updateArNumberPlaceholder();
 
     // Generate Task ID
     function generateTaskId() {
@@ -714,7 +691,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch('/send_message', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
                 },
                 body: JSON.stringify({
                     receiver_id: assignedToId,
@@ -757,14 +735,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('oa_sla').value = formatDateTimeForInput(slaDate);
             }
             
-            // Get form values
+            // Get form values — no employee_id; assignment happens inline from the table.
             const orderData = {
                 project: document.getElementById('oa_project').value,
                 client_code: document.getElementById('oa_clientCode').value,
                 work_type: document.getElementById('oa_workType').value,
                 batch_id: document.getElementById('oa_orderBatchId').value,
                 order_details: document.getElementById('oa_orderDetails').value,
-                employee_id: document.getElementById('oa_empIdName').value,
                 task_id: taskId,
                 owner_name: document.getElementById('oa_ownerName').value,
                 property_address: document.getElementById('oa_propertyAddress').value,
@@ -775,7 +752,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 eta: document.getElementById('oa_eta').value,
                 sla: document.getElementById('oa_sla').value,
                 remarks: document.getElementById('oa_remarks').value,
-                county: document.getElementById('oa_county').value
+                county: document.getElementById('oa_county').value,
+                general_instructions: document.getElementById('oa_generalInstructions').value
             };
 
             // Add margin value if search type is Ground
@@ -784,17 +762,84 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (marginInput) {
                     orderData.margin = marginInput.value || '0';
                 }
+                const selectedVendorRate = document.querySelector('input[name="vendor_rate"]:checked');
+                if (selectedVendorRate) {
+                    orderData.vendor_rate = selectedVendorRate.value;
+                }
+            }
+
+            // Check for duplicate order no
+            if (typeof allocationState !== 'undefined' && allocationState.allOrders) {
+                const existingOrder = allocationState.allOrders.find(o => 
+                    (o.batch_id || o.batchId || o.batch || '').toString().toLowerCase() === (orderData.batch_id || '').toString().toLowerCase()
+                );
+                
+                if (existingOrder && orderData.order_details !== 'Update') {
+                    const client = existingOrder.client_code || existingOrder.clientCode || 'Unknown';
+                    const addr = existingOrder.property_address || existingOrder.propertyAddress || 'Unknown';
+                    const status = existingOrder.status || 'Unknown';
+                    
+                    const msg = `Order No ${orderData.batch_id} already exists!\n\n` +
+                                `Client: ${client}\n` +
+                                `Property Address: ${addr}\n` +
+                                `Status: ${status}\n\n` +
+                                `Do you want to create this as an 'Update' order? (Click Cancel to abort)`;
+                                
+                    if (confirm(msg)) {
+                        orderData.order_details = 'Update';
+                        const orderTypeDropdown = document.getElementById('oa_orderType');
+                        if (orderTypeDropdown) orderTypeDropdown.value = 'Update';
+                    } else {
+                        submitBtn.classList.remove('loading');
+                        return;
+                    }
+                }
+            }
+
+            // Map the old UI fields to the new DRF backend schema.
+            // employee_id is intentionally omitted — order is created unassigned.
+            const mappedData = {
+                allocation_id: orderData.task_id,
+                project: orderData.project,
+                client_code: orderData.client_code,
+                work_type: orderData.work_type,
+                batch: orderData.batch_id,
+                order_id: orderData.order_details,
+                quantity: 1,
+                priority: 'normal',
+                owner_name: orderData.owner_name,
+                property_address: orderData.property_address,
+                state: orderData.state,
+                county: orderData.county,
+                search_type: orderData.search_type,
+                fees: orderData.fees,
+                remarks: orderData.remarks,
+                received_date: orderData.received_date,
+                eta: orderData.eta,
+                general_instructions: orderData.general_instructions,
+            };
+            if (orderData.margin) {
+                mappedData.margin = orderData.margin;
+            }
+            if (orderData.vendor_rate) {
+                mappedData.vendor_rate = orderData.vendor_rate;
+            }
+            if (orderData.sla) {
+                mappedData.due_at = orderData.sla;
             }
 
             // Add form data
-            Object.entries(orderData).forEach(([key, value]) => {
+            Object.entries(mappedData).forEach(([key, value]) => {
                 formData.append(key, value || '');
             });
 
             // Add all document files
             const documentFiles = document.getElementById('oa_document').files;
-            for (let i = 0; i < documentFiles.length; i++) {
-                formData.append('documents[]', documentFiles[i]);
+            if (documentFiles.length > 0) {
+                for (let i = 0; i < documentFiles.length; i++) {
+                    // Uploads disabled for now
+                    // formData.append('documents[]', documentFiles[i]);
+                }
             }
 
             // Function to show message
@@ -820,8 +865,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 3000);
             }
 
-            // Validate required fields
-            const requiredFields = ['project', 'client_code', 'work_type', 'batch_id', 'order_details', 'employee_id', 'received_date', 'search_type'];
+            // Validate required fields — employee_id is no longer required at creation.
+            const requiredFields = ['project', 'client_code', 'work_type', 'batch_id', 'order_details', 'received_date', 'search_type'];
             const missingFields = requiredFields.filter(field => !orderData[field]);
             
             if (missingFields.length > 0) {
@@ -833,6 +878,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Submit to API
             fetch('/api/v1/allocations/', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+                },
                 body: formData
             })
             .then(response => {
@@ -844,30 +892,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(async data => {
-                if (data.success) {
-                    // Send chat notification to assigned employee
-                    await sendTaskAssignmentMessage(orderData.employee_id, {
-                        task_id: orderData.task_id,
-                        client_code: orderData.client_code,
-                        project: orderData.project,
-                        work_type: orderData.work_type,
-                        search_type: orderData.search_type
-                    });
-
-                    showMessage('success', 'Order allocated successfully!');
+                // The API wraps successful responses in {ok: true, data: {...}}
+                if (data.ok || data.success) {
+                    // No chat notification here — employee not assigned yet.
+                    // Notification fires when admin assigns via the inline table dropdown.
+                    showMessage('success', 'Order created! Assign an employee from the table.');
                     fetchExistingOrders();
                     form.reset();
-                    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
-                        $('#oa_empIdName').val('').trigger('change');
-                    }
+                    updateArNumberPlaceholder();
                     feesInput.value = '0';
                     feesInput.readOnly = true;
                     vendorRatesContainer.style.display = 'none';
                     document.getElementById('oa_document').value = '';
+                    document.querySelectorAll('.selected-file').forEach(el => el.remove());
                     updateDateFields();
                     currentOrderId++;
                 } else {
-                    throw new Error(data.message || 'Error allocating task');
+                    throw new Error(data.message || data.detail || 'Error allocating task');
                 }
             })
             .catch(error => {
@@ -878,6 +919,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Shared employee map: populated by the MasterDataCache fetch inside
+    // initializeOrderAllocationForm() and consumed by inlineAssignEmployee().
+    const employeeMap = new Map();
 
     // State for allocation table pagination and search
     const allocationState = {
@@ -896,22 +941,26 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             allocationState.filteredOrders = allocationState.allOrders.filter(order => {
                 if (!order) return false;
-                const taskId = (order.taskId || order.task_id || '').toLowerCase();
-                const clientCode = (order.client_code || order.clientCode || '').toLowerCase();
-                const workType = (order.work_type || order.workType || '').toLowerCase();
-                const batchId = (order.batch_id || order.batchId || '').toLowerCase();
-                const ownerName = (order.owner_name || order.ownerName || '').toLowerCase();
-                const propertyAddress = (order.property_address || order.propertyAddress || '').toLowerCase();
-                const state = (order.state || '').toLowerCase();
-                const county = (order.county || '').toLowerCase();
+                const taskId = (order.taskId || order.task_id || '').toString().toLowerCase();
+                const clientCode = (order.client_code || order.clientCode || '').toString().toLowerCase();
+                const workType = (order.work_type || order.workType || '').toString().toLowerCase();
+                const batchId = (order.batch_id || order.batchId || order.batch || '').toString().toLowerCase();
+                const orderNo = (order.order_no || order.orderNo || '').toString().toLowerCase();
+                const arNumber = (order.ar_number || order.arNumber || '').toString().toLowerCase();
+                const ownerName = (order.owner_name || order.ownerName || '').toString().toLowerCase();
+                const propertyAddress = (order.property_address || order.propertyAddress || '').toString().toLowerCase();
+                const state = (order.state || '').toString().toLowerCase();
+                const county = (order.county || '').toString().toLowerCase();
                 const employeeId = (order.employee_id || order.employeeId || '').toString().toLowerCase();
-                const employeeName = (order.employee_name || order.employeeName || employeeMap.get(employeeId) || '').toLowerCase();
-                const status = (order.status || '').toLowerCase();
+                const employeeName = (order.employee_name || order.employeeName || employeeMap.get(employeeId) || '').toString().toLowerCase();
+                const status = (order.status || '').toString().toLowerCase();
 
                 return taskId.includes(term) ||
                     clientCode.includes(term) ||
                     workType.includes(term) ||
                     batchId.includes(term) ||
+                    orderNo.includes(term) ||
+                    arNumber.includes(term) ||
                     ownerName.includes(term) ||
                     propertyAddress.includes(term) ||
                     state.includes(term) ||
@@ -1011,31 +1060,62 @@ document.addEventListener('DOMContentLoaded', function() {
         const ordersList = pageItems.map(order => {
             if (!order) return '';
 
-            const taskId = order.taskId || order.task_id || '-';
-            const clientCode = order.client_code || order.clientCode || '-';
+            const taskId = order.taskId || order.task_id || order.allocation_id || '-';
+            const clientCodeVal = order.client_code || order.clientCode || '-';
+            const clientCode = (window.clientCodeMap && window.clientCodeMap.has(clientCodeVal) && window.clientCodeMap.get(clientCodeVal)) 
+                               ? window.clientCodeMap.get(clientCodeVal) 
+                               : clientCodeVal;
             const workType = order.work_type || order.workType || '-';
-            const batchId = order.batch_id || order.batchId || '-';
+            const batchId = order.batch_id || order.batchId || order.batch || '-';
+            const arNumber = order.ar_number || order.arNumber || '-';
             const ownerName = order.owner_name || order.ownerName || '-';
             const propertyAddress = order.property_address || order.propertyAddress || '-';
             const state = order.state || '-';
             const county = order.county || '-';
             const employeeId = order.employee_id || order.employeeId || '';
-            const employeeName = order.employee_name || employeeMap.get(employeeId.toString()) || employeeId || '-';
+            const employeeName = order.employee_name || employeeMap.get(employeeId.toString()) || employeeId || '';
             const status = order.status || 'Pending';
+
+            // Build the "Assigned To" and "Assign QC To" cells.
+            // Completed/cancelled orders: plain non-clickable text to prevent 409 on reassign.
+            // All other orders: clickable trigger that opens the inline dropdown.
+            const isFinalState = status.toLowerCase() === 'completed' || status.toLowerCase() === 'cancelled' || status.toLowerCase() === 'dispatch';
+            const assignedToCell = isFinalState
+                ? `<span style="font-size:12px;color:#6b7280;">${employeeName || '-'}</span>`
+                : (employeeId
+                    ? `<span class="oa-assign-trigger oa-assigned" data-task-id="${taskId}" data-assign-type="employee" title="Click to reassign">
+                           ${employeeName} <i class="fas fa-pencil-alt" style="font-size:10px;opacity:0.6;margin-left:3px;"></i>
+                       </span>`
+                    : `<span class="oa-assign-trigger oa-unassigned" data-task-id="${taskId}" data-assign-type="employee" title="Click to assign employee">
+                           <i class="fas fa-user-plus" style="margin-right:4px;"></i>Unassigned
+                       </span>`);
+
+            const qcId = order.qc_id || order.qcId || '';
+            const qcName = order.qc_name || employeeMap.get(qcId.toString()) || qcId || '';
+            const qcToCell = isFinalState
+                ? `<span style="font-size:12px;color:#6b7280;">${qcName || '-'}</span>`
+                : (qcId
+                    ? `<span class="oa-assign-trigger oa-assigned" data-task-id="${taskId}" data-assign-type="qc" title="Click to assign QC">
+                           ${qcName} <i class="fas fa-pencil-alt" style="font-size:10px;opacity:0.6;margin-left:3px;"></i>
+                       </span>`
+                    : `<span class="oa-assign-trigger oa-unassigned" data-task-id="${taskId}" data-assign-type="qc" title="Click to assign QC">
+                           <i class="fas fa-user-plus" style="margin-right:4px;"></i>Unassigned
+                       </span>`);
 
             return `
                 <tr class="order-row" data-task-id="${taskId}" data-employee-id="${employeeId}">
-                    <td>${taskId}</td>
                     <td>${clientCode}</td>
                     <td>${workType}</td>
                     <td>${batchId}</td>
+                    <td>${arNumber}</td>
                     <td>${ownerName}</td>
                     <td>${propertyAddress}</td>
                     <td>${state}</td>
                     <td>${county}</td>
-                    <td data-employee-id="${employeeId}">${employeeName}</td>
+                    <td class="oa-assign-cell" data-task-id="${taskId}" data-employee-id="${employeeId}" data-assign-type="employee">${assignedToCell}</td>
+                    <td class="oa-assign-cell" data-task-id="${taskId}" data-employee-id="${qcId}" data-assign-type="qc">${qcToCell}</td>
                     <td class="status-cell">
-                        <span class="status-badge ${status.toLowerCase()}">${status}</span>
+                        <span class="status-badge ${status.toLowerCase()}">${formatStatusDisplay(status)}</span>
                         <button class="allocation-info-btn" data-task-id="${taskId}" title="View history" aria-label="View history">
                             <i class="fas fa-info-circle"></i>
                         </button>
@@ -1053,9 +1133,167 @@ document.addEventListener('DOMContentLoaded', function() {
         attachAllocationRowListeners();
     }
 
+    // -----------------------------------------------------------------------
+    // Inline employee assignment
+    // -----------------------------------------------------------------------
+    /**
+     * Opens an inline <select> inside the clicked "Assigned To" cell.
+     * On confirmation calls the existing /reassign/ API endpoint and fires
+     * the chat notification to the newly assigned employee.
+     */
+    function inlineAssignEmployee(taskId, cell, assignType) {
+        // Prevent opening a second dropdown in the same cell.
+        if (cell.querySelector('.oa-inline-assign-wrap')) return;
+
+        const currentEmployeeId = cell.dataset.employeeId || '';
+
+        // Build employee options from the cached map.
+        const options = Array.from(employeeMap.entries())
+            .sort((a, b) => a[1].localeCompare(b[1]))
+            .map(([id, name]) =>
+                `<option value="${id}" ${id === currentEmployeeId ? 'selected' : ''}>${name} (${id})</option>`
+            ).join('');
+
+        // Replace cell contents with inline form.
+        const originalHTML = cell.innerHTML;
+        cell.innerHTML = `
+            <div class="oa-inline-assign-wrap" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <select class="oa-inline-emp-select" style="flex:1;min-width:140px;font-size:12px;padding:3px 6px;border-radius:5px;border:1.5px solid #6366f1;outline:none;">
+                    <option value="">Select employee…</option>
+                    ${options}
+                </select>
+                <button class="oa-inline-confirm-btn" title="Confirm" style="background:#6366f1;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                    <i class="fas fa-check"></i> Assign
+                </button>
+                <button class="oa-inline-cancel-btn" title="Cancel" style="background:#e2e8f0;color:#475569;border:none;border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        const selectEl   = cell.querySelector('.oa-inline-emp-select');
+        const confirmBtn = cell.querySelector('.oa-inline-confirm-btn');
+        const cancelBtn  = cell.querySelector('.oa-inline-cancel-btn');
+
+        // Focus the select immediately for keyboard-friendly use.
+        selectEl.focus();
+
+        // Prevent clicks inside the select from bubbling up and opening the details popup
+        selectEl.addEventListener('click', (e) => e.stopPropagation());
+
+        cancelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cell.innerHTML = originalHTML;
+            // Re-attach the trigger listener after restoring.
+            attachAssignTrigger(cell);
+        });
+
+        confirmBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const newEmpId = selectEl.value;
+            if (!newEmpId) {
+                selectEl.style.borderColor = '#ef4444';
+                return;
+            }
+
+            const newEmpName = employeeMap.get(newEmpId) || newEmpId;
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            try {
+                let resp;
+                if (assignType === 'qc') {
+                    resp = await fetch(`/api/v1/allocations/${encodeURIComponent(taskId)}/`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+                        },
+                        body: JSON.stringify({ qc_id: newEmpId, qc_name: newEmpName })
+                    });
+                } else {
+                    resp = await fetch(`/api/v1/allocations/${encodeURIComponent(taskId)}/reassign/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+                        },
+                        body: JSON.stringify({ employee_id: newEmpId, employee_name: newEmpName })
+                    });
+                }
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || (!data.ok && !data.success && !data.allocation_id)) {
+                    throw new Error(data.error || data.detail || `HTTP ${resp.status}`);
+                }
+
+                // Update cell to show the newly assigned employee.
+                cell.dataset.employeeId = newEmpId;
+                cell.innerHTML = `<span class="oa-assign-trigger oa-assigned" data-task-id="${taskId}" data-assign-type="${assignType}" title="Click to reassign">
+                    ${newEmpName} <i class="fas fa-pencil-alt" style="font-size:10px;opacity:0.6;margin-left:3px;"></i>
+                </span>`;
+                attachAssignTrigger(cell);
+
+                // Update the row's data attribute too (only for primary employee to keep other logic working).
+                const row = cell.closest('tr.order-row');
+                if (assignType === 'employee' && row) {
+                    row.dataset.employeeId = newEmpId;
+                }
+
+                // Send chat notification to the newly assigned employee.
+                const rowTaskId = taskId;
+                const clientCode = row?.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
+                const workType   = row?.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+                sendTaskAssignmentMessage(newEmpId, {
+                    task_id: rowTaskId,
+                    client_code: clientCode,
+                    work_type: workType,
+                    search_type: '',
+                    project: ''
+                });
+
+                // Show a brief success toast.
+                showInlineToast(`✓ Assigned to ${newEmpName}`, 'success');
+
+            } catch (err) {
+                console.error('Inline assign failed:', err);
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Assign';
+                showInlineToast(err.message || 'Assignment failed', 'error');
+            }
+        });
+    }
+
+    /** Attach the click listener to an .oa-assign-trigger inside a cell. */
+    function attachAssignTrigger(cell) {
+        const trigger = cell.querySelector('.oa-assign-trigger');
+        if (!trigger) return;
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const taskId = trigger.dataset.taskId;
+            const assignType = trigger.dataset.assignType || 'employee';
+            inlineAssignEmployee(taskId, cell, assignType);
+        });
+    }
+
+    /** Brief floating toast message (reuses existing pattern). */
+    function showInlineToast(text, type = 'success') {
+        const existing = document.querySelector('.oa-inline-toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = 'oa-inline-toast allocation-form-message ' + type;
+        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${text}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
     function attachAllocationRowListeners() {
         const tableEl = document.querySelector('.allocation-table');
         if (!tableEl) return;
+
+        // Wire up inline assignment triggers on all "Assigned To" cells.
+        tableEl.querySelectorAll('.oa-assign-cell').forEach(cell => {
+            attachAssignTrigger(cell);
+        });
 
         // Attach info button handlers (expand/collapse history rows)
         tableEl.querySelectorAll('.allocation-info-btn').forEach(btn => {
@@ -1096,15 +1334,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.parentElement.insertBefore(expRow, row.nextElementSibling);
 
                 try {
-                    const resp = await fetch(`/api/order-allocation/${encodeURIComponent(taskId)}/history`);
+                    // Use the DRF endpoint instead of the legacy /api/order-allocation/ route.
+                    const resp = await fetch(`/api/v1/allocations/${encodeURIComponent(taskId)}/history/`);
                     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
                     const body = expRow.querySelector('.allocation-history-body');
-                    if (!data.success || !Array.isArray(data.history) || data.history.length === 0) {
+                    // DRF envelope: { ok: true, data: [...] }
+                    const historyList = data.data || data.history;
+                    if (!data.ok || !Array.isArray(historyList) || historyList.length === 0) {
                         body.innerHTML = '<div class="oa-empty-state"><i class="fas fa-database"></i><p>No history found.</p></div>';
                         return;
                     }
-                    body.innerHTML = renderHistoryTable(data.history);
+                    body.innerHTML = renderHistoryTable(historyList);
                 } catch (err) {
                     const body = expRow.querySelector('.allocation-history-body');
                     body.innerHTML = `<div class="oa-error-message"><i class="fas fa-exclamation-circle"></i> Failed to load history</div>`;
@@ -1161,14 +1402,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!ok) return;
                     cancelBtn.disabled = true;
                     try {
-                        const resp = await fetch(`/api/order-allocation/${encodeURIComponent(taskId)}/cancel`, {
+                        // Use the DRF cancel action endpoint.
+                        const resp = await fetch(`/api/v1/allocations/${encodeURIComponent(taskId)}/cancel/`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+                            },
                             body: JSON.stringify({})
                         });
                         const data = await resp.json().catch(() => ({}));
-                        if (!resp.ok || !data.success) {
-                            throw new Error(data.error || `Failed to cancel (HTTP ${resp.status})`);
+                        // DRF envelope: { ok: true, data: {...} }
+                        if (!resp.ok || !data.ok) {
+                            throw new Error(data.error || data.detail || `Failed to cancel (HTTP ${resp.status})`);
                         }
                         // Update badge UI
                         badge.className = 'status-badge cancelled';
@@ -1186,13 +1432,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add click event listeners to rows for detailed view
         tableEl.querySelectorAll('.order-row').forEach(row => {
             row.addEventListener('click', function(e) {
-                if (e.target.closest('.status-cell') || e.target.closest('.allocation-info-btn') || e.target.closest('.status-action-menu')) {
+                if (e.target.closest('.status-cell') || e.target.closest('.allocation-info-btn') || e.target.closest('.status-action-menu') || e.target.closest('.oa-assign-cell')) {
                     return;
                 }
                 const taskId = this.dataset.taskId;
                 if (!taskId) return;
 
-                fetch(`/api/order-allocation/${taskId}`)
+                fetch(`/api/v1/allocations/${encodeURIComponent(taskId)}/`)
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
@@ -1200,13 +1446,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         return response.json();
                     })
                     .then(data => {
-                        if (data.success) { 
-                            // Add project and employee names to the order data
-                            data.order.projectName = projectMap.get(data.order.project?.toString()) || data.order.project;
-                            data.order.employeeName = employeeMap.get(data.order.employee_id?.toString()) || data.order.employee_id;
-                            displayOrderDetails(data.order);
+                        // DRF envelope: { ok: true, data: {...} }
+                        const order = data.data || data.order;
+                        if (data.ok && order) {
+                            order.projectName = projectMap.get(order.project?.toString()) || order.project;
+                            order.employeeName = employeeMap.get(order.employee_id?.toString()) || order.employee_id;
+                            displayOrderDetails(order);
                         } else {
-                            throw new Error(data.error || 'Failed to fetch task details');
+                            throw new Error(data.error || data.detail || 'Failed to fetch task details');
                         }
                     })
                     .catch(error => {
@@ -1256,7 +1503,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${assignedBy}</td>
                     <td>${assignedOn}</td>
                     <td>${totalFmt}</td>
-                    <td>${h.status || '-'}</td>
+                    <td>${formatStatusDisplay(h.status)}</td>
                 </tr>
             `;
         }).join('');
@@ -1288,8 +1535,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const receivedDate = order.received_date ? new Date(order.received_date).toLocaleString() : '-';
         const eta = order.eta ? new Date(order.eta).toLocaleString() : '-';
         const slaDate = order.sla_date ? new Date(order.sla_date).toLocaleString() : '-';
-
-
+        
+        const statusStr = order.status || 'Pending';
+        const isFinalState = statusStr.toLowerCase() === 'completed' || statusStr.toLowerCase() === 'cancelled' || statusStr.toLowerCase() === 'dispatch';
+        const editableClass = isFinalState ? '' : 'editable';
         // Remove any existing popups
         const existingPopup = document.querySelector('.oa-details-popup');
         if (existingPopup) {
@@ -1302,21 +1551,42 @@ document.addEventListener('DOMContentLoaded', function() {
         popup.innerHTML = `
             <div class="oa-details-container">
                 <div class="oa-details-header">
-                    <h3><i class="fas fa-file-alt"></i> Order Details</h3>
+                    <h3><i class="fas fa-file-alt"></i> Order Details: ${order.batch_id || order.batchId || order.batch || '-'} (${order.ar_number || '-'})</h3>
                     <div class="oa-details-actions">
                         <button class="oa-save-btn" style="display: none;"><i class="fas fa-save"></i> Save</button>
                         <button class="oa-details-close">&times;</button>
                     </div>
                 </div>
                 <div class="oa-details-body">
+                    
+                    <div class="oa-detail-item editable" style="margin-bottom: 15px; display: block; border: none; padding: 0;">
+                      <strong>General Instructions:</strong>
+                      <div class="oa-detail-value" style="margin-top: 5px;">
+                          <textarea class="oa-edit-general-instructions" style="display: none; width: 100%; min-height: 80px; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">${order.general_instructions || ''}</textarea>
+                          <p class="oa-display-value" style="background: #f8f9fa; padding: 10px; border-radius: 4px; border-left: 4px solid #007bff; margin: 0;">
+                            ${order.general_instructions ? order.general_instructions.replace(/\n/g, '<br>') : "<i>No general instructions provided.</i>"}
+                          </p>
+                      </div>
+                    </div>
+                    
+                    <div class="oa-detail-item editable" style="margin-bottom: 20px; display: block; border: none; padding: 0;">
+                      <strong>Special Instructions:</strong>
+                      <div class="oa-detail-value" style="margin-top: 5px;">
+                          <textarea class="oa-edit-remarks" style="display: none; width: 100%; min-height: 80px; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">${order.remarks || ''}</textarea>
+                          <p class="oa-display-value" style="background: #e9ecef; padding: 10px; border-radius: 4px; margin: 0;">
+                            ${order.remarks ? order.remarks.replace(/\n/g, '<br>') : "<i>No specific remarks provided.</i>"}
+                          </p>
+                      </div>
+                    </div>
+
                     <div class="oa-details-grid">
                         <div class="oa-detail-item">
                             <div class="oa-detail-label">Task ID</div>  
-                            <div class="oa-detail-value">${order.task_id || '-'}</div>
+                            <div class="oa-detail-value">${order.task_id || order.taskId || order.allocation_id || '-'}</div>
                         </div>
                         <div class="oa-detail-item">
                             <div class="oa-detail-label">Project</div>
-                            <div class="oa-detail-value">${order.projectName || '-'}</div>
+                            <div class="oa-detail-value">${order.projectName || order.project || '-'}</div>
                         </div>
                         <div class="oa-detail-item">
                             <div class="oa-detail-label">Client Code</div>
@@ -1332,16 +1602,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                         <div class="oa-detail-item">
-                            <div class="oa-detail-label">Batch ID</div>
-                            <div class="oa-detail-value">${order.batch_id || '-'}</div>
+                            <div class="oa-detail-label">Order No</div>
+                            <div class="oa-detail-value">${order.batch_id || order.batchId || order.batch || '-'}</div>
+                        </div>
+                        <div class="oa-detail-item">
+                            <div class="oa-detail-label">AR Number</div>
+                            <div class="oa-detail-value">${order.ar_number || order.arNumber || '-'}</div>
                         </div>
                         <div class="oa-detail-item editable">
                             <div class="oa-detail-label">Order Type</div>
                             <div class="oa-detail-value">
                                 <select class="oa-edit-ordertype" style="display: none;">
-                                    <option value="${order.order_details}">${order.order_details}</option>
+                                    <option value="${order.order_id}">${order.order_id}</option>
                                 </select>
-                                <span class="oa-display-value">${order.order_details || '-'}</span>
+                                <span class="oa-display-value">${order.order_id || '-'}</span>
                             </div>
                         </div>
                         <div class="oa-detail-item">
@@ -1360,13 +1634,22 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="oa-detail-label">County</div>
                             <div class="oa-detail-value">${order.county || '-'}</div>
                         </div>
-                        <div class="oa-detail-item editable">
+                        <div class="oa-detail-item ${editableClass}">
                             <div class="oa-detail-label">Assigned To</div>
                             <div class="oa-detail-value">
                                 <select class="oa-edit-employee" style="display: none;">
-                                    <option value="${order.employee_id}">${order.employeeName}</option>
+                                    <option value="${order.employee_id}">${order.employeeName || '-'}</option>
                                 </select>
                                 <span class="oa-display-value">${order.employeeName || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="oa-detail-item ${editableClass}">
+                            <div class="oa-detail-label">Assign QC To</div>
+                            <div class="oa-detail-value">
+                                <select class="oa-edit-qc" style="display: none;">
+                                    <option value="${order.qc_id || ''}">${order.qc_name || '-'}</option>
+                                </select>
+                                <span class="oa-display-value">${order.qc_name || '-'}</span>
                             </div>
                         </div>
                         <div class="oa-detail-item">
@@ -1407,11 +1690,24 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="oa-display-value">$${order.fees || '0'}</span>
                             </div>
                         </div>
-                        <div class="oa-detail-item editable">
-                            <div class="oa-detail-label">Remarks</div>
+                        <!-- Remarks moved to the top of the modal -->
+                        <div class="oa-detail-item">
+                            <div class="oa-detail-label">Employee Comments</div>
                             <div class="oa-detail-value">
-                                <textarea class="oa-edit-remarks" style="display: none;">${order.remarks || ''}</textarea>
-                                <span class="oa-display-value">${order.remarks || '-'}</span>
+                                <span class="oa-display-value" style="white-space: pre-wrap;">${order.employee_comments || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="oa-detail-item editable" style="grid-column: 1 / -1;">
+                            <div class="oa-detail-label">QC Comments</div>
+                            <div class="oa-detail-value">
+                                <textarea class="oa-edit-qccomments" style="display: none;" rows="2">${order.qc_comments || ''}</textarea>
+                                <span class="oa-display-value" style="white-space: pre-wrap;">${order.qc_comments || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="oa-detail-item">
+                            <div class="oa-detail-label">Time Taken</div>
+                            <div class="oa-detail-value">
+                                <span class="oa-display-value">${order.time_taken || '-'}</span>
                             </div>
                         </div>
                         <div class="oa-detail-item">
@@ -1427,7 +1723,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                     
                                     return `<span class="oa-status-badge ${cssClass}">
-                                        ${status}
+                                        ${formatStatusDisplay(status)}
                                     </span>`;
                                 })()}
                             </div>
@@ -1448,7 +1744,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                         <div class="oa-document-info">
                                             <span class="oa-document-name" title="${doc.name}">${doc.name}</span>
-                                            <a href="/api/download-document/${order.task_id}/${encodeURIComponent(doc.name)}" 
+                                            <a href="/api/v1/allocations/${order.allocation_id || order.task_id}/download/${doc.type === 'original' || !doc.type ? '' : '?doc=' + doc.type}" 
                                                class="oa-document-download" 
                                                target="_blank">
                                                 <i class="fas fa-download"></i> Download
@@ -1516,6 +1812,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${emp.name}
                     </option>`
                 ).join('');
+                
+                const qcSelect = popup.querySelector('.oa-edit-qc');
+                if (qcSelect) {
+                    qcSelect.innerHTML = `<option value="">Select QC</option>` + employees.map(emp => 
+                        `<option value="${emp.employee_id}" ${emp.employee_id === order.qc_id ? 'selected' : ''}>
+                            ${emp.name}
+                        </option>`
+                    ).join('');
+                }
             });
 
         // Load order types for dropdown
@@ -1620,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Handle edit button click
         editBtn.addEventListener('click', function() {
-            popup.querySelectorAll('.oa-edit-employee, .oa-edit-worktype, .oa-edit-ordertype, .oa-edit-searchtype, .oa-edit-remarks, .oa-edit-eta').forEach(el => {
+            popup.querySelectorAll('.oa-edit-employee, .oa-edit-qc, .oa-edit-worktype, .oa-edit-ordertype, .oa-edit-searchtype, .oa-edit-remarks, .oa-edit-qccomments, .oa-edit-eta, .oa-edit-general-instructions').forEach(el => {
                 el.style.display = 'block';
             });
             // Show the fees edit controls container
@@ -1648,13 +1953,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Handle save button click
         saveBtn.addEventListener('click', function() {
+            const targetId = order.allocation_id || order.task_id || order.taskId;
             const updatedData = {
-                task_id: order.task_id,
+                task_id: targetId,
                 work_type: popup.querySelector('.oa-edit-worktype').value,
                 order_details: popup.querySelector('.oa-edit-ordertype').value,
                 employee_id: popup.querySelector('.oa-edit-employee').value,
                 search_type: popup.querySelector('.oa-edit-searchtype').value,
                 remarks: popup.querySelector('.oa-edit-remarks').value || '',
+                general_instructions: popup.querySelector('.oa-edit-general-instructions').value || '',
+                qc_comments: popup.querySelector('.oa-edit-qccomments') ? popup.querySelector('.oa-edit-qccomments').value || '' : '',
+                qc_id: popup.querySelector('.oa-edit-qc') ? popup.querySelector('.oa-edit-qc').value || '' : '',
+                qc_name: popup.querySelector('.oa-edit-qc') ? (popup.querySelector('.oa-edit-qc').options[popup.querySelector('.oa-edit-qc').selectedIndex]?.text || '').replace('Select QC', '') : '',
                 fees: searchTypeSelect.value === 'Ground' ? vendorRatesSelect.value : feesInput.value
             };
             // Handle ETA
@@ -1683,21 +1993,28 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show loading state
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-            // Send update to server
-            fetch(`/api/order-allocation/${encodeURIComponent(order.task_id)}/update`, {
-                method: 'POST',
-                body: formData
+            // Send update to server via the DRF PATCH endpoint.
+            // The popup collects changed fields as a JSON object (updatedData).
+            // File operations are handled separately if needed in future.
+            fetch(`/api/v1/allocations/${encodeURIComponent(targetId)}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+                },
+                body: JSON.stringify(updatedData)
             })
             .then(response => {
                 if (!response.ok) {
                     return response.json().then(data => {
-                        throw new Error(data.error || 'Failed to update order');
+                        throw new Error(data.error || data.detail || 'Failed to update order');
                     });
                 }
                 return response.json();
             })
             .then(data => {
-                if (data.success) {
+                // DRF envelope: { ok: true, data: {...} }
+                if (data.ok) {
                     // Send chat notification to assigned employee for updated task
                     sendTaskAssignmentMessage(updatedData.employee_id, {
                         task_id: updatedData.task_id,
@@ -1705,7 +2022,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         project: order.project,
                         work_type: updatedData.work_type,
                         search_type: updatedData.search_type,
-                        isUpdate: true // flag to indicate update
+                        isUpdate: true
                     });
 
                     const successMessage = document.createElement('div');
@@ -1718,7 +2035,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         popup.remove();
                     }, 2000);
                 } else {
-                    throw new Error(data.message || 'Unknown error occurred');
+                    throw new Error(data.error || data.detail || 'Unknown error occurred');
                 }
             })
             .catch(error => {
@@ -1834,7 +2151,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="oa-document-info" style="position:relative;">
                         <span class="oa-document-name" title="${doc.name}">${doc.name}</span>
                         <div class="oa-document-actions">
-                            <a href="/api/download-document/${order.task_id}/${encodeURIComponent(doc.name)}" 
+                            <a href="/api/v1/allocations/${order.allocation_id || order.id}/download/?doc=${doc.type}" 
                                class="oa-document-download" 
                                target="_blank">
                                 <i class="fas fa-download"></i> Download
