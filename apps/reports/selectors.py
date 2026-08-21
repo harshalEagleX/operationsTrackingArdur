@@ -18,7 +18,7 @@ from django.db.models import Avg, Count, Q, Sum, Subquery, OuterRef
 from apps.allocations.models import BatchAllocation
 from apps.breaks.models import BreakTime
 from apps.feedback.models import Feedback
-from apps.tracking.models import WorkSession
+from apps.tracking.models import SessionState, WorkSession
 from core.timezone import day_bounds, today_ist
 from apps.accounts.models import Employee
 
@@ -100,31 +100,63 @@ class ProductivitySelector(BaseSelector):
         ("total_hours", "Hours"),
     ]
 
-    def rows(self) -> list[dict]:
-        queryset = self.base_queryset(WorkSession.objects.completed())
+    def base_queryset(self, queryset):
+        f = self.filters
+        if f.emp_ids:
+            queryset = queryset.filter(emp_id__in=f.emp_ids)
+        if f.projects:
+            queryset = queryset.filter(project__in=f.projects)
+        if f.work_types:
+            queryset = queryset.filter(work_type__in=f.work_types)
 
-        aggregated = (
-            queryset.values("emp_id", "name", "project")
-            .annotate(
-                sessions=Count("id"),
-                total_seconds=Sum("total_time"),
-            )
-            .order_by("-sessions")
-        )
+        if not f.date_from and not f.date_to:
+            return queryset
+
+        q_date = Q()
+        if f.date_from:
+            start, _ = day_bounds(f.date_from)
+            q_date &= Q(start_time__gte=start)
+        if f.date_to:
+            _, end = day_bounds(f.date_to)
+            q_date &= Q(start_time__lt=end)
+
+        is_current = True
+        if f.date_to and f.date_to < today_ist():
+            is_current = False
+
+        if is_current:
+            q_running = Q(end_time__isnull=True, is_started=SessionState.RUNNING)
+            return queryset.filter(q_date | q_running)
+
+        return queryset.filter(q_date)
+
+    def rows(self) -> list[dict]:
+        queryset = self.base_queryset(WorkSession.objects.exclude(is_started=SessionState.ALLOCATED))
+
+        rows_dict = {}
+        for session in queryset:
+            key = (session.emp_id, session.name, session.project)
+            if key not in rows_dict:
+                rows_dict[key] = {"sessions": 0, "total_seconds": 0}
+            
+            rows_dict[key]["sessions"] += 1
+            rows_dict[key]["total_seconds"] += session.live_elapsed_seconds or 0
 
         rows = []
-        for row in aggregated:
-            seconds = row["total_seconds"] or 0
+        for (emp_id, name, project), data in rows_dict.items():
+            seconds = data["total_seconds"]
             hours = seconds / 3600
             rows.append(
                 {
-                    "emp_id": row["emp_id"],
-                    "name": row["name"],
-                    "project": row["project"],
-                    "sessions": row["sessions"],
+                    "emp_id": emp_id,
+                    "name": name,
+                    "project": project,
+                    "sessions": data["sessions"],
                     "total_hours": round(hours, 2),
                 }
             )
+        
+        rows.sort(key=lambda x: x["sessions"], reverse=True)
         return rows
 
 
@@ -146,12 +178,59 @@ class SummarySelector(BaseSelector):
         ("is_paused", "Is paused"),
     ]
 
+    def base_queryset(self, queryset):
+        f = self.filters
+        if f.emp_ids:
+            queryset = queryset.filter(emp_id__in=f.emp_ids)
+        if f.projects:
+            queryset = queryset.filter(project__in=f.projects)
+        if f.work_types:
+            queryset = queryset.filter(work_type__in=f.work_types)
+
+        if not f.date_from and not f.date_to:
+            return queryset
+
+        q_date = Q()
+        if f.date_from:
+            start, _ = day_bounds(f.date_from)
+            q_date &= Q(start_time__gte=start)
+        if f.date_to:
+            _, end = day_bounds(f.date_to)
+            q_date &= Q(start_time__lt=end)
+
+        is_current = True
+        if f.date_to and f.date_to < today_ist():
+            is_current = False
+
+        if is_current:
+            q_running = Q(end_time__isnull=True, is_started=SessionState.RUNNING)
+            return queryset.filter(q_date | q_running)
+
+        return queryset.filter(q_date)
+
     def rows(self) -> list[dict]:
         location_subquery = Employee.objects.filter(employee_id=OuterRef('emp_id')).values('department')[:1]
-        queryset = self.base_queryset(WorkSession.objects.completed()).annotate(
-            work_location=Subquery(location_subquery)
-        ).order_by("-start_time")
-        return list(queryset.values(*[c[0] for c in self.columns]))
+        queryset = self.base_queryset(
+            WorkSession.objects.exclude(is_started=SessionState.ALLOCATED)
+        ).annotate(work_location=Subquery(location_subquery)).order_by("-start_time")
+        
+        results = []
+        for session in queryset:
+            results.append({
+                "id": session.id,
+                "emp_id": session.emp_id,
+                "name": session.name,
+                "project": session.project,
+                "client_code": session.client_code,
+                "work_type": session.work_type,
+                "batch": session.batch,
+                "start_time": session.start_time,
+                "end_time": session.end_time,
+                "total_time": session.live_elapsed_seconds,
+                "work_location": getattr(session, "work_location", None),
+                "is_paused": getattr(session, "is_paused", False),
+            })
+        return results
 
 
 class BreakSelector(BaseSelector):

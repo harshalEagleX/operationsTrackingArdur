@@ -55,6 +55,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     work_type_names = serializers.SerializerMethodField()
 
     # Legacy aliases for JS compatibility
+    emp_id = serializers.CharField(source="employee_id", read_only=True)
     joining_date = serializers.DateField(source="date_of_joining", read_only=True)
     work_location = serializers.CharField(source="department", read_only=True)
     projects = serializers.CharField(source="project", read_only=True)
@@ -63,7 +64,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = [
-            "id", "employee_id", "name", "email", "phone", "alternate_phone", "role", "designation",
+            "id", "employee_id", "emp_id", "name", "email", "phone", "alternate_phone", "role", "designation",
             "department", "project", "shift", "reporting_to", "date_of_joining",
             "status", "employee_type", "has_login", "created_at", "updated_at",
             "client_code", "work_type", "active_inactive_date",

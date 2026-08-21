@@ -13,7 +13,7 @@ SECURE_SSL_REDIRECT = False
 
 CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS",
-    default=["http://localhost:8000", "http://127.0.0.1:8000"],
+    default=["http://localhost:8000", "http://127.0.0.1:8000", "https://*.trycloudflare.com"],
 )
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

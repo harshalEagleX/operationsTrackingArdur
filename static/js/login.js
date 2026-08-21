@@ -1,3 +1,6 @@
+import { api } from './core/api.js';
+import { toast } from './core/toast.js';
+
 // Setup password visibility toggle
 document.addEventListener('DOMContentLoaded', function() {
     const group = document.querySelector('.input-group.has-toggle');
@@ -19,63 +22,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-document.getElementById('login-form').addEventListener('submit', function(event) {
+document.getElementById('login-form').addEventListener('submit', async function(event) {
     event.preventDefault();
 
     const empId = document.getElementById('emp_id').value;
     const password = document.getElementById('password').value;
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalContent = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+    submitBtn.disabled = true;
 
-    fetch('/api/v1/auth/login/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ emp_id: empId, password: password })
-    })
-    .then(response => response.json().then(data => ({ status: response.status, body: data })))
-    .then(({ status, body }) => {
-        if (status === 200 || body.message === "Login successful") {
-            window.location.href = body.redirect || "/dashboard/";
-        } else {
-            showAlert(body.error || body.detail || 'An error occurred', 'error');
+    try {
+        const data = await api.post('/auth/login/', { emp_id: empId, password: password });
+        window.location.href = data?.redirect || "/dashboard/";
+    } catch (error) {
+        console.error('Login error:', error);
+        
+        let msg = error.message || 'An unexpected error occurred. Please try again.';
+        if (msg.includes("already logged in")) {
+            msg += "\n\n⚠️ Make sure to end your break and work session before logging out.";
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showAlert('An unexpected error occurred. Please try again.', 'error');
-    });
-});
-
-function showAlert(message, type) {
-    const alertBox = document.createElement('div');
-    alertBox.className = `custom-alert ${type}`;
-    
-    const icon = document.createElement('i');
-    icon.className = type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle';
-    
-    const messageText = document.createElement('span');
-    messageText.textContent = message;
-    
-    if (type === 'error' && message.includes("already logged in")) {
-        messageText.innerHTML = `${message}<br><br>⚠️ Make sure to end your break and work session before logging out.`;
+        
+        toast.error(msg);
+        
+        submitBtn.innerHTML = originalContent;
+        submitBtn.disabled = false;
     }
-    
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '×';
-    closeBtn.className = 'close-btn';
-    closeBtn.onclick = () => alertBox.remove();
-    
-    alertBox.appendChild(icon);
-    alertBox.appendChild(messageText);
-    alertBox.appendChild(closeBtn);
-    
-    document.body.appendChild(alertBox);
-    
-    // Auto-remove after 10 seconds
-    setTimeout(() => {
-        if (alertBox.parentElement) {
-            alertBox.classList.add('fade-out');
-            setTimeout(() => alertBox.remove(), 5000);
-        }
-    }, 10000);
-}
+});
