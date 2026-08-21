@@ -20,6 +20,11 @@ class AllocationSerializer(serializers.ModelSerializer):
     is_open = serializers.BooleanField(read_only=True)
     client_name = serializers.SerializerMethodField()
     batch_documents = serializers.SerializerMethodField()
+    dispatch_date = serializers.SerializerMethodField()
+
+    def get_dispatch_date(self, obj):
+        history = OrderHistory.objects.filter(allocation_id=obj.allocation_id, to_status='dispatch').order_by('-created_at').first()
+        return history.created_at if history else None
 
     def get_batch_documents(self, obj):
         docs = []
@@ -52,12 +57,13 @@ class AllocationSerializer(serializers.ModelSerializer):
             "document_name", "received_date", "eta",
             "employee_comments", "qc_id", "qc_name", "qc_comments", "time_taken", "ar_number",
             "batch_documents",
-            "chain_sheet_name", "search_package_name", "report_name", "general_instructions"
+            "chain_sheet_name", "search_package_name", "report_name", "general_instructions",
+            "dispatch_date"
         ]
         read_only_fields = [
             "id", "progress_percent", "is_overdue", "is_open",
             "allocated_by", "allocated_at", "started_at", "completed_at",
-            "time_taken", "ar_number"
+            "time_taken", "ar_number", "dispatch_date"
         ]
 
 

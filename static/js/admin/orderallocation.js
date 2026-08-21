@@ -1534,7 +1534,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Parse dates
         const receivedDate = order.received_date ? new Date(order.received_date).toLocaleString() : '-';
         const eta = order.eta ? new Date(order.eta).toLocaleString() : '-';
-        const slaDate = order.sla_date ? new Date(order.sla_date).toLocaleString() : '-';
+        const dispatchDate = order.dispatch_date ? new Date(order.dispatch_date).toLocaleString() : '-';
         
         const statusStr = order.status || 'Pending';
         const isFinalState = statusStr.toLowerCase() === 'completed' || statusStr.toLowerCase() === 'cancelled' || statusStr.toLowerCase() === 'dispatch';
@@ -1575,6 +1575,27 @@ document.addEventListener('DOMContentLoaded', function() {
                           <textarea class="oa-edit-remarks" style="display: none; width: 100%; min-height: 80px; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">${order.remarks || ''}</textarea>
                           <p class="oa-display-value" style="background: #e9ecef; padding: 10px; border-radius: 4px; margin: 0;">
                             ${order.remarks ? order.remarks.replace(/\n/g, '<br>') : "<i>No specific remarks provided.</i>"}
+                          </p>
+                      </div>
+                    </div>
+
+                    ${order.employee_comments ? `
+                    <div class="oa-detail-item" style="margin-bottom: 20px; display: block; border: none; padding: 0;">
+                      <strong>Employee Comments:</strong>
+                      <div class="oa-detail-value" style="margin-top: 5px;">
+                          <p class="oa-display-value" style="background: #e2e3e5; padding: 10px; border-radius: 4px; border-left: 4px solid #6c757d; margin: 0;">
+                            ${order.employee_comments.replace(/\n/g, '<br>')}
+                          </p>
+                      </div>
+                    </div>
+                    ` : ''}
+
+                    <div class="oa-detail-item editable" style="margin-bottom: 20px; display: block; border: none; padding: 0;">
+                      <strong>QC Comments:</strong>
+                      <div class="oa-detail-value" style="margin-top: 5px;">
+                          <textarea class="oa-edit-qccomments" style="display: none; width: 100%; min-height: 80px; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">${order.qc_comments || ''}</textarea>
+                          <p class="oa-display-value" style="background: #fff3cd; padding: 10px; border-radius: 4px; border-left: 4px solid #ffc107; margin: 0;">
+                            ${order.qc_comments ? order.qc_comments.replace(/\n/g, '<br>') : "<i>No QC comments provided.</i>"}
                           </p>
                       </div>
                     </div>
@@ -1665,7 +1686,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="oa-detail-item">
                             <div class="oa-detail-label">Dispatch Date</div>
-                            <div class="oa-detail-value">${slaDate}</div>
+                            <div class="oa-detail-value">${dispatchDate}</div>
                         </div>
                         <div class="oa-detail-item editable">
                             <div class="oa-detail-label">Fee Type</div>
@@ -1690,20 +1711,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="oa-display-value">$${order.fees || '0'}</span>
                             </div>
                         </div>
-                        <!-- Remarks moved to the top of the modal -->
-                        <div class="oa-detail-item">
-                            <div class="oa-detail-label">Employee Comments</div>
-                            <div class="oa-detail-value">
-                                <span class="oa-display-value" style="white-space: pre-wrap;">${order.employee_comments || '-'}</span>
-                            </div>
-                        </div>
-                        <div class="oa-detail-item editable" style="grid-column: 1 / -1;">
-                            <div class="oa-detail-label">QC Comments</div>
-                            <div class="oa-detail-value">
-                                <textarea class="oa-edit-qccomments" style="display: none;" rows="2">${order.qc_comments || ''}</textarea>
-                                <span class="oa-display-value" style="white-space: pre-wrap;">${order.qc_comments || '-'}</span>
-                            </div>
-                        </div>
+
                         <div class="oa-detail-item">
                             <div class="oa-detail-label">Time Taken</div>
                             <div class="oa-detail-value">

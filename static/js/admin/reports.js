@@ -747,9 +747,7 @@ $(document).ready(function () {
      'batch': 'Order No.',
      'total_time': 'Total Time',
      'work_location': 'Location',
-     'status': 'Status',
-     'review': 'Review',
-     'pages': 'Pages'
+     'status': 'Status'
  };
  // Initialize DataTable with custom DOM layout
  const table = $('#reportsTable').DataTable({
@@ -1101,26 +1099,6 @@ $('.end-btn').on('click', function () {
     // Prevent ending if already completed
     if (currentRowData.end_time) return;
     // Prevent ending if not allowed (add any additional checks here)
-    // Patch: Show/hide Pages field based on project name (ProvenAir-AAR logic)
-    const projectName = currentRowData.project;
-    const isProvenAirAAR = projectName === 'ProvenAir-AAR';
-    // Find the label and input for Pages
-    const $pagesLabel = $(".end-popup label[for='endPages']");
-    const $pagesInput = $('#endPages');
-    if ($pagesLabel.length && $pagesInput.length) {
-        if (isProvenAirAAR) {
-            $pagesLabel.show();
-            $pagesInput.show().prop('required', true);
-            // Optionally restore last value from localStorage
-            const lastPages = localStorage.getItem('lastProvenAirPages');
-            if (!$pagesInput.val() && lastPages) {
-                $pagesInput.val(lastPages);
-            }
-        } else {
-            $pagesLabel.hide();
-            $pagesInput.hide().prop('required', false).val('');
-        }
-    }
     $('.end-popup').fadeIn(200);
     // If the work is paused, disable the end button in the modal (user should not end directly)
     if (currentRowData.is_paused) {
@@ -1133,8 +1111,6 @@ $('.end-btn').on('click', function () {
 $('.end-popup-cancel').on('click', function () {
     $('.end-popup').fadeOut(200);
     $('#endWorkUnits').val('');
-    $('#endPages').val('');
-    $('#endReview').val('');
 });
 
 $('.end-popup-submit').off('click').on('click', function () {
@@ -1143,8 +1119,6 @@ $('.end-popup-submit').off('click').on('click', function () {
         alert('You must resume the paused work before ending it.');
         return;
     }
-    const pages = parseInt($('#endPages').val());
-    const review = $('#endReview').val().trim();
     const emp_id = currentRowData.emp_id;
     // Combine date and time in the format 'YYYY-MM-DD HH:MM:SS' to match DB
     const start_time = `${currentRowData.date} ${currentRowData.start_time}`;
@@ -1163,10 +1137,7 @@ $('.end-popup-submit').off('click').on('click', function () {
             'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
         },
         contentType: 'application/json',
-        data: JSON.stringify({
-            review,
-            pages: pages || null
-        }),
+        data: JSON.stringify({}),
         success: function (res) {
             const result = res.data || res;
             if (res.ok || result.id) {

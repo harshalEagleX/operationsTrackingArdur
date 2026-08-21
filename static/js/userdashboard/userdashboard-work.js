@@ -515,19 +515,18 @@ function fetchWorkData(date) {
         .then(response => response.json())
         .then(res => {
             const data = res.data || res;
-            const tableBody = document.getElementById('work-data-body');
+            // Destroy existing DataTable instance first so we get the real DOM node
+            if ($.fn.DataTable.isDataTable('#work-data-table')) {
+                $('#work-data-table').DataTable().destroy();
+            }
 
+            const tableBody = document.getElementById('work-data-body');
             if (tableBody) tableBody.innerHTML = ''; // Clear existing rows
             else return; // Don't proceed if table body not found
 
             if (!Array.isArray(data)) {
                 console.error("Expected array from API, got:", typeof data);
                 return;
-            }
-
-            // Destroy existing DataTable instance if it exists
-            if ($.fn.DataTable.isDataTable('#work-data-table')) {
-                $('#work-data-table').DataTable().destroy();
             }
 
             data.forEach(row => {
