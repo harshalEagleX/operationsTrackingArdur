@@ -165,10 +165,9 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
             AllocationStatus.SEND_FOR_QC,
             AllocationStatus.QC_IN_PROGRESS,
             AllocationStatus.COMPLETED,
-            AllocationStatus.DISPATCH,
         ])
         
-        queryset = base_qs.filter(cond_searcher | cond_qc)
+        queryset = base_qs.filter(cond_searcher | cond_qc).exclude(status=AllocationStatus.DISPATCH)
         return self.ok(AllocationSerializer(queryset, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="next_ar_number")

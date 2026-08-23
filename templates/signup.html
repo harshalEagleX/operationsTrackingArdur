@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up · OpsTracking</title>
     <link rel="stylesheet" href="{{ static('styles/signup.css') }}">
+    <link rel="stylesheet" href="{{ static('css/toast.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -31,7 +32,7 @@
             <div class="input-group has-toggle">
                 <i class="fas fa-lock"></i>
                 <input type="password" id="password" name="password" required placeholder="Password">
-                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password', this)" title="Toggle password visibility">
+                <button type="button" class="password-toggle" title="Toggle password visibility">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
@@ -39,7 +40,7 @@
             <div class="input-group has-toggle">
                 <i class="fas fa-lock"></i>
                 <input type="password" id="confirm_password" name="confirm_password" required placeholder="Confirm Password">
-                <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirm_password', this)" title="Toggle password visibility">
+                <button type="button" class="password-toggle" title="Toggle password visibility">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
@@ -51,6 +52,6 @@
         <p>Already have an account? <a href="{{ url('pages:login') }}">Login</a></p>
     </div>
 
-    <script src="{{ static('js/signup.js') }}"></script>
+    <script type="module" src="{{ static('js/signup.js') }}"></script>
 </body>
 </html>

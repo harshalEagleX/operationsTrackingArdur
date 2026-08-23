@@ -105,7 +105,7 @@ function displayOrderDetails(order) {
             // Parse dates
             const receivedDate = order.received_date ? new Date(order.received_date).toLocaleString() : '-';
             const eta = order.eta ? new Date(order.eta).toLocaleString() : '-';
-            const slaDate = order.sla_date ? new Date(order.sla_date).toLocaleString() : '-';
+            const dispatchDate = order.dispatch_date ? new Date(order.dispatch_date).toLocaleString() : '-';
 
             // Remove any existing popups
             const existingPopup = document.querySelector('.oa-details-popup');
@@ -196,7 +196,7 @@ function displayOrderDetails(order) {
                             </div>
                             <div class="oa-detail-item">
                                 <div class="oa-detail-label">Dispatch Date</div>
-                                <div class="oa-detail-value">${slaDate}</div>
+                                <div class="oa-detail-value">${dispatchDate}</div>
                             </div>
                             <div class="oa-detail-item">
                                 <div class="oa-detail-label">Fee Type</div>

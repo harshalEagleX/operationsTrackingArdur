@@ -8,8 +8,6 @@ $(document).ready(function() {
 
     // Load initial data
     loadProjects();
-    loadTargets();
-    loadActiveSessions();
 
     // Sidebar toggle
     $('#sidebarToggle').on('click', function() {
@@ -44,7 +42,17 @@ $(document).ready(function() {
         } else if (section === 'users') {
             loadAllUsers();
         }
+        
+        window.location.hash = section;
     });
+
+    // Check hash on load
+    const hash = window.location.hash.substring(1);
+    if (hash && $(`.nav-item[data-section="${hash}"]`).length) {
+        $(`.nav-item[data-section="${hash}"]`).click();
+    } else {
+        loadActiveSessions();
+    }
 
     // Search functionality
     $('#sessionSearch').on('input', function() {
@@ -73,37 +81,6 @@ $(document).ready(function() {
         });
     });
 
-    // Modal controls
-    $('.close-btn, #cancelTargetBtn').on('click', function() {
-        $('#targetModal').fadeOut(300);
-    });
-
-    // Add Target Button
-    $('#addTargetBtn').on('click', function() {
-        resetForm();
-        $('#targetModal').fadeIn(300);
-    });
-
-    // Target Form Submit
-    $('#targetForm').on('submit', function(e) {
-        e.preventDefault();
-        const projectSelect = $('#projectSelect');
-        const selectedOption = projectSelect.find('option:selected');
-        
-        const data = {
-            project_id: projectSelect.val(),
-            project_name: selectedOption.text(),
-            target: $('#targetValue').val()
-        };
-
-        if (!data.project_id || !data.target) {
-            showToast('Please fill in all required fields', 'error');
-            return;
-        }
-
-        saveTarget(data);
-    });
-
     // System actions
     $('#clearCacheBtn').on('click', function() {
         if (confirm('Are you sure you want to clear the cache? This may affect application performance temporarily.')) {
@@ -128,7 +105,6 @@ $(document).ready(function() {
 // Update page title based on section
 function updatePageTitle(section) {
     const titles = {
-        targets: 'Project Targets',
         sessions: 'Active Sessions',
         users: 'Manage Users',
         system: 'System Settings'
@@ -167,233 +143,6 @@ function loadProjects() {
     } catch (err) {
         console.error('Error in loadProjects:', err);
         showToast('Error loading projects', 'error');
-    }
-}
-
-// Load existing targets
-function loadTargets() {
-    try {
-        const grid = $('.targets-grid');
-        
-        // Show loading state
-        grid.html(`
-            <div class="empty-state initial-load">
-                <i class="fas fa-spinner fa-spin fa-3x"></i>
-                <p>Loading targets...</p>
-            </div>
-        `);
-
-        $.get('/api/v1/tracking/targets/')
-            .done(function(response) {
-                try {
-                    // Ensure response is valid
-                    if (!response || typeof response !== 'object') {
-                        throw new Error('Invalid response from server');
-                    }
-
-                    const data = response.projects || (Array.isArray(response) ? response : (response.results || []));
-                    grid.empty();
-            
-                    if (data.length === 0) {
-                        grid.html(`
-                            <div class="empty-state">
-                                <i class="fas fa-bullseye fa-3x"></i>
-                                <p>No targets set yet</p>
-                            </div>
-                        `);
-                        return;
-                    }
-
-                    data.forEach(target => {
-                        if (isValidTarget(target)) {
-                            grid.append(createTargetCard(target));
-                        }
-                    });
-                } catch (err) {
-                    console.error('Error processing targets:', err);
-                    showToast('Error loading targets: ' + err.message, 'error');
-                    grid.html(`
-                        <div class="empty-state">
-                            <i class="fas fa-exclamation-circle fa-3x"></i>
-                            <p>Error loading targets</p>
-                        </div>
-                    `);
-                }
-            })
-            .fail(function(xhr, status, error) {
-                showToast('Error loading targets: ' + (error || 'Unknown error'), 'error');
-                grid.html(`
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-circle fa-3x"></i>
-                        <p>Error loading targets</p>
-                    </div>
-                `);
-            });
-    } catch (err) {
-        console.error('Error in loadTargets:', err);
-        showToast('Error loading targets', 'error');
-    }
-}
-
-// Validate target object
-function isValidTarget(target) {
-    return target && 
-           typeof target === 'object' && 
-           target.id && 
-           typeof target.project_name === 'string' &&
-           !isNaN(parseInt(target.target));
-}
-
-// Create target card HTML
-function createTargetCard(target) {
-    try {
-        if (!isValidTarget(target)) {
-            console.error('Invalid target data:', target);
-            return '';
-        }
-
-        const date = target.set_at ? new Date(target.set_at).toLocaleDateString() : 'N/A';
-        const targetValue = parseInt(target.target) || 0;
-
-        return `
-            <div class="project-card" data-id="${target.id}">
-                <div class="project-header">
-                    <div class="project-icon">
-                            <i class="fas fa-bullseye"></i>
-                        </div>
-                    <h3 class="project-name">${escapeHtml(target.project_name)}</h3>
-                                </div>
-                <div class="project-info">
-                    <div class="target-value">Daily Target: ${targetValue}</div>
-                    <div class="target-date">
-                        <i class="far fa-calendar"></i>
-                        Set on ${date}
-                                </div>
-                            </div>
-                            <div class="card-actions">
-                    <button class="btn-secondary" onclick="editTarget(${target.id})">
-                        <i class="fas fa-edit"></i>
-                        Edit
-                                </button>
-                    <button class="btn-secondary" onclick="deleteTarget(${target.id})">
-                        <i class="fas fa-trash"></i>
-                        Delete
-                                </button>
-                            </div>
-                        </div>
-        `;
-    } catch (err) {
-        console.error('Error creating target card:', err);
-        return '';
-    }
-}
-
-// Save target
-function saveTarget(data) {
-    try {
-        if (!isValidTargetData(data)) {
-            showToast('Invalid target data', 'error');
-            return;
-        }
-
-    $.ajax({
-        url: '/api/v1/tracking/targets/',
-        method: 'POST',
-        contentType: 'application/json',
-            data: JSON.stringify(data),
-        success: function(response) {
-            $('#targetModal').fadeOut(300);
-            showToast('Target saved successfully');
-            loadTargets();
-            resetForm();
-        },
-        error: function(xhr, status, error) {
-                showToast('Error saving target: ' + (xhr.responseJSON?.error || error || 'Unknown error'), 'error');
-            }
-        });
-    } catch (err) {
-        console.error('Error saving target:', err);
-        showToast('Error saving target', 'error');
-        }
-}
-
-// Validate target data for saving
-function isValidTargetData(data) {
-    return data && 
-           typeof data === 'object' &&
-           data.project_id &&
-           typeof data.project_name === 'string' &&
-           !isNaN(parseInt(data.target));
-}
-
-// Edit target
-function editTarget(targetId) {
-    try {
-        if (!targetId) {
-            showToast('Invalid target ID', 'error');
-            return;
-        }
-
-    $.get(`/api/v1/tracking/targets/${targetId}/`)
-        .done(function(target) {
-                try {
-                    if (!isValidTarget(target)) {
-                        throw new Error('Invalid target data received');
-                    }
-
-            $('#projectSelect').val(target.project_id).trigger('change');
-                    $('#targetValue').val(target.target || '');
-            $('#targetForm').data('edit-id', targetId);
-            $('#targetModal').fadeIn(300);
-                } catch (err) {
-                    console.error('Error processing target data:', err);
-                    showToast(err.message, 'error');
-                }
-        })
-        .fail(function(xhr, status, error) {
-                showToast('Error loading target details: ' + (error || 'Unknown error'), 'error');
-        });
-    } catch (err) {
-        console.error('Error editing target:', err);
-        showToast('Error editing target', 'error');
-    }
-}
-
-// Delete target
-function deleteTarget(targetId) {
-    try {
-        if (!targetId) {
-            showToast('Invalid target ID', 'error');
-            return;
-        }
-
-    if (confirm('Are you sure you want to delete this target?')) {
-        $.ajax({
-            url: `/api/v1/tracking/targets/${targetId}/`,
-            method: 'DELETE',
-            success: function() {
-                showToast('Target deleted successfully');
-                loadTargets();
-            },
-            error: function(xhr, status, error) {
-                    showToast('Error deleting target: ' + (error || 'Unknown error'), 'error');
-            }
-        });
-        }
-    } catch (err) {
-        console.error('Error deleting target:', err);
-        showToast('Error deleting target', 'error');
-    }
-}
-
-// Reset form
-function resetForm() {
-    try {
-    $('#targetForm')[0].reset();
-    $('#projectSelect').val('').trigger('change');
-    $('#targetForm').removeData('edit-id');
-    } catch (err) {
-        console.error('Error resetting form:', err);
     }
 }
 
@@ -511,12 +260,15 @@ function filterSessions(searchText = '') {
 
 // Load active sessions
 function loadActiveSessions() {
-    return $.get('/api/v1/tracking/sessions/active/')
+    return $.get('/api/v1/presence/')
         .done(function(data) {
             const sessionsList = $('.sessions-list');
             sessionsList.empty();
             
-            const sessions = data.data || data;
+            let sessions = data.data || data;
+            if (Array.isArray(sessions)) {
+                sessions = sessions.filter(user => user.status && user.status !== 'offline');
+            }
 
             if (!Array.isArray(sessions) || sessions.length === 0) {
                 sessionsList.append(`
@@ -535,6 +287,15 @@ function loadActiveSessions() {
                 const empId = escapeHtml(user.emp_id);
                 const role = escapeHtml(user.role || 'Employee');
                 
+                let metaHtml = `<span>${empId}</span><span>${role}</span>`;
+                if (user.login_time) {
+                    const loginTime = new Date(user.login_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    metaHtml += `<span>Login: ${loginTime}</span>`;
+                }
+                
+                const statusStr = user.status || 'active';
+                const displayStatus = statusStr.charAt(0).toUpperCase() + statusStr.slice(1).replace('_', ' ');
+                
                 sessionsList.append(`
                     <div class="session-item" data-emp-id="${empId}">
                         <div class="session-info">
@@ -544,15 +305,14 @@ function loadActiveSessions() {
                             <div class="session-details">
                                 <h4>${name}</h4>
                                 <div class="session-meta">
-                                    <span>${empId}</span>
-                                    <span>${role}</span>
+                                    ${metaHtml}
                                 </div>
                             </div>
                         </div>
                         <div class="session-actions">
                             <span class="session-badge active">
                                 <i class="fas fa-circle"></i>
-                                Active
+                                ${displayStatus}
                             </span>
                             <button class="btn-danger btn-sm" onclick="showResetConfirmation('${empId}', '${name}')">
                                 <i class="fas fa-power-off"></i>
@@ -600,8 +360,11 @@ function resetUserSession(empId) {
     }
 
     $.ajax({
-        url: `/api/reset-login/${empId}`,
+        url: `/api/v1/auth/force-logout/${empId}/`,
         method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
         success: function(response) {
             showToast('Session reset successfully');
             loadActiveSessions(); // Reload the sessions list
@@ -632,10 +395,10 @@ function loadAllUsers() {
             }
 
             users.forEach(user => {
-                if (!user || !user.emp_id || !user.name) return;
+                if (!user || !user.employee_id || !user.name) return;
                 
                 const name = escapeHtml(user.name);
-                const empId = escapeHtml(user.emp_id);
+                const empId = escapeHtml(user.employee_id);
                 const role = escapeHtml(user.role || 'Employee');
                 const status = escapeHtml(user.status || 'Active');
                 

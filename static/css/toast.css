@@ -4,7 +4,7 @@
 
 .toast-host {
   position: fixed;
-  bottom: 1rem;
+  top: 1rem;
   right: 1rem;
   z-index: 1000;
   display: flex;
@@ -43,6 +43,10 @@
 .toast span { flex: 1; font-size: 1.1rem; font-weight: 500; }
 
 .toast-action {
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
+  box-shadow: none;
   border: 0;
   background: rgba(255, 255, 255, 0.15);
   padding: 0.4rem 0.8rem;
@@ -56,9 +60,15 @@
 
 .toast-action:hover {
   background: rgba(255, 255, 255, 0.25);
+  transform: none;
+  box-shadow: none;
 }
 
 .toast-close {
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
+  box-shadow: none;
   border: 0;
   background: none;
   padding: 0 0.2rem;
@@ -71,6 +81,9 @@
 
 .toast-close:hover {
   color: #ffffff;
+  background: none;
+  transform: none;
+  box-shadow: none;
 }
 
 @keyframes toast-in {

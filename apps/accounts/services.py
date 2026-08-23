@@ -89,6 +89,51 @@ class AuthService(BaseService):
         # signed-out user keeps receiving pushes.
         self._revoke_sockets(emp_id, session_key)
 
+    def force_logout(self, emp_id: str) -> None:
+        """Administrative force logout for a stuck or unattended session."""
+        self.require_admin("Only an administrator can force logout an employee.")
+        
+        user = self.require_found(
+            User.objects.filter(emp_id=emp_id).first(),
+            f"No login exists for employee {emp_id}.",
+        )
+        
+        session_key = user.session_id
+        
+        # Close open login history
+        LoginHistory.objects.filter(emp_id=emp_id, logout_time__isnull=True).update(
+            logout_time=now_ist()
+        )
+        
+        # Clear their session
+        User.objects.filter(pk=user.pk).update(session_id=None)
+        
+        if session_key:
+            try:
+                from django.contrib.sessions.models import Session
+                Session.objects.filter(session_key=session_key).delete()
+            except Exception:
+                pass
+                
+        self.log("force_logout", target=emp_id)
+        self._revoke_sockets(emp_id, session_key)
+        
+        try:
+            from apps.presence.services import PresenceService
+            PresenceService().set_manual(emp_id, "offline", "Forced logout")
+        except Exception:
+            pass
+            
+        # Try stopping any active tracking session they might have left running
+        try:
+            from apps.tracking.services import TrackingService
+            from apps.tracking.models import WorkSession
+            active = WorkSession.objects.filter(emp_id=emp_id).active_now().first()
+            if active:
+                TrackingService(actor=self.actor).stop_session(active.id)
+        except Exception:
+            pass
+
     def change_password(self, user: User, current_password: str, new_password: str) -> None:
         if not user.check_password(current_password):
             raise AuthenticationError("Your current password is not correct.")

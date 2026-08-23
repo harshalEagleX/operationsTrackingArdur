@@ -20,11 +20,7 @@
                     <i class="fas fa-home"></i>
                     <span>Dashboard</span>
                 </a>
-                <button class="nav-item active" data-section="targets">
-                    <i class="fas fa-bullseye"></i>
-                    <span>Project Targets</span>
-                </button>
-                <button class="nav-item" data-section="sessions">
+                <button class="nav-item active" data-section="sessions">
                     <i class="fas fa-users"></i>
                     <span>Active Sessions</span>
                 </button>
@@ -54,30 +50,8 @@
 
             <!-- Content Area -->
             <div class="content-area">
-                <!-- Project Targets Section -->
-                <div id="targets" class="content-section active">
-                    <div class="section-header">
-                        <div class="header-info">
-                            <h2>Project Targets</h2>
-                            <p>Set and manage daily targets for each project</p>
-                        </div>
-                        <button class="new-target-btn" id="addTargetBtn">
-                            <i class="fas fa-plus"></i>
-                            New Target
-                        </button>
-                    </div>
-
-                    <div class="targets-grid">
-                        <!-- Cards will be populated dynamically via JavaScript -->
-                        <div class="empty-state initial-load">
-                            <i class="fas fa-spinner fa-spin fa-3x"></i>
-                            <p>Loading targets...</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Active Sessions Section -->
-                <div id="sessions" class="content-section">
+                <div id="sessions" class="content-section active">
                     <div class="section-header">
                         <div class="header-info">
                             <h2>Active Sessions</h2>
@@ -137,40 +111,6 @@
         </main>
     </div>
 
-    <!-- Set Target Modal -->
-    <div id="targetModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Set Project Target</h2>
-                <button class="close-btn" aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="targetForm">
-                    <div class="form-group">
-                        <label for="projectSelect">Project</label>
-                        <select id="projectSelect" name="project" required>
-                            <option value="">Select Project</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="targetValue">Daily Target</label>
-                        <input type="number" id="targetValue" name="target" min="1" required
-                               placeholder="Enter daily target value">
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn-secondary" id="cancelTargetBtn">
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn-primary">
-                            Save Target
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <!-- Reset Session Modal -->
     <div id="resetSessionModal" class="modal">

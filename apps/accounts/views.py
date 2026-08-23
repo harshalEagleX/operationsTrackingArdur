@@ -98,6 +98,16 @@ class PasswordResetView(EnvelopeMixin, APIView):
         return self.ok({"detail": "Password reset."})
 
 
+class ForceLogoutView(EnvelopeMixin, APIView):
+    """POST /api/v1/auth/force-logout/<emp_id>/ — admin force logouts a user."""
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request, emp_id):
+        AuthService(actor=request.user).force_logout(emp_id)
+        return self.ok({"detail": "User forcibly logged out."})
+
+
 class EmployeeViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
     """/api/v1/auth/employees/
 

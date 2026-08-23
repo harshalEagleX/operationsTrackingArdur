@@ -145,15 +145,19 @@ class PresenceService:
         The page fetches this once on load and then applies deltas over the
         socket. Presence is never polled.
         """
-        from apps.accounts.models import Employee
+        from apps.accounts.models import Employee, User
 
         states = {s.emp_id: s for s in PresenceState.objects.all()}
         employees = Employee.objects.active().values("employee_id", "name", "role", "project")
+        
+        emp_ids = [e["employee_id"] for e in employees]
+        users = {u.emp_id: u.last_login for u in User.objects.filter(emp_id__in=emp_ids)}
 
         roster = []
         for employee in employees:
             emp_id = employee["employee_id"]
             state = states.get(emp_id)
+            last_login = users.get(emp_id)
             roster.append(
                 {
                     "emp_id": emp_id,
@@ -163,6 +167,7 @@ class PresenceService:
                     "status": state.status if state else PresenceStatus.OFFLINE,
                     "custom_status": state.custom_status if state else "",
                     "last_seen_at": state.last_seen_at.isoformat() if state else None,
+                    "login_time": last_login.isoformat() if last_login else None,
                 }
             )
         return roster

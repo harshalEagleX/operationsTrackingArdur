@@ -53,9 +53,12 @@ async function handle(response) {
   if (!response.ok) {
     // A 401 anywhere means the session is gone. Redirect rather than
     // showing an error the user cannot act on.
+    // However, do not redirect if we are already on the login page (e.g. failing to log in).
     if (response.status === 401) {
-      window.location.href = "/login/?reason=session_expired";
-      throw new ApiError({ code: "unauthenticated", message: "Session expired." }, 401);
+      if (window.location.pathname !== '/login/') {
+        window.location.href = "/login/?reason=session_expired";
+      }
+      throw new ApiError(payload?.error || { code: "unauthenticated", message: "Invalid credentials or session expired." }, 401);
     }
     throw new ApiError(payload.error || {}, response.status);
   }
