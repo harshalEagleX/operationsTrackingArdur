@@ -6,6 +6,14 @@ function formatStatusDisplay(statusStr) {
     return statusStr.replace(/_+/g, ' ');
 }
 
+// Global state for Cancel Order Modal
+let currentCancelTaskId = null;
+let currentCancelBadge = null;
+let currentCancelBtn = null;
+let cancelModal = null;
+let cancelReasonInput = null;
+let cancelForm = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add toggle form functionality
     const toggleFormBtn = document.getElementById('toggleFormBtn');
@@ -16,6 +24,71 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchTypeSelect = document.getElementById('oa_searchType');
     const feesInput = document.getElementById('oa_fees');
     const vendorRatesContainer = document.getElementById('vendor-rates-container');
+
+    // Cancel Order Modal State assignments
+    cancelModal = document.getElementById('cancel-order-popup');
+    cancelReasonInput = document.getElementById('cancel-reason');
+    cancelForm = document.getElementById('cancel-order-form');
+
+    function closeCancelModal() {
+        if (cancelModal) cancelModal.style.display = 'none';
+        if (cancelReasonInput) cancelReasonInput.value = '';
+        currentCancelTaskId = null;
+        currentCancelBadge = null;
+        if (currentCancelBtn) {
+            currentCancelBtn.disabled = false;
+            currentCancelBtn = null;
+        }
+    }
+
+    if (cancelModal) {
+        document.getElementById('close-cancel-order').addEventListener('click', (e) => { e.preventDefault(); closeCancelModal(); });
+        document.getElementById('cancel-order-dismiss').addEventListener('click', (e) => { e.preventDefault(); closeCancelModal(); });
+        
+        cancelForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const reason = cancelReasonInput.value.trim();
+            if (!reason) {
+                alert('A cancellation reason is required.');
+                return;
+            }
+            if (!currentCancelTaskId) return;
+            
+            const submitBtn = cancelForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling...';
+            
+            try {
+                const resp = await fetch(`/api/v1/allocations/${encodeURIComponent(currentCancelTaskId)}/cancel/`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+                    },
+                    body: JSON.stringify({ reason: reason })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || !data.ok) {
+                    throw new Error(data.error || data.detail || `Failed to cancel (HTTP ${resp.status})`);
+                }
+                
+                if (currentCancelBadge) {
+                    currentCancelBadge.className = 'status-badge cancelled';
+                    currentCancelBadge.textContent = 'Cancelled';
+                }
+                
+                // Close any open status menus (including the cancel menu itself)
+                document.querySelectorAll('.status-action-menu').forEach(m => m.remove());
+                closeCancelModal();
+            } catch (err) {
+                console.error('Cancel order failed:', err);
+                alert(err.message || 'Failed to cancel order');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Cancel Order';
+            }
+        });
+    }
 
     // Fetch orders immediately when the tab is loaded
     const orderAllocationTab = document.getElementById('orderallocation');
@@ -1377,7 +1450,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!cell || !taskId) return;
 
                 // Toggle: close if already open
-                const existingMenu = cell.querySelector('.status-action-menu');
+                const existingMenu = document.querySelector(`.status-action-menu[data-task-id="${taskId}"]`);
                 if (existingMenu) {
                     existingMenu.remove();
                     return;
@@ -1388,42 +1461,82 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Build menu
                 const menu = document.createElement('div');
                 menu.className = 'status-action-menu';
+                menu.setAttribute('data-task-id', taskId);
                 const cancelBtn = document.createElement('button');
                 cancelBtn.className = 'status-action-item danger';
                 cancelBtn.innerHTML = '<i class="fas fa-ban"></i> Cancel order';
                 menu.appendChild(cancelBtn);
-                cell.appendChild(menu);
+                
+                document.body.appendChild(menu);
+                
+                // Position it relative to the viewport + scroll
+                const rect = badge.getBoundingClientRect();
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+                
+                menu.style.top = (rect.bottom + scrollTop + 6) + 'px';
+                menu.style.left = (rect.left + scrollLeft) + 'px';
+                menu.style.zIndex = '999999';
 
                 // Handle cancel action
                 cancelBtn.addEventListener('click', async (ev) => {
-                    ev.stopPropagation();
-                    ev.preventDefault();
-                    const ok = window.confirm('Are you sure you want to cancel this order? This cannot be undone.');
-                    if (!ok) return;
-                    cancelBtn.disabled = true;
                     try {
-                        // Use the DRF cancel action endpoint.
-                        const resp = await fetch(`/api/v1/allocations/${encodeURIComponent(taskId)}/cancel/`, {
-                            method: 'POST',
-                            headers: { 
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
-                            },
-                            body: JSON.stringify({})
-                        });
-                        const data = await resp.json().catch(() => ({}));
-                        // DRF envelope: { ok: true, data: {...} }
-                        if (!resp.ok || !data.ok) {
-                            throw new Error(data.error || data.detail || `Failed to cancel (HTTP ${resp.status})`);
+                        ev.stopPropagation();
+                        ev.preventDefault();
+                        
+                        // Fallback logic
+                        const doFallback = async () => {
+                            const reason = window.prompt('Please provide a reason for cancelling this order:');
+                            if (reason === null) return;
+                            if (reason.trim() === '') {
+                                alert('A cancellation reason is required.');
+                                return;
+                            }
+                            
+                            cancelBtn.disabled = true;
+                            try {
+                                const resp = await fetch(`/api/v1/allocations/${encodeURIComponent(taskId)}/cancel/`, {
+                                    method: 'POST',
+                                    headers: { 
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+                                    },
+                                    body: JSON.stringify({ reason: reason.trim() })
+                                });
+                                const data = await resp.json().catch(() => ({}));
+                                if (!resp.ok || !data.ok) {
+                                    throw new Error(data.error || data.detail || `Failed to cancel (HTTP ${resp.status})`);
+                                }
+                                badge.className = 'status-badge cancelled';
+                                badge.textContent = 'Cancelled';
+                                document.querySelectorAll('.status-action-menu').forEach(m => m.remove());
+                            } catch (err) {
+                                console.error('Cancel order failed:', err);
+                                alert(err.message || 'Failed to cancel order');
+                                cancelBtn.disabled = false;
+                            }
+                        };
+                        
+                        if (cancelModal) {
+                            currentCancelTaskId = taskId;
+                            currentCancelBadge = badge;
+                            currentCancelBtn = cancelBtn;
+                            cancelBtn.disabled = true; // prevent double clicks while modal opens
+                            
+                            cancelModal.classList.remove('hidden');
+                            cancelModal.style.display = 'flex';
+                            if (cancelReasonInput) {
+                                cancelReasonInput.focus();
+                            }
+                            
+                            // Close the dropdown menu but keep state
+                            document.querySelectorAll('.status-action-menu').forEach(m => m.remove());
+                        } else {
+                            doFallback();
                         }
-                        // Update badge UI
-                        badge.className = 'status-badge cancelled';
-                        badge.textContent = 'Cancelled';
-                        closeOpenStatusMenus();
-                    } catch (err) {
-                        console.error('Cancel order failed:', err);
-                        alert(err.message || 'Failed to cancel order');
-                        cancelBtn.disabled = false;
+                    } catch (e) {
+                        alert("Error showing modal: " + e.message);
+                        console.error("Cancel button error:", e);
                     }
                 });
             });
@@ -1465,45 +1578,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderHistoryTable(history) {
-        function pad(v) { return String(v).padStart(2, '0'); }
-        function formatFromSeconds(totalSeconds) {
-            if (!totalSeconds || totalSeconds <= 0) return '-';
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-        }
-
-        const historyWithStatus = (() => {
-            const lastByType = {};
-            return history.map(h => {
-                let status = h.status || '';
-                const wt = h.work_type;
-                const toNameOrId = h.assigned_to_name || h.assigned_to || '';
-                if (!status && wt) {
-                    if (lastByType.hasOwnProperty(wt) && lastByType[wt] !== toNameOrId) {
-                        status = 'Reassigned';
-                    }
-                    lastByType[wt] = toNameOrId;
-                }
-                return { ...h, status };
-            });
-        })();
-
-        const rows = historyWithStatus.map(h => {
-            const assignedOn = h.assigned_on ? new Date(h.assigned_on.replace(' ', 'T')).toLocaleString() : '-';
-            const total = (h.total_time_seconds || 0);
-            const totalFmt = formatFromSeconds(total);
-            const assignedTo = h.assigned_to_name || h.assigned_to || '-';
-            const assignedBy = h.assigned_by_name || h.assigned_by || '-';
+        const rows = history.map(h => {
+            const dateStr = h.created_at ? new Date(h.created_at).toLocaleString() : '-';
+            const action = h.action ? h.action.replace(/_/g, ' ') : '-';
+            const employee = employeeMap.get(h.employee_id) || h.employee_id || '-';
+            const performedBy = employeeMap.get(h.performed_by) || h.performed_by || '-';
+            const statusStr = formatStatusDisplay(h.to_status) || '-';
+            const remarks = h.remarks ? h.remarks.replace(/\n/g, '<br>') : '-';
+            
             return `
                 <tr>
-                    <td>${h.work_type || '-'}</td>
-                    <td>${assignedTo}</td>
-                    <td>${assignedBy}</td>
-                    <td>${assignedOn}</td>
-                    <td>${totalFmt}</td>
-                    <td>${formatStatusDisplay(h.status)}</td>
+                    <td style="text-transform: capitalize;">${action}</td>
+                    <td>${employee}</td>
+                    <td>${performedBy}</td>
+                    <td>${dateStr}</td>
+                    <td>${statusStr}</td>
+                    <td>${remarks}</td>
                 </tr>
             `;
         }).join('');
@@ -1512,12 +1602,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <table class="allocation-history-table">
                 <thead>
                     <tr>
-                        <th>Work Type</th>
+                        <th>Action</th>
                         <th>Assigned To</th>
-                        <th>Assigned By</th>
-                        <th>Assigned On</th>
-                        <th>Total Time</th>
-                        <th>Status</th>
+                        <th>Performed By</th>
+                        <th>Date</th>
+                        <th>New Status</th>
+                        <th>Remarks</th>
                     </tr>
                 </thead>
                 <tbody>

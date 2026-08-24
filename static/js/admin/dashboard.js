@@ -678,18 +678,6 @@ document.addEventListener("DOMContentLoaded", function () {
         fetchProjects();
         fetchShifts(); // Refresh shifts when opening add modal
         
-        // Fetch next Employee ID for the placeholder
-        const empIdInput = document.getElementById("new-employee-employee_id");
-        empIdInput.placeholder = "Loading...";
-        fetch('/api/v1/auth/employees/next_id/')
-            .then(res => res.json())
-            .then(resp => {
-                empIdInput.placeholder = resp.data?.next_id || resp.next_id || "Auto-generated";
-            })
-            .catch(() => {
-                empIdInput.placeholder = "Auto-generated";
-            });
-            
         addModal.style.display = "flex";
     });
 

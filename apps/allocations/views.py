@@ -16,7 +16,7 @@ from apps.allocations.serializers import (
 )
 from apps.allocations.services import AllocationService
 from core.mixins import EnvelopeMixin, ServiceMixin
-from core.permissions import IsAdminOrSupervisor, IsAuthenticatedEmployee
+from core.permissions import IsAdminOrSupervisor, IsAuthenticatedEmployee, IsManager
 
 
 class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
@@ -37,7 +37,7 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ("create", "update", "partial_update", "destroy",
                            "reassign", "cancel"):
-            return [IsAdminOrSupervisor()]
+            return [IsManager()]
         return super().get_permissions()
 
     def get_serializer_class(self):

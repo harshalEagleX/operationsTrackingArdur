@@ -164,7 +164,13 @@ class AllocationService(BaseService):
 
         previous = allocation.status
         allocation.status = AllocationStatus.CANCELLED
-        allocation.remarks = (reason or allocation.remarks)[:500]
+        
+        cancel_note = f"[CANCEL REASON]: {reason}" if reason else "[CANCELLED]"
+        if allocation.remarks and cancel_note not in allocation.remarks:
+            allocation.remarks = f"{allocation.remarks}\n\n{cancel_note}"[:500]
+        else:
+            allocation.remarks = cancel_note[:500]
+            
         allocation.save(update_fields=["status", "remarks"])
 
         self._record(allocation, "cancelled", from_status=previous,
