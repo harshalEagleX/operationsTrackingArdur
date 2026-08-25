@@ -363,7 +363,7 @@ function resetUserSession(empId) {
         url: `/api/v1/auth/force-logout/${empId}/`,
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCookie('csrftoken')
+            'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
         },
         success: function(response) {
             showToast('Session reset successfully');
@@ -503,8 +503,13 @@ function resetUserPassword(empId) {
     }
 
     $.ajax({
-        url: `/api/reset-user-password/${empId}`,
+        url: `/api/v1/auth/password/reset/`,
         method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            emp_id: empId,
+            new_password: '1122'
+        }),
         success: function(response) {
             showToast('Password reset successfully to 1122');
             loadAllUsers(); // Reload the users list

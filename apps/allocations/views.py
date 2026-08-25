@@ -242,3 +242,95 @@ class OrderRateViewSet(EnvelopeMixin, viewsets.ReadOnlyModelViewSet):
             .order_by().values_list("county", flat=True).distinct()
         )
         return self.ok(sorted(counties))
+
+
+from apps.allocations.models import TitleIndexingSession
+from apps.allocations.serializers import TitleIndexingSessionSerializer
+from rest_framework.decorators import action
+from datetime import datetime
+from core.timezone import now_ist
+from core.mixins import EnvelopeMixin
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+
+class TitleIndexingSessionViewSet(EnvelopeMixin, viewsets.ModelViewSet):
+    """API for managing Title Indexing Sessions."""
+    queryset = TitleIndexingSession.objects.all()
+    serializer_class = TitleIndexingSessionSerializer
+    permission_classes = [IsAuthenticatedEmployee]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.is_team_lead:
+            return qs
+        return qs.filter(employee_id=self.request.user.emp_id)
+
+    @action(detail=False, methods=["post"], url_path="start")
+    def start_session(self, request):
+        """Starts a new Title Indexing session."""
+        emp_id = request.user.emp_id
+        
+        # Check if there's already an in-progress session
+        active_session = TitleIndexingSession.objects.filter(
+            employee_id=emp_id, status='IN_PROGRESS'
+        ).first()
+        
+        if active_session:
+            return Response({"error": "An active indexing session is already running."}, status=status.HTTP_400_BAD_REQUEST)
+
+        client_code = request.data.get("client_code", "")
+        work_type = request.data.get("work_type", "")
+        
+        if not client_code or not work_type:
+            return Response({"error": "Client code and Work type are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        session = TitleIndexingSession.objects.create(
+            employee_id=emp_id,
+            client_code=client_code,
+            work_type=work_type,
+            status='IN_PROGRESS'
+        )
+        return self.ok(TitleIndexingSessionSerializer(session).data)
+
+    @action(detail=True, methods=["post"], url_path="submit")
+    def submit_session(self, request, pk=None):
+        """Submits the session with completed work units."""
+        session = self.get_object()
+        
+        if session.status == 'COMPLETED':
+            return Response({"error": "Session is already completed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        work_units = request.data.get("work_units_completed")
+        if work_units is None:
+            return Response({"error": "work_units_completed is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            work_units = int(work_units)
+        except ValueError:
+            return Response({"error": "work_units_completed must be an integer."}, status=status.HTTP_400_BAD_REQUEST)
+
+        session.work_units_completed = work_units
+        session.completed_at = now_ist()
+        session.status = 'COMPLETED'
+        
+        # Calculate time taken
+        diff = session.completed_at - session.started_at
+        total_seconds = int(diff.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        session.time_taken = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        
+        session.save()
+        return self.ok(TitleIndexingSessionSerializer(session).data)
+
+    @action(detail=False, methods=["get"], url_path="my_active")
+    def my_active(self, request):
+        """Returns the currently active session for the employee, if any."""
+        session = TitleIndexingSession.objects.filter(
+            employee_id=request.user.emp_id, status='IN_PROGRESS'
+        ).first()
+        
+        if session:
+            return self.ok(TitleIndexingSessionSerializer(session).data)
+        return self.ok(None)

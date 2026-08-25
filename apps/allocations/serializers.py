@@ -10,6 +10,7 @@ from apps.allocations.models import (
     OrderHistory,
     Priority,
     OrderRate,
+    TitleIndexingSession,
 )
 from core.validators import validate_emp_id
 
@@ -159,3 +160,20 @@ class OrderRateSerializer(serializers.ModelSerializer):
             "vendor_rts", "eta_rts", "vendor_slt", "eta_slt", "remark",
         ]
         read_only_fields = fields
+
+
+class TitleIndexingSessionSerializer(serializers.ModelSerializer):
+    employee_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TitleIndexingSession
+        fields = [
+            "id", "employee_id", "employee_name", "project", "client_code", "work_type",
+            "started_at", "completed_at", "time_taken",
+            "work_units_completed", "status"
+        ]
+
+    def get_employee_name(self, obj):
+        from apps.accounts.models import Employee
+        emp = Employee.objects.filter(employee_id=obj.employee_id).first()
+        return emp.name if emp else obj.employee_id

@@ -219,3 +219,34 @@ class OrderRate(models.Model):
 
     def __str__(self) -> str:
         return f"{self.order_type} - {self.state} - {self.county}"
+
+
+class TitleIndexingSession(models.Model):
+    """Tracking sessions and work units for Title Indexing."""
+
+    id = models.AutoField(primary_key=True)
+    employee_id = models.CharField(max_length=20, db_index=True)
+    project = models.CharField(max_length=150, default="Title Indexing")
+    client_code = models.CharField(max_length=50)
+    work_type = models.CharField(max_length=100)
+    
+    # Session tracking
+    started_at = models.DateTimeField(default=now_ist)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    time_taken = models.CharField(max_length=100, blank=True)
+    
+    # Indexing specific metrics
+    work_units_completed = models.IntegerField(default=0)
+    status = models.CharField(
+        max_length=20, 
+        choices=[('IN_PROGRESS', 'In Progress'), ('COMPLETED', 'Completed')],
+        default='IN_PROGRESS'
+    )
+
+    class Meta:
+        # Not setting managed = legacy_managed() since this is a new table
+        db_table = "ot_title_indexing_sessions"
+        ordering = ["-started_at"]
+
+    def __str__(self) -> str:
+        return f"Session {self.id} for {self.employee_id} ({self.status})"

@@ -88,6 +88,23 @@ class WorkSessionViewSet(ServiceMixin, EnvelopeMixin, viewsets.ReadOnlyModelView
         session = self.service.end_session(int(pk), **serializer.validated_data)
         return self.ok(WorkSessionSerializer(session).data)
 
+    @action(detail=True, methods=["post"], url_path="indexing-submit")
+    def indexing_submit(self, request, pk=None):
+        units = request.data.get("units")
+        if not units:
+            return self.error("Number of units is required.", status=400)
+        try:
+            units = int(units)
+        except ValueError:
+            return self.error("Units must be an integer.", status=400)
+            
+        result = self.service.indexing_submit(int(pk), units)
+        return self.ok({
+            "ended_session": WorkSessionSerializer(result["ended_session"]).data,
+            "new_session": WorkSessionSerializer(result["new_session"]).data,
+            "units_submitted": result["units_submitted"]
+        })
+
     def destroy(self, request, *args, **kwargs):
         self.service.delete_session(int(kwargs["pk"]))
         return self.ok({"detail": "Work session removed."})

@@ -988,39 +988,61 @@ $(document).ready(function () {
  }, 300000); // 5 minutes
 
  function fetchData(startDate, endDate) {
-     $.ajax({
-         url: `/api/v1/tracking/sessions/?from=${startDate}&to=${endDate}`,
-         method: 'GET',
-         headers: {
-             'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
-         },
-         success: function (response) {
-             const rows = response.data || response;
-             table.clear();
-             table.rows.add(rows).draw();
+     Promise.all([
+         fetch(`/api/v1/tracking/sessions/?from=${startDate}&to=${endDate}`, {
+             headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
+         }).then(res => res.json()),
+         fetch(`/api/v1/allocations/indexing/`, { // We don't have date filters on indexing API yet, fetching all for now or the API ignores it.
+             headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
+         }).then(res => res.json())
+     ]).then(([trackingRes, indexingRes]) => {
+         const rows1 = trackingRes.data || trackingRes;
+         const rows2 = indexingRes.data || indexingRes;
+         
+         // Format indexing data to match WorkSession shape
+         const formattedRows2 = Array.isArray(rows2) ? rows2.map(item => {
+             return {
+                 id: item.id,
+                 emp_id: item.employee_id || "",
+                 name: item.employee_name || item.employee_id || "",
+                 project_name: item.project || 'TITLE INDEXING',
+                 client_code: item.client_code || "",
+                 work_type: item.work_type || "",
+                 batch: "-",
+                 start_time: item.started_at || null,
+                 end_time: item.completed_at || null,
+                 date: item.started_at ? item.started_at.split('T')[0] : "",
+                 total_time: item.time_taken || 0,
+                 work_location: "-",
+                 is_paused: false,
+                 type: 'indexing'
+             };
+         }) : [];
+         
+         const rows = [...(Array.isArray(rows1) ? rows1 : []), ...formattedRows2];
+         table.clear();
+         table.rows.add(rows).draw();
 
-             // Populate project dropdown
-             const projects = [...new Set(rows.map(item => item.project_name || item.project).filter(Boolean))];
-             const projectFilter = $('#projectFilter');
-             projectFilter.empty();
-             projectFilter.append('<option value="">All Projects</option>');
-             projects.forEach(project => {
-                 projectFilter.append(`<option value="${project}">${project}</option>`);
-             });
+         // Populate project dropdown
+         const projects = [...new Set(rows.map(item => item.project_name || item.project).filter(Boolean))];
+         const projectFilter = $('#projectFilter');
+         projectFilter.empty();
+         projectFilter.append('<option value="">All Projects</option>');
+         projects.forEach(project => {
+             projectFilter.append(`<option value="${project}">${project}</option>`);
+         });
 
-             // Populate work location dropdown
-             const workLocations = [...new Set(rows.map(item => item.work_location || item.client_code).filter(Boolean))];
-             const workLocationFilter = $('#workLocationFilter');
-             workLocationFilter.empty();
-             workLocationFilter.append('<option value="">All Work Locations</option>');
-             workLocations.forEach(location => {
-                 workLocationFilter.append(`<option value="${location}">${location}</option>`);
-             });
-         },
-         error: function (xhr, status, error) {
-             console.error("Error fetching data:", error);
-             alert("An error occurred while fetching data. Please try again.");
-         }
+         // Populate work location dropdown
+         const workLocations = [...new Set(rows.map(item => item.work_location || item.client_code).filter(Boolean))];
+         const workLocationFilter = $('#workLocationFilter');
+         workLocationFilter.empty();
+         workLocationFilter.append('<option value="">All Work Locations</option>');
+         workLocations.forEach(location => {
+             workLocationFilter.append(`<option value="${location}">${location}</option>`);
+         });
+     }).catch(error => {
+         console.error("Error fetching data:", error);
+         alert("An error occurred while fetching data. Please try again.");
      });
  }
 

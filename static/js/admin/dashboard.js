@@ -133,7 +133,13 @@ function showContent(tabName, updateHash = true) {
     }
 
     if (!tabName || !VALID_TABS.includes(tabName)) {
-        tabName = 'reports';
+        if (document.getElementById('reports')) {
+            tabName = 'reports';
+        } else if (document.getElementById('orderallocation')) {
+            tabName = 'orderallocation';
+        } else {
+            tabName = 'reports'; // ultimate fallback
+        }
     }
 
     // Hide all tab content
@@ -248,8 +254,8 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         showContent('orderallocation', false);
     } else {
-        // Restore tab from URL hash if available, otherwise default to reports
-        const initialTab = getTabFromHash() || 'reports';
+        // Restore tab from URL hash if available, otherwise pass null to let showContent handle fallback
+        const initialTab = getTabFromHash();
         showContent(initialTab, false);
     }
 
@@ -577,7 +583,12 @@ document.addEventListener("DOMContentLoaded", function () {
                             document.getElementById("employee-phone").value = data.phone || "";
                             document.getElementById("employee-alternate_phone").value = data.alternate_phone || "";
                             document.getElementById("employee-employee_id").value = data.employee_id;
-                            document.getElementById("employee-role").value = data.role.toLowerCase(); // Map nicely
+                            document.getElementById("employee-employee_id").setAttribute("data-original", data.employee_id);
+                            
+                            const roleSelect = document.getElementById("employee-role");
+                            roleSelect.value = data.role.toLowerCase(); // Map nicely
+                            roleSelect.dispatchEvent(new Event('change'));
+                            
                             document.getElementById("employee-employee_type").value = data.employee_type ? data.employee_type.toLowerCase() : "employee";
                             document.getElementById("employee-joining_date").value = data.joining_date;
                             document.getElementById("employee-work_location").value = data.work_location;
@@ -677,6 +688,11 @@ document.addEventListener("DOMContentLoaded", function () {
         addForm.reset();
         fetchProjects();
         fetchShifts(); // Refresh shifts when opening add modal
+        
+        const newRoleSelect = document.getElementById("new-employee-role");
+        if (newRoleSelect) {
+            newRoleSelect.dispatchEvent(new Event('change'));
+        }
         
         addModal.style.display = "flex";
     });
@@ -898,6 +914,33 @@ document.addEventListener("DOMContentLoaded", function () {
         fetchClientCodesForEdit(selectedProjects); // Fetch client codes
     });
 
+    // Handle Employee Type visibility based on Role for Edit form
+    document.getElementById("employee-role").addEventListener("change", function () {
+        const typeGroup = document.getElementById("employee-type-group");
+        if (this.value.toLowerCase() === "employee") {
+            typeGroup.style.display = "block";
+            document.getElementById("employee-employee_type").required = true;
+        } else {
+            typeGroup.style.display = "none";
+            document.getElementById("employee-employee_type").required = false;
+        }
+    });
+
+    // Handle Employee Type visibility based on Role for Add form
+    const newRoleSelect = document.getElementById("new-employee-role");
+    if (newRoleSelect) {
+        newRoleSelect.addEventListener("change", function () {
+            const typeGroup = document.getElementById("new-employee-type-group");
+            if (this.value.toLowerCase() === "employee") {
+                typeGroup.style.display = "block";
+                document.getElementById("new-employee-employee_type").required = true;
+            } else {
+                typeGroup.style.display = "none";
+                document.getElementById("new-employee-employee_type").required = false;
+            }
+        });
+    }
+
     // Event listener for client code selection in edit form
     document.getElementById("employee-client_code").addEventListener("change", function () {
         const selectedClientCodes = Array.from(this.selectedOptions).map(option => option.value);
@@ -988,6 +1031,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const status = document.getElementById("employee-status").value;
         const activeInactiveDate = document.getElementById("employee-active_inactive_date").value;
 
+        // Get original employee ID for the URL (in case it was changed)
+        const employeeIdInput = document.getElementById("employee-employee_id");
+        const originalEmployeeId = employeeIdInput.getAttribute("data-original") || employeeId;
+
         // Collect selected client codes and join them with '|'
         const clientCodeSelect = document.getElementById("employee-client_code");
         const selectedClientCodes = Array.from(clientCodeSelect.selectedOptions).map(option => option.value).join('|');
@@ -1001,7 +1048,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const selectedWorkTypes = Array.from(workTypeSelect.selectedOptions).map(option => option.value).join('|');
 
         // Send the data in the POST request
-        fetch(`/api/v1/auth/employees/${employeeId}/`, {
+        fetch(`/api/v1/auth/employees/${originalEmployeeId}/`, {
             method: 'PATCH',
             credentials: 'same-origin',
             headers: {

@@ -88,9 +88,38 @@ class DashboardPage(BasePage):
     page_title = "Dashboard"
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and not request.user.is_supervisor:
+        if request.user.is_authenticated and not getattr(request.user, 'is_team_lead', False):
             return redirect(reverse("pages:userdashboard"))
         return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        
+        is_title_indexing_only = False
+        if getattr(user, 'is_team_lead', False) and not getattr(user, 'is_super_admin', False):
+            authorized = user.get_authorized_projects()
+            if authorized:
+                from django.apps import apps
+                Project = apps.get_model('masters', 'Project')
+                from django.db.models import Q
+                q_objs = Q()
+                for p in authorized:
+                    q_objs |= Q(project_id__iexact=p) | Q(project_name__iexact=p)
+                projects = Project.objects.filter(q_objs)
+                
+                has_title_indexing = False
+                has_other = False
+                for proj in projects:
+                    if "title indexing" in proj.project_name.lower():
+                        has_title_indexing = True
+                    else:
+                        has_other = True
+                if has_title_indexing and not has_other:
+                    is_title_indexing_only = True
+                    
+        context["is_title_indexing_only"] = is_title_indexing_only
+        return context
 
 
 class UserDashboardPage(BasePage):
@@ -107,6 +136,20 @@ class UserDashboardPage(BasePage):
         context["role"] = getattr(user, "role", "employee")
         context["current_date"] = date.today().strftime("%Y-%m-%d")
         context["emp_id"] = getattr(user, "emp_id", "")
+        
+        is_title_indexing = False
+        if hasattr(user, 'employee') and user.employee and user.employee.project:
+            import re
+            project_ids = [p.strip() for p in re.split(r'[,|]', user.employee.project) if p.strip()]
+            from django.apps import apps
+            Project = apps.get_model('masters', 'Project')
+            projects = Project.objects.filter(project_id__in=project_ids)
+            for proj in projects:
+                if "title indexing" in getattr(proj, 'project_name', '').lower():
+                    is_title_indexing = True
+                    break
+        context["is_title_indexing"] = is_title_indexing
+        
         return context
 
 

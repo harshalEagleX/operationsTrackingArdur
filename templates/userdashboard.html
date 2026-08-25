@@ -986,8 +986,47 @@
                     </div>
                 </div>
 
+                <!-- ── Title Indexing Workspace ── -->
+                {% if is_title_indexing %}
+                <div class="indexing-container" style="background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); text-align: center; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; color: #2d3561;"><i class="fas fa-keyboard"></i> Title Indexing Workspace</h3>
+                    <p style="color: #666; font-size: 0.9rem;">Click Start to begin tracking your time. When you are ready to submit your work units, click Submit Work.</p>
+                    
+                    <div class="timer-display" id="main-timer" style="font-size: 3rem; font-family: monospace; font-weight: bold; color: #2d3561; margin: 20px 0;">00:00:00</div>
+                    
+                    <div class="action-buttons" style="display: flex; justify-content: center; gap: 15px;">
+                        <button class="btn-start" id="btn-start-indexing" onclick="startIndexingSession()" style="background-color: #28a745; color: white; padding: 10px 25px; font-size: 1.1rem; border: none; border-radius: 25px; cursor: pointer;">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                        <button class="btn-submit" id="btn-submit-indexing" onclick="openSubmitModal()" style="background-color: #007bff; color: white; padding: 10px 25px; font-size: 1.1rem; border: none; border-radius: 25px; cursor: pointer; display: none;">
+                            <i class="fas fa-check-circle"></i> Submit Work
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Submit Units Modal -->
+                <div id="submitUnitsModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+                    <div class="modal-content" style="background-color: #fff; margin: 10% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);">
+                        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0;">Submit Work Units</h3>
+                            <button class="close-btn" onclick="closeSubmitModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888;">&times;</button>
+                        </div>
+                        <form id="submit-units-form">
+                            <div class="form-group" style="margin-bottom: 20px; text-align: left;">
+                                <label for="units-completed" style="display: block; margin-bottom: 8px; font-weight: 600;">Units Completed</label>
+                                <input type="number" id="units-completed" min="1" required placeholder="Enter number (e.g., 50)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                            </div>
+                            <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+                                <button type="button" class="btn-secondary" onclick="closeSubmitModal()" style="padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+                                <button type="submit" class="btn-primary" id="btn-confirm-submit" style="background: #007bff; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Submit & Continue</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- ── Allocated Orders Panel ──────────────────────── -->
-                <div class="allocated-orders-section">
+                <div class="allocated-orders-section" {% if is_title_indexing %}style="display: none;"{% endif %}>
                     <div class="allocated-orders-header">
                         <h3>
                             <i class="fas fa-clipboard-list"></i>
@@ -1027,6 +1066,27 @@
 
                 <hr style="margin: 30px 0; border: 0; border-top: 2px dashed #ddd;">
 
+                {% if is_title_indexing %}
+                <!-- Table to display title indexing data -->
+                <table id="indexing-data-table" class="table">
+                    <thead>
+                        <tr>
+                            <th>DATE</th>
+                            <th>PROJECT</th>
+                            <th>CLIENT</th>
+                            <th>WORK TYPE</th>
+                            <th>WORK UNITS</th>
+                            <th>START TIME</th>
+                            <th>END TIME</th>
+                            <th>TOTAL TIME</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="indexing-data-body">
+                        <!-- Data will be populated here dynamically -->
+                    </tbody>
+                </table>
+                {% else %}
                 <!-- Table to display work data -->
                 <table id="work-data-table" class="table">
                     <thead>
@@ -1046,6 +1106,7 @@
                         <!-- Data will be populated here dynamically -->
                     </tbody>
                 </table>
+                {% endif %}
             </section>
         </div>
         <div id="orderDetailsModal" class="oa-details-popup" style="display: none;">
@@ -1064,12 +1125,14 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <!-- Custom scripts -->
     <script src="{{ static('js/userdashboard/image-viewer.js') }}?v=2"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-feedback.js') }}?v=2"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-breaks.js') }}?v=2"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-work.js') }}?v=6"></script>
-    <script src="{{ static('js/userdashboard/userdashboard-tasks.js') }}?v=2"></script>
-    <script src="{{ static('js/userdashboard/userdashboard.js') }}?v=2"></script>
-
+    <script src="{{ static('js/userdashboard/userdashboard-feedback.js') }}?v=3"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-breaks.js') }}?v=3"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-work.js') }}?v=7"></script>
+    <script src="{{ static('js/userdashboard/userdashboard-tasks.js') }}?v=3"></script>
+    <script src="{{ static('js/userdashboard/userdashboard.js') }}?v=3"></script>
+    {% if is_title_indexing %}
+    <script src="{{ static('js/userdashboard/userdashboard-indexing.js') }}?v=3"></script>
+    {% endif %}
     <!-- Modern ES6 Core for Notifications & Realtime -->
     <script type="module" src="{{ static('js/core/bootstrap.js') }}?v=2"></script>
     <!-- Allocated Orders realtime panel -->
