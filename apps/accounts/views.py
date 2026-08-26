@@ -121,6 +121,7 @@ class EmployeeViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
     search_fields = ["employee_id", "name", "email", "project", "designation"]
     ordering_fields = ["name", "employee_id", "role", "date_of_joining"]
     ordering = ["name"]
+    pagination_class = None
 
     def get_permissions(self):
         if self.action in ("list", "retrieve"):

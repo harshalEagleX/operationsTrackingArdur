@@ -22,10 +22,61 @@ class BasePage(LoginRequiredMixin, TemplateView):
     login_url = "/login/"
     page_title = "OpsTracking"
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not getattr(request.user, 'is_super_admin', False):
+            from apps.accounts.models import Employee
+            emp = Employee.objects.filter(employee_id=request.user.emp_id).first()
+            if emp:
+                # Mandatory fields required for completion
+                if not emp.email or not emp.phone or not emp.department or not emp.shift or not emp.date_of_joining:
+                    return redirect(reverse("pages:profile_setup"))
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(base_context(self.request, page_title=self.page_title))
         return context
+
+class ProfileSetupPage(LoginRequiredMixin, TemplateView):
+    """GET /profile-setup/ — mandatory profile completion on first login."""
+
+    template_name = "profile_setup.html"
+    login_url = "/login/"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from apps.accounts.models import Employee
+        emp = Employee.objects.filter(employee_id=self.request.user.emp_id).first()
+        context.update(base_context(self.request, page_title="Complete Your Profile"))
+        context['employee'] = emp
+        return context
+
+    def post(self, request, *args, **kwargs):
+        from apps.accounts.models import Employee
+        emp = Employee.objects.filter(employee_id=request.user.emp_id).first()
+        if not emp:
+            return redirect(reverse("pages:home"))
+
+        # Save the mandatory fields
+        emp.email = request.POST.get("email", "").strip()
+        emp.phone = request.POST.get("phone", "").strip()
+        emp.alternate_phone = request.POST.get("alternate_phone", "").strip()
+        emp.shift = request.POST.get("shift", "").strip()
+        emp.department = request.POST.get("department", "").strip()
+        
+        emp_type = request.POST.get("employee_type")
+        if emp_type:
+            emp.employee_type = emp_type
+            
+        doj = request.POST.get("date_of_joining")
+        if doj:
+            emp.date_of_joining = doj
+            
+        emp.save()
+        
+        # After saving, redirect to home which will route them to their dashboard
+        return redirect(reverse("pages:home"))
+
 
 
 class LoginPage(TemplateView):
