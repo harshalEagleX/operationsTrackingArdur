@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.allocations.models import BatchAllocation, OrderHistory
+from apps.allocations.models import BatchAllocation, OrderHistory, TitleIndexingSession
 
 
 @admin.register(BatchAllocation)
@@ -30,3 +30,11 @@ class OrderHistoryAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(TitleIndexingSession)
+class TitleIndexingSessionAdmin(admin.ModelAdmin):
+    list_display = ("id", "employee_id", "project", "client_code", "work_type", "started_at", "completed_at", "status")
+    list_filter = ("status", "project", "work_type", "client_code")
+    search_fields = ("employee_id",)
+    ordering = ("-started_at",)

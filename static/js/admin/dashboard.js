@@ -442,9 +442,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 <td>${emp.joining_date || emp.date_of_joining || '-'}</td>
                 <td>${emp.work_location || emp.department || '-'}</td>
                 <td>${emp.shift_time || emp.shift || '-'}</td>
-                <td><a href="#" class="project-link" data-employee-id="${emp.employee_id}">View Projects</a></td>
-                <td><a href="#" class="empclient-code-link" data-employee-id="${emp.employee_id}">View Client Codes</a></td>
-                <td><a href="#" class="work-type-link" data-employee-id="${emp.employee_id}">View Work Types</a></td>
+                <td><a href="#" class="project-link" style="color: #12b76a; font-weight: 600;" data-employee-id="${emp.employee_id}"><i class="fas fa-project-diagram"></i> ${(emp.project_names && emp.project_names.length) || 0}</a></td>
+                <td><a href="#" class="empclient-code-link" style="color: #12b76a; font-weight: 600;" data-employee-id="${emp.employee_id}"><i class="fas fa-code"></i> ${(emp.client_code_names && emp.client_code_names.length) || 0}</a></td>
+                <td><a href="#" class="work-type-link" style="color: #12b76a; font-weight: 600;" data-employee-id="${emp.employee_id}"><i class="fas fa-list-ul"></i> ${(emp.work_type_names && emp.work_type_names.length) || 0}</a></td>
                 <td><span class="${statusClass}">${emp.status || '-'}</span></td>
                 <td>${emp.active_inactive_date || '-'}</td>
                 <td class="action-buttons">
@@ -1091,13 +1091,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     // Show popup when logout button is clicked
-    logoutBtn.addEventListener('click', () => {
+    logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault(); // Stop the form from submitting immediately
         // Check for active work session before allowing logout
         fetch('/api/v1/tracking/sessions/current/')
             .then(response => response.json())
             .then(res => {
-                const data = res.data || res;
-                if (data) {
+                // The API omits 'data' entirely if there is no active session (returns {ok: true})
+                if (res.data) {
                     alert('You have an active work session. Do you want to end it first?');
                     // Do not show logout popup, restrict logout
                     return;

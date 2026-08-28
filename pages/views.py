@@ -11,15 +11,19 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.views.generic import TemplateView
 
 from pages.context import base_context
 
 
+@method_decorator(never_cache, name='dispatch')
 class BasePage(LoginRequiredMixin, TemplateView):
     """Every page except login requires a session."""
 
     login_url = "/login/"
+    redirect_field_name = None
     page_title = "OpsTracking"
 
     def dispatch(self, request, *args, **kwargs):
@@ -42,6 +46,7 @@ class ProfileSetupPage(LoginRequiredMixin, TemplateView):
 
     template_name = "profile_setup.html"
     login_url = "/login/"
+    redirect_field_name = None
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -127,6 +132,7 @@ class HomeRedirect(LoginRequiredMixin, TemplateView):
     """GET / — send people to the right dashboard for their role."""
 
     login_url = "/login/"
+    redirect_field_name = None
 
     def get(self, request, *args, **kwargs):
         return HttpResponseRedirect(_home_for(request.user))

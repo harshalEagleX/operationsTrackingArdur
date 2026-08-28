@@ -745,6 +745,7 @@ $(document).ready(function () {
         'client_code': 'Client Code',
         'work_type': 'WorkType',
         'batch': 'Order No.',
+        'units_completed': 'Units Completed',
         'total_time': 'Total Time',
         'work_location': 'Location',
         'status': 'Status'
@@ -778,6 +779,7 @@ $(document).ready(function () {
             { data: 'client_code' },
             { data: 'work_type' },
             { data: 'batch' },
+            { data: 'units_completed', defaultContent: '-' },
             {
                 data: 'total_time',
                 render: function (data) {
@@ -810,6 +812,9 @@ $(document).ready(function () {
 
     // Function to format time into hh:mm:ss without milliseconds
     function formatTime(time) {
+        if (typeof time === 'string' && time.includes(':')) {
+            return time.split('.')[0]; // Already formatted (e.g. from Title Indexing)
+        }
         if (!time || isNaN(time)) return "00:00:00";
         const totalSeconds = Math.round(time); // Round to the nearest second
         const hrs = Math.floor(totalSeconds / 3600);
@@ -844,7 +849,8 @@ $(document).ready(function () {
     $('#downloadButton').on('click', function () {
         const format = $('#downloadFormat').val();
         const filteredData = table.rows({ search: 'applied' }).data().toArray(); // Get only filtered data
-        const headers = Object.values(headerMap); // Use mapped headers
+        const visibleHeaderTexts = table.columns(':visible').header().toArray().map(th => $(th).text());
+        const headers = Object.values(headerMap).filter(h => visibleHeaderTexts.includes(h)); // Use mapped headers
 
         if (format === 'csv') {
             downloadCSV(filteredData, headers);
@@ -950,6 +956,18 @@ $(document).ready(function () {
     $('#projectFilter').on('change', function () {
         const selectedProject = $(this).val();
         table.column(5).search(selectedProject).draw();
+        
+        // Dynamically show/hide columns based on project
+        if (selectedProject && selectedProject.toUpperCase().includes('TITLE INDEXING')) {
+            table.column(8).visible(false, false); // Order No.
+            table.column(9).visible(true, false);  // Units Completed
+            table.column(11).visible(false, false); // Location
+        } else {
+            table.column(8).visible(true, false);  // Order No.
+            table.column(9).visible(false, false); // Units Completed
+            table.column(11).visible(true, false);  // Location
+        }
+        table.columns.adjust().draw();
     });
 
     // Work Location filter change event
@@ -994,10 +1012,12 @@ $(document).ready(function () {
             }).then(res => res.json()),
             fetch(`/api/v1/allocations/indexing/`, { // We don't have date filters on indexing API yet, fetching all for now or the API ignores it.
                 headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
-            }).then(res => res.json())
-        ]).then(([trackingRes, indexingRes]) => {
+            }).then(res => res.json()),
+            fetch('/api/v1/masters/projects/?active=true', { credentials: 'same-origin' }).then(r => r.json())
+        ]).then(([trackingRes, indexingRes, projRes]) => {
             const rows1 = trackingRes.data || trackingRes;
             const rows2 = indexingRes.data || indexingRes;
+            const rawProjects = Array.isArray(projRes) ? projRes : (projRes.results || projRes.data || []);
 
             // Format indexing data to match WorkSession shape
             const formattedRows2 = Array.isArray(rows2) ? rows2.map(item => {
@@ -1009,6 +1029,7 @@ $(document).ready(function () {
                     client_code: item.client_code || "",
                     work_type: item.work_type || "",
                     batch: "-",
+                    units_completed: item.work_units_completed || 0,
                     start_time: item.started_at || null,
                     end_time: item.completed_at || null,
                     date: item.started_at ? item.started_at.split('T')[0] : "",
@@ -1023,14 +1044,28 @@ $(document).ready(function () {
             table.clear();
             table.rows.add(rows).draw();
 
-            // Populate project dropdown
-            const projects = [...new Set(rows.map(item => item.project_name || item.project).filter(Boolean))];
+            // Populate project dropdown from master projects
+            let projects = rawProjects.map(p => p.project_name || p.project_id).filter(Boolean);
+            // Fallback to data rows if master projects is empty
+            if (projects.length === 0) {
+                projects = [...new Set(rows.map(item => item.project_name || item.project).filter(Boolean))];
+            }
             const projectFilter = $('#projectFilter');
+            const currentSelection = projectFilter.val();
             projectFilter.empty();
-            projectFilter.append('<option value="">All Projects</option>');
-            projects.forEach(project => {
-                projectFilter.append(`<option value="${project}">${project}</option>`);
-            });
+            if (projects.length === 0) {
+                projectFilter.append('<option value="">No Projects Found</option>');
+            } else {
+                projects.forEach(project => {
+                    projectFilter.append(`<option value="${project}">${project}</option>`);
+                });
+                if (currentSelection && projects.includes(currentSelection)) {
+                    projectFilter.val(currentSelection);
+                } else {
+                    projectFilter.val(projects[0]);
+                }
+                projectFilter.trigger('change');
+            }
 
             // Populate work location dropdown
             const workLocations = [...new Set(rows.map(item => item.work_location || item.client_code).filter(Boolean))];

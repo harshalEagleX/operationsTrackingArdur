@@ -370,7 +370,7 @@ LOGGING = {
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
-APPEND_SLASH = False
+APPEND_SLASH = True
 
 CONTENT_SECURITY_POLICY = (
     "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https:; "

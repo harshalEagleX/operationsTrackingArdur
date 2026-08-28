@@ -69,7 +69,7 @@ function renderRow(alloc, hasActiveTask = false) {
   if (alloc.is_overdue) tr.classList.add("alloc-row-overdue");
 
   tr.innerHTML = `
-    <td>${alloc.client_name || alloc.client_code || "-"}</td>
+    <td>${alloc.client_code || "-"}</td>
     <td>${alloc.work_type || "-"}</td>
     <td>${alloc.order_id || "-"}</td>
     <td>${alloc.ar_number || "-"}</td>
