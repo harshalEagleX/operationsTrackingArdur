@@ -578,14 +578,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (p.project_id && p.project_name) {
                         projectMap.set(p.project_id.toString(), p.project_name);
                     }
-                    (p.client_code || '').split('|').forEach(c => {
-                        const code = c.trim();
-                        if (code && !clientCodes.includes(code)) clientCodes.push(code);
-                    });
-                    (p.worktypes || '').split('|').forEach(w => {
-                        const wt = w.trim();
-                        if (wt && !workTypes.includes(wt)) workTypes.push(wt);
-                    });
+                    if ((p.project_name || '').toLowerCase().includes('title search')) {
+                        (p.client_code || '').split('|').forEach(c => {
+                            const code = c.trim();
+                            if (code && !clientCodes.includes(code)) clientCodes.push(code);
+                        });
+                        (p.worktypes || '').split('|').forEach(w => {
+                            const wt = w.trim();
+                            if (wt && !workTypes.includes(wt)) workTypes.push(wt);
+                        });
+                    }
                 });
                 if (data.length > 0) {
                     const def = data.find(p => (p.project_name || '').toLowerCase().includes('title')) || data[0];
@@ -652,7 +654,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (employees.data) employees = employees.data;
             if (!Array.isArray(employees)) return;
             employees.forEach(emp => {
-                employeeMap.set(emp.employee_id.toString(), emp.name);
+                const empId = emp.employee_id.toString();
+                employeeMap.set(empId, emp.name);
+                
+                let isTitleSearch = false;
+                if (Array.isArray(emp.project_names) && emp.project_names.some(p => p.toLowerCase().includes('title search'))) {
+                    isTitleSearch = true;
+                } else if (typeof emp.projects === 'string' && emp.projects.toLowerCase().includes('title search')) {
+                    isTitleSearch = true;
+                } else if (typeof emp.project === 'string' && emp.project.toLowerCase().includes('title search')) {
+                    isTitleSearch = true;
+                }
+                
+                if (isTitleSearch) {
+                    titleSearchEmployeeMap.set(empId, emp.name);
+                }
             });
         })
         .catch(error => console.error('Error fetching employees:', error));
@@ -996,6 +1012,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Shared employee map: populated by the MasterDataCache fetch inside
     // initializeOrderAllocationForm() and consumed by inlineAssignEmployee().
     const employeeMap = new Map();
+    const titleSearchEmployeeMap = new Map();
 
     // State for allocation table pagination and search
     const allocationState = {
@@ -1221,11 +1238,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentEmployeeId = cell.dataset.employeeId || '';
 
         // Build employee options from the cached map.
-        const options = Array.from(employeeMap.entries())
+        const targetMap = titleSearchEmployeeMap.size > 0 ? titleSearchEmployeeMap : employeeMap;
+        const options = Array.from(targetMap.entries())
             .sort((a, b) => a[1].localeCompare(b[1]))
             .map(([id, name]) =>
                 `<option value="${id}" ${id === currentEmployeeId ? 'selected' : ''}>${name} (${id})</option>`
             ).join('');
+
 
         // Replace cell contents with inline form.
         const originalHTML = cell.innerHTML;
@@ -1803,9 +1822,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
 
                         <div class="oa-detail-item">
-                            <div class="oa-detail-label">Time Taken</div>
+                            <div class="oa-detail-label">Search Time</div>
                             <div class="oa-detail-value">
-                                <span class="oa-display-value">${order.time_taken || '-'}</span>
+                                <span class="oa-display-value">${order.search_time_taken || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="oa-detail-item">
+                            <div class="oa-detail-label">QC Time</div>
+                            <div class="oa-detail-value">
+                                <span class="oa-display-value">${order.qc_time_taken || '-'}</span>
                             </div>
                         </div>
                         <div class="oa-detail-item">

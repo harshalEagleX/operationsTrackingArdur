@@ -126,7 +126,9 @@ class BatchAllocation(models.Model):
     qc_id = models.CharField(max_length=20, blank=True, null=True, db_index=True)
     qc_name = models.CharField(max_length=100, blank=True, null=True)
     qc_comments = models.TextField(blank=True, null=True)
-    time_taken = models.CharField(max_length=100, blank=True, default="")
+    search_time_taken = models.CharField(max_length=100, blank=True, default="")
+    qc_time_taken = models.CharField(max_length=100, blank=True, default="")
+    qc_started_at = models.DateTimeField(null=True, blank=True)
     ar_number = models.CharField(max_length=20, blank=True, null=True, unique=True)
     sla_notified = models.BooleanField(default=False)
 

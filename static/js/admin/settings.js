@@ -418,6 +418,10 @@ function loadAllUsers() {
                         </div>
                         <div class="session-actions">
                             <span class="status-badge ${status.toLowerCase()}">${status}</span>
+                            <button class="btn-primary btn-sm" onclick="showChangePasswordModal('${empId}', '${name}')" style="margin-right: 8px;">
+                                <i class="fas fa-edit"></i>
+                                Change Password
+                            </button>
                             <button class="btn-danger btn-sm" onclick="showResetPasswordConfirmation('${empId}', '${name}')">
                                 <i class="fas fa-key"></i>
                                 Reset Password
@@ -495,8 +499,33 @@ function showResetPasswordConfirmation(empId, name) {
     modal.fadeIn(300);
 }
 
-// Reset user password
-function resetUserPassword(empId) {
+// Show change password modal
+function showChangePasswordModal(empId, name) {
+    if (!empId || !name) {
+        showToast('Invalid user data', 'error');
+        return;
+    }
+
+    const modal = $('#changePasswordModal');
+    modal.find('.modal-message').text(`Enter the new password for ${name}:`);
+    $('#newPasswordInput').val(''); // Clear previous input
+    
+    // Update confirm button click handler
+    $('#confirmChangePasswordBtn').off('click').on('click', function() {
+        const newPassword = $('#newPasswordInput').val().trim();
+        if (!newPassword) {
+            showToast('Password cannot be empty', 'error');
+            return;
+        }
+        resetUserPassword(empId, newPassword);
+        modal.fadeOut(300);
+    });
+    
+    modal.fadeIn(300);
+}
+
+// Reset or change user password
+function resetUserPassword(empId, newPassword = '1122') {
     if (!empId) {
         showToast('Invalid employee ID', 'error');
         return;
@@ -506,12 +535,15 @@ function resetUserPassword(empId) {
         url: `/api/v1/auth/password/reset/`,
         method: 'POST',
         contentType: 'application/json',
+        headers: {
+            'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || ''
+        },
         data: JSON.stringify({
             emp_id: empId,
-            new_password: '1122'
+            new_password: newPassword
         }),
         success: function(response) {
-            showToast('Password reset successfully to 1122');
+            showToast(newPassword === '1122' ? 'Password reset successfully to 1122' : 'Password changed successfully');
             loadAllUsers(); // Reload the users list
         },
         error: function(xhr, status, error) {

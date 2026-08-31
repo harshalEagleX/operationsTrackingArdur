@@ -22,9 +22,11 @@ $(document).ready(function () {
         $(this).addClass('active');
         $('.report-btn').removeClass('active');
         $('.graphs-btn').removeClass('active');
+        $('.attendance-btn').removeClass('active');
         $('#summaryTableSection').show();
         $('#reportsSection').hide();
         $('#graphsSection').hide();
+        $('#attendanceSection').hide();
         fetchSummaryData();
     });
 
@@ -32,9 +34,11 @@ $(document).ready(function () {
         $(this).addClass('active');
         $('.summary-btn').removeClass('active');
         $('.graphs-btn').removeClass('active');
+        $('.attendance-btn').removeClass('active');
         $('#summaryTableSection').hide();
         $('#reportsSection').show();
         $('#graphsSection').hide();
+        $('#attendanceSection').hide();
         // Refresh reports data
         const startDate = $('#startDate').val();
         const endDate = $('#endDate').val();
@@ -47,9 +51,11 @@ $(document).ready(function () {
         $(this).addClass('active');
         $('.summary-btn').removeClass('active');
         $('.report-btn').removeClass('active');
+        $('.attendance-btn').removeClass('active');
         $('#summaryTableSection').hide();
         $('#reportsSection').hide();
         $('#graphsSection').show();
+        $('#attendanceSection').hide();
 
         // Initialize summary dashboard if not already initialized
         if (!window.projectChart) {
@@ -1470,4 +1476,119 @@ $(document).ready(function () {
     $('.row-zoom-modal').on('click', function (e) {
         e.stopPropagation();
     });
-}); 
+
+    $('.attendance-btn').click(function() {
+        $('.reports-toggle-btn span').removeClass('active');
+        $(this).addClass('active');
+        $('.summary-section, .reports-section, .graphs-section').hide();
+        $('#attendanceSection').show();
+        loadAttendanceProjects();
+        loadAttendanceReport();
+    });
+
+    function loadAttendanceProjects() {
+        if ($('#attProjectFilter option').length > 1) return; 
+        
+        $.get('/api/v1/masters/projects/', function(res) {
+            let projects = res.data || res;
+            $('#attProjectFilter').empty().append('<option value="">All Projects</option>');
+            projects.forEach(p => {
+                $('#attProjectFilter').append('<option value="' + p.project_name + '">' + p.project_name + '</option>');
+            });
+        });
+    }
+
+    function loadAttendanceReport() {
+        const project = $('#attProjectFilter').val();
+        if (!project) {
+            $('#attendanceReportTable tbody').html('<tr><td colspan="7" class="text-center">Please select a project to view attendance.</td></tr>');
+            return;
+        }
+
+        const fromDate = $('#attStartDate').val();
+        const toDate = $('#attEndDate').val();
+        const empIdFilter = $('#attEmpIdFilter').val().trim();
+        
+        $('#attendanceReportTable tbody').html('<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+        
+        $.ajax({
+            url: '/api/v1/tracking/attendance/admin-report/',
+            data: { project: project, from: fromDate, to: toDate, emp_id: empIdFilter },
+            success: function(res) {
+                const data = res.data || res;
+                const tbody = $('#attendanceReportTable tbody');
+                tbody.empty();
+                
+                if (!data || data.length === 0) {
+                    tbody.html('<tr><td colspan="7" class="text-center">No attendance records found.</td></tr>');
+                    return;
+                }
+                
+                data.forEach(function(row) {
+                    let firstLogin = row.first_login ? new Date(row.first_login).toLocaleTimeString() : '-';
+                    let lastLogout = row.last_logout ? new Date(row.last_logout).toLocaleTimeString() : '-';
+                    
+                    let netTimeStr = '-';
+                    if (row.first_login) {
+                        let end = row.last_logout ? new Date(row.last_logout) : new Date();
+                        let start = new Date(row.first_login);
+                        let diffSec = Math.max(0, ((end - start) / 1000) - (row.total_break_time || 0));
+                        let hrs = Math.floor(diffSec / 3600);
+                        let mins = Math.floor((diffSec % 3600) / 60);
+                        netTimeStr = hrs + 'h ' + mins + 'm';
+                    }
+
+                    tbody.append(`
+                        <tr>
+                            <td>${row.date}</td>
+                            <td>${row.emp_id}</td>
+                            <td>${row.emp_name}</td>
+                            <td><span style="text-transform: capitalize;">${row.status}</span></td>
+                            <td>${firstLogin}</td>
+                            <td>${lastLogout}</td>
+                            <td>${netTimeStr}</td>
+                        </tr>
+                    `);
+                });
+            },
+            error: function(err) {
+                $('#attendanceReportTable tbody').html('<tr><td colspan="7" class="text-center text-danger">Error loading data.</td></tr>');
+            }
+        });
+    }
+
+    $('#refreshAttendanceButton').click(loadAttendanceReport);
+    
+    // Trigger on enter in Emp ID search
+    $('#attEmpIdFilter').on('keypress', function(e) {
+        if(e.which == 13) {
+            loadAttendanceReport();
+        }
+    });
+
+    $('#exportAttendanceButton').click(function() {
+        const table = document.getElementById("attendanceReportTable");
+        let csv = [];
+        for (let i = 0; i < table.rows.length; i++) {
+            let row = [], cols = table.rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cols.length; j++) {
+                // Escape quotes
+                let data = cols[j].innerText.replace(/"/g, '""');
+                row.push('"' + data + '"');
+            }
+            csv.push(row.join(","));
+        }
+        let csvString = csv.join("\n");
+        let blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+        let link = document.createElement("a");
+        let url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "attendance_report.csv");
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    $('#attProjectFilter, #attStartDate, #attEndDate').change(loadAttendanceReport);
+});

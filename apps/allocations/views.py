@@ -290,6 +290,13 @@ class TitleIndexingSessionViewSet(EnvelopeMixin, viewsets.ModelViewSet):
             work_type=work_type,
             status='IN_PROGRESS'
         )
+        
+        try:
+            from apps.presence.services import PresenceService
+            PresenceService().recompute(emp_id)
+        except Exception:
+            pass
+
         return self.ok(TitleIndexingSessionSerializer(session).data)
 
     @action(detail=True, methods=["post"], url_path="submit")
@@ -322,6 +329,13 @@ class TitleIndexingSessionViewSet(EnvelopeMixin, viewsets.ModelViewSet):
         session.time_taken = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         
         session.save()
+
+        try:
+            from apps.presence.services import PresenceService
+            PresenceService().recompute(session.employee_id)
+        except Exception:
+            pass
+
         return self.ok(TitleIndexingSessionSerializer(session).data)
 
     @action(detail=False, methods=["get"], url_path="my_active")

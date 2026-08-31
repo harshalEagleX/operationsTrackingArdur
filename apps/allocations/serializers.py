@@ -56,7 +56,7 @@ class AllocationSerializer(serializers.ModelSerializer):
             "owner_name", "property_address", "state", "county", "search_type",
             "fees", "margin", "vendor_rate", # "document_file",
             "document_name", "received_date", "eta",
-            "employee_comments", "qc_id", "qc_name", "qc_comments", "time_taken", "ar_number",
+            "employee_comments", "qc_id", "qc_name", "qc_comments", "search_time_taken", "qc_time_taken", "ar_number",
             "batch_documents",
             "chain_sheet_name", "search_package_name", "report_name", "general_instructions",
             "dispatch_date"
@@ -64,7 +64,7 @@ class AllocationSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "progress_percent", "is_overdue", "is_open",
             "allocated_by", "allocated_at", "started_at", "completed_at",
-            "time_taken", "ar_number", "dispatch_date"
+            "search_time_taken", "qc_time_taken", "ar_number", "dispatch_date"
         ]
 
 

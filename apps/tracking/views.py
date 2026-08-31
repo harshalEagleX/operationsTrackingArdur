@@ -281,3 +281,187 @@ class MonthlyAttendanceView(EnvelopeMixin, APIView):
             })
             
         return self.ok(results)
+
+
+from apps.tracking.models import Attendance, AttendanceStatus
+
+class AttendanceViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticatedEmployee]
+
+
+
+from apps.tracking.models import Attendance, AttendanceStatus
+
+class AttendanceViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticatedEmployee]
+
+    @action(detail=False, methods=['get'], url_path='my-history')
+    def my_history(self, request):
+        attendance_qs = Attendance.objects.filter(emp_id=request.user.emp_id).order_by('-date')[:30]
+        data = []
+        for a in attendance_qs:
+            data.append({
+                'date': a.date.isoformat(),
+                'status': a.status,
+                'first_login': a.first_login.isoformat() if a.first_login else None,
+                'last_logout': a.last_logout.isoformat() if a.last_logout else None,
+                'total_break_time': a.total_break_time
+            })
+        return EnvelopeMixin().ok(data)
+
+    @action(detail=False, methods=['post'], url_path='mark-leave')
+    def mark_leave(self, request):
+        date_str = request.data.get('date')
+        if not date_str:
+            return EnvelopeMixin().error('Date is required.', status=400)
+        from datetime import datetime
+        dt = datetime.strptime(date_str, '%Y-%m-%d').date()
+        att, _ = Attendance.objects.get_or_create(emp_id=request.user.emp_id, date=dt)
+        att.status = AttendanceStatus.LEAVE
+        att.save()
+        return EnvelopeMixin().ok({'detail': 'Leave marked successfully.'})
+
+    @action(detail=False, methods=['get'], url_path='status')
+    def status(self, request):
+        from core.timezone import today_ist
+        att = Attendance.objects.filter(emp_id=request.user.emp_id, date=today_ist()).first()
+        is_active = False
+        first_login = None
+        if att and att.first_login and not att.last_logout:
+            is_active = True
+            first_login = att.first_login.isoformat()
+        return EnvelopeMixin().ok({'is_active': is_active, 'first_login': first_login})
+
+    @action(detail=False, methods=['post'], url_path='start-shift')
+    def start_shift(self, request):
+        from core.timezone import today_ist, now_ist
+        att, _ = Attendance.objects.get_or_create(emp_id=request.user.emp_id, date=today_ist())
+        if not att.first_login:
+            att.first_login = now_ist()
+            att.status = AttendanceStatus.PRESENT
+            att.save()
+        return EnvelopeMixin().ok({'detail': 'Shift started.', 'first_login': att.first_login.isoformat()})
+
+    @action(detail=False, methods=['post'], url_path='end-shift')
+    def end_shift(self, request):
+        from core.timezone import today_ist, now_ist
+        att = Attendance.objects.filter(emp_id=request.user.emp_id, date=today_ist()).first()
+        if att and not att.last_logout:
+            att.last_logout = now_ist()
+            att.save()
+        return EnvelopeMixin().ok({'detail': 'Shift ended.'})
+
+    @action(detail=False, methods=['get'], url_path='admin-report')
+    def admin_report(self, request):
+        if not request.user.is_supervisor:
+            return EnvelopeMixin().error('Unauthorized', status=403)
+        
+        project = request.query_params.get('project')
+        emp_id_filter = request.query_params.get('emp_id')
+        date_from = request.query_params.get('from')
+        date_to = request.query_params.get('to')
+
+        if not project:
+            return EnvelopeMixin().error('Project is required.', status=400)
+            
+        # Verify the supervisor is authorized for this project
+        if not getattr(request.user, 'is_super_admin', False):
+            authorized = request.user.get_authorized_projects()
+            if not authorized or project.lower() not in [p.lower() for p in authorized]:
+                return EnvelopeMixin().error('Unauthorized for this project.', status=403)
+
+        from apps.accounts.models import Employee, LoginHistory
+        from apps.breaks.models import BreakTime
+        from apps.masters.models import Project
+        from django.db.models import Q, Min, Max
+        from datetime import datetime
+        from core.timezone import now_ist
+        
+        proj_obj = Project.objects.filter(project_name__iexact=project).first()
+        if not proj_obj:
+            return EnvelopeMixin().error('Invalid project name.', status=400)
+            
+        proj_id = proj_obj.project_id
+        
+        # Find all employees under this project
+        emps = Employee.objects.filter(Q(project__icontains=proj_id))
+        if emp_id_filter:
+            emps = emps.filter(employee_id__icontains=emp_id_filter)
+            
+        emp_ids = list(emps.values_list('employee_id', flat=True))
+        
+        queryset = LoginHistory.objects.filter(emp_id__in=emp_ids)
+        if date_from:
+            dt_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+            queryset = queryset.filter(date__gte=dt_from)
+        if date_to:
+            dt_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+            queryset = queryset.filter(date__lte=dt_to)
+            
+        # Aggregate login history
+        aggregated = queryset.values('emp_id', 'date').annotate(
+            first_login=Min('login_time'),
+            last_logout=Max('logout_time'),
+            active_sessions=Count('id', filter=Q(logout_time__isnull=True))
+        ).order_by('-date', 'emp_id')
+        
+        # Pre-fetch breaks for these employees in the given date range
+        breaks = BreakTime.objects.filter(user_id__in=emp_ids)
+        if date_from:
+            breaks = breaks.filter(start_time__date__gte=dt_from)
+        if date_to:
+            breaks = breaks.filter(start_time__date__lte=dt_to)
+            
+        # Build dictionary of breaks: (emp_id, date) -> total_break_seconds
+        break_dict = {}
+        for b in breaks:
+            if not b.start_time:
+                continue
+            b_date = b.start_time.date()
+            key = (b.user_id, b_date)
+            
+            duration = 0
+            if b.end_time:
+                duration = (b.end_time - b.start_time).total_seconds()
+            else:
+                duration = (now_ist() - b.start_time).total_seconds()
+                
+            break_dict[key] = break_dict.get(key, 0) + duration
+
+        # Build a mapping of emp_id to name
+        emp_names = {e.employee_id: e.name for e in emps}
+
+        data = []
+        for a in aggregated:
+            first_login = a['first_login']
+            last_logout = a['last_logout']
+            emp_id = a['emp_id']
+            row_date = a['date']
+            is_active = a.get('active_sessions', 0) > 0
+            
+            if is_active:
+                last_logout = None
+            
+            total_break_sec = break_dict.get((emp_id, row_date), 0)
+            net_hours = 0.0
+            
+            if first_login:
+                end_time = last_logout
+                if not end_time:
+                    end_time = now_ist()
+                
+                total_sec = (end_time - first_login).total_seconds()
+                net_sec = max(0, total_sec - total_break_sec)
+                net_hours = round(net_sec / 3600.0, 2)
+                
+            data.append({
+                'date': row_date.isoformat() if row_date else None,
+                'emp_id': emp_id,
+                'emp_name': emp_names.get(emp_id, emp_id),
+                'status': 'Currently Logged In' if not last_logout else 'Logged Out',
+                'first_login': first_login.isoformat() if first_login else None,
+                'last_logout': last_logout.isoformat() if last_logout else None,
+                'net_working_hours': net_hours
+            })
+            
+        return EnvelopeMixin().ok(data)

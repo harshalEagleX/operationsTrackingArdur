@@ -100,6 +100,10 @@ class AllocationService(BaseService):
 
         if status == AllocationStatus.IN_PROGRESS and not allocation.started_at:
             allocation.started_at = now_ist()
+            
+        if status == AllocationStatus.QC_IN_PROGRESS and not allocation.qc_started_at:
+            allocation.qc_started_at = now_ist()
+
         if status in (AllocationStatus.COMPLETED, AllocationStatus.SEND_FOR_QC, AllocationStatus.DISPATCH) and not allocation.completed_at:
             allocation.completed_at = now_ist()
             if allocation.started_at:
@@ -113,7 +117,20 @@ class AllocationService(BaseService):
                     parts.append(f"{hours}h")
                 if minutes > 0 or hours == 0:
                     parts.append(f"{minutes}m")
-                allocation.time_taken = " ".join(parts)
+                allocation.search_time_taken = " ".join(parts)
+
+        if status == AllocationStatus.DISPATCH and allocation.qc_started_at and not allocation.qc_time_taken:
+            delta = now_ist() - allocation.qc_started_at
+            total_seconds = int(delta.total_seconds())
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            
+            parts = []
+            if hours > 0:
+                parts.append(f"{hours}h")
+            if minutes > 0 or hours == 0:
+                parts.append(f"{minutes}m")
+            allocation.qc_time_taken = " ".join(parts)
 
         if remarks:
             allocation.remarks = remarks[:500]
@@ -136,7 +153,8 @@ class AllocationService(BaseService):
 
         update_fields = [
             "status", "completed_quantity", "started_at", "completed_at", 
-            "remarks", "employee_comments", "qc_comments", "time_taken"
+            "remarks", "employee_comments", "qc_comments", "search_time_taken",
+            "qc_time_taken", "qc_started_at"
         ]
         # if chain_sheet:
         #     update_fields.extend(['chain_sheet', 'chain_sheet_name'])

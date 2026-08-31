@@ -133,6 +133,36 @@ class AuthService(BaseService):
                 TrackingService(actor=self.actor).stop_session(active.id)
         except Exception:
             pass
+            
+        # Try stopping any active Title Indexing Session
+        try:
+            from apps.allocations.models import TitleIndexingSession
+            active_idx = TitleIndexingSession.objects.filter(employee_id=emp_id, status='IN_PROGRESS').first()
+            if active_idx:
+                active_idx.status = 'COMPLETED'
+                active_idx.completed_at = now_ist()
+                
+                # Calculate time taken
+                diff = active_idx.completed_at - active_idx.started_at
+                total_seconds = int(diff.total_seconds())
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                seconds = total_seconds % 60
+                active_idx.time_taken = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                
+                active_idx.save()
+        except Exception:
+            pass
+
+        # Try stopping any active BreakTime
+        try:
+            from apps.breaks.services import BreakService
+            from apps.breaks.models import BreakTime
+            brk = BreakTime.objects.filter(user_id=emp_id, end_time__isnull=True).first()
+            if brk:
+                BreakService(actor=self.actor).force_end_break(brk.id)
+        except Exception:
+            pass
 
     def change_password(self, user: User, current_password: str, new_password: str) -> None:
         if not user.check_password(current_password):

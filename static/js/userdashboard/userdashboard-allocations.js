@@ -91,6 +91,8 @@ function renderRow(alloc, hasActiveTask = false) {
         data-work-type="${alloc.work_type || ''}"
         data-batch="${alloc.batch || alloc.order_id || ''}"
         data-target-status="${isQC ? 'qc_in_progress' : 'in_progress'}"
+        data-is-qc="${isQC}"
+        data-has-qc="${!!alloc.qc_id}"
         title="${hasActiveTask ? 'Complete your active task first' : 'Start this order'}"
         ${hasActiveTask ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}
       >

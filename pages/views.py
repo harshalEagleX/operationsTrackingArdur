@@ -185,6 +185,23 @@ class UserDashboardPage(BasePage):
     template_name = "userdashboard.html"
     page_title = "User Dashboard"
 
+    def get(self, request, *args, **kwargs):
+        self.is_simplified = False
+        user = request.user
+        if hasattr(user, 'employee') and user.employee and user.employee.project:
+            import re
+            project_ids = [p.strip() for p in re.split(r'[,|]', user.employee.project) if p.strip()]
+            from django.apps import apps
+            Project = apps.get_model('masters', 'Project')
+            projects = Project.objects.filter(project_id__in=project_ids)
+            for proj in projects:
+                if getattr(proj, 'is_simplified_project', False):
+                    self.is_simplified = True
+                    break
+        return super().get(request, *args, **kwargs)
+
+    
+
     def get_context_data(self, **kwargs):
         from datetime import date
         context = super().get_context_data(**kwargs)
@@ -193,6 +210,7 @@ class UserDashboardPage(BasePage):
         context["role"] = getattr(user, "role", "employee")
         context["current_date"] = date.today().strftime("%Y-%m-%d")
         context["emp_id"] = getattr(user, "emp_id", "")
+        context["is_simplified"] = getattr(self, 'is_simplified', False)
         
         is_title_indexing = False
         if hasattr(user, 'employee') and user.employee and user.employee.project:
@@ -208,6 +226,7 @@ class UserDashboardPage(BasePage):
         context["is_title_indexing"] = is_title_indexing
         
         return context
+
 
 
 class SettingsPage(BasePage):

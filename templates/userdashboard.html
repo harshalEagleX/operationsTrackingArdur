@@ -898,6 +898,13 @@
                     <h2 class="breaks-header" style="background: linear-gradient(90deg, #1a1f36 0%, #2d3561 100%);">
                         <span><i class="fas fa-calendar-alt"></i> Monthly Attendance</span>
                     </h2>
+                    {% if is_simplified %}
+                    <div style="padding: 10px; text-align: right;">
+                        <button class="mark-leave-btn" onclick="openLeaveModal()" style="background-color: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                            <i class="fas fa-plane-departure"></i> Mark Upcoming Leave
+                        </button>
+                    </div>
+                    {% endif %}
                     <div style="max-height: 250px; overflow-y: auto;">
                         <table class="break-table" style="margin-top: 0; border-top: none;">
                             <thead style="position: sticky; top: 0; background: var(--bg-color); z-index: 1;">
@@ -1025,8 +1032,47 @@
                 </div>
                 {% endif %}
 
+                {% if is_simplified %}
+                <!-- ── Shift Tracker Workspace ── -->
+                <div class="shift-container" style="background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); text-align: center; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; color: #2d3561;"><i class="fas fa-clock"></i> Shift Tracker</h3>
+                    <p style="color: #666; font-size: 0.9rem;">Start your shift when you begin work, and end it when you are done for the day.</p>
+                    
+                    <div class="timer-display" id="shift-timer" style="font-size: 3.5rem; font-family: monospace; font-weight: bold; color: #2d3561; margin: 25px 0;">00:00:00</div>
+                    
+                    <div class="action-buttons" style="display: flex; justify-content: center; gap: 15px;">
+                        <button class="btn-shift btn-start-shift" id="btn-start-shift" onclick="startShift()" style="padding: 12px 30px; font-size: 1.1rem; border: none; border-radius: 25px; cursor: pointer; color: #fff; font-weight: 600; background-color: #28a745;">
+                            <i class="fas fa-play"></i> Start Shift
+                        </button>
+                        <button class="btn-shift btn-end-shift" id="btn-end-shift" onclick="endShift()" style="display: none; padding: 12px 30px; font-size: 1.1rem; border: none; border-radius: 25px; cursor: pointer; color: #fff; font-weight: 600; background-color: #dc3545;">
+                            <i class="fas fa-stop"></i> End Shift
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mark Leave Modal (for simplified projects) -->
+                <div id="markLeaveModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+                    <div class="modal-content" style="background-color: #fff; margin: 10% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);">
+                        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0;"><i class="fas fa-plane-departure"></i> Mark Upcoming Leave</h3>
+                            <button class="close-btn" onclick="closeLeaveModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888;">&times;</button>
+                        </div>
+                        <form id="mark-leave-form">
+                            <div class="form-group" style="margin-bottom: 20px; text-align: left;">
+                                <label for="leave-date" style="display: block; margin-bottom: 8px; font-weight: 600;">Date of Leave</label>
+                                <input type="date" id="leave-date" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                            </div>
+                            <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+                                <button type="button" class="btn-secondary" onclick="closeLeaveModal()" style="padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; background-color: #6c757d; color: white;">Cancel</button>
+                                <button type="submit" class="btn-primary" style="background: #17a2b8; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- ── Allocated Orders Panel ──────────────────────── -->
-                <div class="allocated-orders-section" {% if is_title_indexing %}style="display: none;"{% endif %}>
+                <div class="allocated-orders-section" {% if is_title_indexing or is_simplified %}style="display: none;"{% endif %}>
                     <div class="allocated-orders-header">
                         <h3>
                             <i class="fas fa-clipboard-list"></i>
@@ -1064,6 +1110,7 @@
                 </div>
                 <!-- ── End Allocated Orders Panel ── -->
 
+                {% if not is_simplified %}
                 <hr style="margin: 30px 0; border: 0; border-top: 2px dashed #ddd;">
 
                 {% if is_title_indexing %}
@@ -1107,6 +1154,7 @@
                     </tbody>
                 </table>
                 {% endif %}
+                {% endif %}
             </section>
         </div>
         <div id="orderDetailsModal" class="oa-details-popup" style="display: none;">
@@ -1132,6 +1180,9 @@
     <script src="{{ static('js/userdashboard/userdashboard.js') }}?v=3"></script>
     {% if is_title_indexing %}
     <script src="{{ static('js/userdashboard/userdashboard-indexing.js') }}?v=3"></script>
+    {% endif %}
+    {% if is_simplified %}
+    <script src="{{ static('js/userdashboard/userdashboard-simplified.js') }}?v=1"></script>
     {% endif %}
     <!-- Modern ES6 Core for Notifications & Realtime -->
     <script type="module" src="{{ static('js/core/bootstrap.js') }}?v=2"></script>
