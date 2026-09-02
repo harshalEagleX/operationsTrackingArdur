@@ -18,16 +18,47 @@ $(document).ready(function() {
     
     // Load attendance history
     function loadAttendance() {
-        $.get('/api/v1/tracking/attendance/my-history/', function(data) {
+        $.get('/api/v1/tracking/attendance-history/', function(res) {
+            const data = res.data || res;
             const tbody = $('#attendance-history-body');
             tbody.empty();
-            data.forEach(function(row) {
+            
+            if (data.length === 0) {
+                tbody.html('<tr><td colspan="4" style="text-align:center;">No records for this month</td></tr>');
+                return;
+            }
+
+            data.forEach(function(day) {
+                const dateObj = new Date(day.date);
+                const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                
+                let loginStr = '--:--';
+                if (day.login_time) {
+                    loginStr = new Date(day.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+                
+                let logoutStr = '--:--';
+                if (day.logout_time) {
+                    logoutStr = new Date(day.logout_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+                
+                // Helper to format seconds to hh:mm:ss
+                const formatTime = (seconds) => {
+                    const h = Math.floor(seconds / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    const s = seconds % 60;
+                    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                };
+                
+                const netStr = formatTime(day.net_seconds || 0);
+                const netColor = (day.net_seconds > 0) ? '#2ecc71' : 'inherit';
+
                 tbody.append(`
                     <tr>
-                        <td style="font-size: 0.8rem; padding: 6px;">${row.date}</td>
-                        <td style="font-size: 0.8rem; padding: 6px;"><span style="text-transform: capitalize;">${row.status}</span></td>
-                        <td style="font-size: 0.8rem; padding: 6px;">${row.first_login ? new Date(row.first_login).toLocaleTimeString() : '-'}</td>
-                        <td style="font-size: 0.8rem; padding: 6px;">${row.last_logout ? new Date(row.last_logout).toLocaleTimeString() : '-'}</td>
+                        <td style="font-size: 0.85rem; padding: 6px;">${dateStr}</td>
+                        <td style="font-size: 0.85rem; padding: 6px;">${loginStr}</td>
+                        <td style="font-size: 0.85rem; padding: 6px;">${logoutStr}</td>
+                        <td style="font-size: 0.85rem; padding: 6px; font-weight: 600; color: ${netColor};">${netStr}</td>
                     </tr>
                 `);
             });

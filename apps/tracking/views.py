@@ -364,24 +364,23 @@ class AttendanceViewSet(viewsets.ViewSet):
         if not project:
             return EnvelopeMixin().error('Project is required.', status=400)
             
+        from apps.masters.models import Project
+        
+        # The frontend passes the project name, but authorized projects are IDs
+        proj_obj = Project.objects.filter(project_name__iexact=project).first()
+        proj_id = proj_obj.project_id if proj_obj else project
+        
         # Verify the supervisor is authorized for this project
         if not getattr(request.user, 'is_super_admin', False):
             authorized = request.user.get_authorized_projects()
-            if not authorized or project.lower() not in [p.lower() for p in authorized]:
+            if not authorized or proj_id.lower() not in [p.lower() for p in authorized]:
                 return EnvelopeMixin().error('Unauthorized for this project.', status=403)
 
         from apps.accounts.models import Employee, LoginHistory
         from apps.breaks.models import BreakTime
-        from apps.masters.models import Project
-        from django.db.models import Q, Min, Max
+        from django.db.models import Q, Min, Max, Count
         from datetime import datetime
         from core.timezone import now_ist
-        
-        proj_obj = Project.objects.filter(project_name__iexact=project).first()
-        if not proj_obj:
-            return EnvelopeMixin().error('Invalid project name.', status=400)
-            
-        proj_id = proj_obj.project_id
         
         # Find all employees under this project
         emps = Employee.objects.filter(Q(project__icontains=proj_id))
