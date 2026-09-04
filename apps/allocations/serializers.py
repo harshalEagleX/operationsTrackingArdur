@@ -69,7 +69,7 @@ class AllocationSerializer(serializers.ModelSerializer):
 
 
 class AllocationWriteSerializer(serializers.ModelSerializer):
-    allocation_id = serializers.CharField(max_length=50)
+    allocation_id = serializers.CharField(max_length=50, required=False)
     # employee_id is optional at creation time — orders can be created first
     # and assigned to an employee later via the inline table assignment.
     employee_id = serializers.CharField(

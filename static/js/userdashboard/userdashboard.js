@@ -33,22 +33,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Handle confirm logout
     confirmLogout.addEventListener('click', () => {
-        fetch('/api/v1/auth/logout/', {
+        sessionStorage.removeItem('softwareShiftRunning');
+        
+        // Pause software shift if running before destroying the session
+        fetch('/api/v1/tracking/software-shifts/pause/', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
             }
-        })
-        .then(response => {
-            if (response.ok) {
-                window.location.href = '/login/'; // Redirect to login page
-            } else {
-                alert('Error logging out. Please try again.');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
+        }).finally(() => {
+            fetch('/api/v1/auth/logout/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/login/'; // Redirect to login page
+                } else {
+                    alert('Error logging out. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         });
     });
 

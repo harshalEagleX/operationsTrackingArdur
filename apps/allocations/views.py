@@ -59,6 +59,11 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
             queryset = queryset.overdue()
         if project := params.get("project"):
             queryset = queryset.filter(project=project)
+        date_val = params.get("date")
+        print(f"DEBUG: Received date_val = {date_val!r}, Total orders before filter = {queryset.count()}")
+        if date_val:
+            queryset = queryset.filter(allocated_at__startswith=date_val)
+            print(f"DEBUG: Orders after filter = {queryset.count()}")
         return queryset
 
     def perform_create(self, serializer):

@@ -88,48 +88,129 @@ $(document).ready(function() {
 
     // Shift Timer Logic
     let shiftTimerInterval = null;
-    let shiftStartTime = null;
+    let accumulatedSeconds = 0;
+    let shiftStatus = 'UNSTARTED'; // UNSTARTED, RUNNING, PAUSED, ENDED
+    let lastResumeTime = null;
 
-    function updateShiftTimerDisplay() {
-        if (!shiftStartTime) return;
-        const now = new Date();
-        const diff = Math.floor((now - shiftStartTime) / 1000);
-        const hrs = String(Math.floor(diff / 3600)).padStart(2, '0');
-        const mins = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-        const secs = String(diff % 60).padStart(2, '0');
-        $('#shift-timer').text(`${hrs}:${mins}:${secs}`);
+    function formatShiftTime(totalSeconds) {
+        const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+        const secs = String(Math.floor(totalSeconds % 60)).padStart(2, '0');
+        return `${hrs}:${mins}:${secs}`;
     }
 
-    // Check current shift status
-    $.get('/api/v1/tracking/attendance/status/', function(res) {
-        let data = res.data || res;
-        if (data.is_active && data.first_login) {
-            shiftStartTime = new Date(data.first_login);
-            shiftTimerInterval = setInterval(updateShiftTimerDisplay, 1000);
-            $('#btn-start-shift').hide();
-            $('#btn-end-shift').show();
+    function updateShiftTimerDisplay() {
+        if (shiftStatus === 'RUNNING' && lastResumeTime) {
+            const now = new Date();
+            const diff = Math.floor((now - lastResumeTime) / 1000);
+            $('#shift-timer').text(formatShiftTime(accumulatedSeconds + diff));
+        } else {
+            $('#shift-timer').text(formatShiftTime(accumulatedSeconds));
         }
-    });
+    }
+
+    function syncStatusFromServer() {
+        $.get('/api/v1/tracking/software-shifts/status/', function(res) {
+            let data = res.data || res;
+            shiftStatus = data.status || 'UNSTARTED';
+            accumulatedSeconds = data.accumulated_seconds || 0;
+            
+            clearInterval(shiftTimerInterval);
+            
+            if (shiftStatus === 'RUNNING') {
+                const currentCsrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || 'true';
+                sessionStorage.setItem('softwareShiftRunning', currentCsrf);
+                lastResumeTime = new Date(); // start counting difference from now
+                shiftTimerInterval = setInterval(updateShiftTimerDisplay, 1000);
+                $('#btn-start-shift').hide();
+                $('#btn-resume-shift').hide();
+                $('#btn-end-shift').show();
+            } else if (shiftStatus === 'PAUSED') {
+                const currentCsrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || 'true';
+                if (sessionStorage.getItem('softwareShiftRunning') === currentCsrf) {
+                    // Auto-resume if it was running before this refresh (within same login session)
+                    resumeShift();
+                    return;
+                }
+                $('#btn-start-shift').hide();
+                $('#btn-resume-shift').show();
+                $('#btn-end-shift').show();
+            } else if (shiftStatus === 'ENDED') {
+                sessionStorage.removeItem('softwareShiftRunning');
+                $('#btn-start-shift').hide();
+                $('#btn-resume-shift').hide();
+                $('#btn-end-shift').hide();
+                if (data.total_time) {
+                    $('#shift-timer').text(data.total_time);
+                }
+            } else {
+                sessionStorage.removeItem('softwareShiftRunning');
+                $('#btn-start-shift').show();
+                $('#btn-resume-shift').hide();
+                $('#btn-end-shift').hide();
+            }
+            if (shiftStatus !== 'ENDED') {
+                updateShiftTimerDisplay();
+            }
+        });
+    }
+
+    // Check current shift status on load
+    syncStatusFromServer();
 
     window.startShift = function() {
-        $.post('/api/v1/tracking/attendance/start-shift/', function(res) {
-            let data = res.data || res;
-            shiftStartTime = new Date(data.first_login);
-            shiftTimerInterval = setInterval(updateShiftTimerDisplay, 1000);
-            $('#btn-start-shift').hide();
-            $('#btn-end-shift').show();
+        $.post('/api/v1/tracking/software-shifts/start-shift/', function(res) {
+            syncStatusFromServer();
             loadAttendance();
+        }).fail(function(err) {
+            alert(err.responseJSON?.error || 'Failed to start shift');
+        });
+    };
+
+    window.resumeShift = function() {
+        $.post('/api/v1/tracking/software-shifts/resume/', function() {
+            syncStatusFromServer();
         });
     };
 
     window.endShift = function() {
-        if (!confirm("Are you sure you want to end your shift for the day?")) return;
-        $.post('/api/v1/tracking/attendance/end-shift/', function(res) {
-            clearInterval(shiftTimerInterval);
-            $('#btn-end-shift').hide();
-            $('#btn-start-shift').show();
-            loadAttendance();
-            $('#shift-timer').text('00:00:00');
-        });
+        document.getElementById('end-shift-popup').classList.remove('hidden');
     };
+
+    document.getElementById('confirm-end-shift')?.addEventListener('click', function() {
+        document.getElementById('end-shift-popup').classList.add('hidden');
+        $.post('/api/v1/tracking/software-shifts/end-shift/', function(res) {
+            syncStatusFromServer();
+            loadAttendance();
+        });
+    });
+
+    document.getElementById('cancel-end-shift')?.addEventListener('click', function() {
+        document.getElementById('end-shift-popup').classList.add('hidden');
+    });
+
+    // Auto-pause when tab is closed or navigated away (not just hidden/switched)
+    window.addEventListener('pagehide', function() {
+        if (shiftStatus === 'RUNNING') {
+            const csrfMatch = document.cookie.match(/csrftoken=([^;]+)/);
+            if (csrfMatch) {
+                fetch('/api/v1/tracking/software-shifts/pause/', {
+                    method: 'POST',
+                    keepalive: true,
+                    headers: {
+                        'X-CSRFToken': csrfMatch[1]
+                    }
+                });
+            }
+            // Transition locally to paused immediately
+            shiftStatus = 'PAUSED';
+            clearInterval(shiftTimerInterval);
+            if (lastResumeTime) {
+                accumulatedSeconds += Math.floor((new Date() - lastResumeTime) / 1000);
+            }
+        } else if (document.visibilityState === 'visible') {
+            // Re-sync with server state when user returns
+            syncStatusFromServer();
+        }
+    });
 });

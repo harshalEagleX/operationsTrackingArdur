@@ -384,6 +384,7 @@ class AttendanceViewSet(viewsets.ViewSet):
         
         # Find all employees under this project
         emps = Employee.objects.filter(Q(project__icontains=proj_id))
+        emps = emps.exclude(role='project_admin').exclude(role='super_admin')
         if emp_id_filter:
             emps = emps.filter(employee_id__icontains=emp_id_filter)
             
@@ -464,3 +465,271 @@ class AttendanceViewSet(viewsets.ViewSet):
             })
             
         return EnvelopeMixin().ok(data)
+
+from apps.tracking.models import SoftwareShift
+
+class SoftwareShiftViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticatedEmployee]
+
+    @action(detail=False, methods=['get'], url_path='status')
+    def status(self, request):
+        from core.timezone import today_ist
+        from apps.tracking.models import SoftwareShift
+        shift = SoftwareShift.objects.filter(emp_id=request.user.emp_id, date=today_ist()).first()
+        
+        if not shift:
+            return EnvelopeMixin().ok({'status': 'UNSTARTED'})
+            
+        if shift.is_ended:
+            return EnvelopeMixin().ok({'status': 'ENDED', 'total_time': shift.total_time})
+            
+        from core.timezone import now_ist
+        if shift.is_paused:
+            current_active_seconds = shift.accumulated_seconds
+            status_str = 'PAUSED'
+        else:
+            now = now_ist()
+            current_active_seconds = shift.accumulated_seconds + (now - shift.updated_at).total_seconds()
+            status_str = 'RUNNING'
+            
+        return EnvelopeMixin().ok({
+            'status': status_str,
+            'accumulated_seconds': current_active_seconds,
+            'start_time': shift.start_time.isoformat() if shift.start_time else None
+        })
+
+    @action(detail=False, methods=['post'], url_path='start-shift')
+    def start_shift(self, request):
+        from core.timezone import today_ist, now_ist
+        from apps.tracking.models import SoftwareShift, Attendance, AttendanceStatus
+        now = now_ist()
+        
+        att, _ = Attendance.objects.get_or_create(emp_id=request.user.emp_id, date=today_ist())
+        if not att.first_login:
+            att.first_login = now
+            att.status = AttendanceStatus.PRESENT
+            att.save()
+            
+        shift, created = SoftwareShift.objects.get_or_create(
+            emp_id=request.user.emp_id, date=today_ist(),
+            defaults={'start_time': now, 'updated_at': now, 'accumulated_seconds': 0}
+        )
+        if not created and shift.is_ended:
+            return EnvelopeMixin().error('Shift already ended for today.')
+            
+        return EnvelopeMixin().ok({'detail': 'Shift started.'})
+
+    @action(detail=False, methods=['post'], url_path='pause')
+    def pause(self, request):
+        from core.timezone import today_ist, now_ist
+        from apps.tracking.models import SoftwareShift
+        shift = SoftwareShift.objects.filter(emp_id=request.user.emp_id, date=today_ist()).first()
+        
+        if not shift or shift.is_ended or shift.is_paused:
+            return EnvelopeMixin().ok({'detail': 'Already paused or ended.'})
+            
+        now = now_ist()
+        shift.accumulated_seconds += (now - shift.updated_at).total_seconds()
+        shift.is_paused = True
+        shift.pause_start = now
+        shift.updated_at = now
+        shift.save()
+        return EnvelopeMixin().ok({'detail': 'Paused.'})
+
+    @action(detail=False, methods=['post'], url_path='resume')
+    def resume(self, request):
+        from core.timezone import today_ist, now_ist
+        from apps.tracking.models import SoftwareShift
+        shift = SoftwareShift.objects.filter(emp_id=request.user.emp_id, date=today_ist()).first()
+        
+        if not shift or shift.is_ended or not shift.is_paused:
+            return EnvelopeMixin().ok({'detail': 'Already running or ended.'})
+            
+        now = now_ist()
+        shift.is_paused = False
+        shift.pause_start = None
+        shift.updated_at = now
+        shift.save()
+        return EnvelopeMixin().ok({'detail': 'Resumed.'})
+
+    @action(detail=False, methods=['post'], url_path='end-shift')
+    def end_shift(self, request):
+        from core.timezone import today_ist, now_ist
+        from apps.tracking.models import SoftwareShift, Attendance
+        now = now_ist()
+        
+        shift = SoftwareShift.objects.filter(emp_id=request.user.emp_id, date=today_ist()).first()
+        if not shift or shift.is_ended:
+            return EnvelopeMixin().ok({'detail': 'Already ended.'})
+            
+        if not shift.is_paused:
+            shift.accumulated_seconds += (now - shift.updated_at).total_seconds()
+            
+        shift.is_paused = False
+        shift.is_ended = True
+        shift.end_time = now
+        shift.updated_at = now
+        
+        total_sec = shift.accumulated_seconds
+        hrs = int(total_sec // 3600)
+        mins = int((total_sec % 3600) // 60)
+        secs = int(total_sec % 60)
+        shift.total_time = f"{hrs:02d}:{mins:02d}:{secs:02d}"
+        shift.save()
+        
+        att = Attendance.objects.filter(emp_id=request.user.emp_id, date=today_ist()).first()
+        if att:
+            att.last_logout = now
+            att.save()
+            
+        return EnvelopeMixin().ok({'detail': 'Shift ended.'})
+        
+    def list(self, request):
+        if not request.user.is_supervisor:
+            return EnvelopeMixin().error('Unauthorized', status=403)
+            
+        date_from = request.query_params.get('from')
+        date_to = request.query_params.get('to')
+        
+        from datetime import datetime
+        qs = SoftwareShift.objects.all()
+        from apps.tracking.models import Attendance, AttendanceStatus
+        leave_qs = Attendance.objects.filter(status=AttendanceStatus.LEAVE)
+        
+        if date_from:
+            dt_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+            qs = qs.filter(date__gte=dt_from)
+            leave_qs = leave_qs.filter(date__gte=dt_from)
+        if date_to:
+            dt_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+            qs = qs.filter(date__lte=dt_to)
+            leave_qs = leave_qs.filter(date__lte=dt_to)
+            
+        from apps.accounts.models import Employee
+        emps = {e.employee_id: e for e in Employee.objects.all()}
+        
+        data = []
+        for shift in qs:
+            emp = emps.get(shift.emp_id)
+            if not emp:
+                continue
+                
+            # Filter authorized projects for supervisor
+            if not getattr(request.user, 'is_super_admin', False):
+                authorized = request.user.get_authorized_projects()
+                emp_projs = [p.strip().lower() for p in (emp.project or "").split("|") if p.strip()]
+                if not any(p in [auth.lower() for auth in authorized] for p in emp_projs):
+                    continue
+                    
+            data.append({
+                'id': f"softshift_{shift.id}",
+                'emp_id': shift.emp_id,
+                'name': emp.name,
+                'project_name': shift.project_name,
+                'client_code': "",
+                'work_type': "",
+                'batch': "",
+                'units_completed': 0,
+                'start_time': "",
+                'end_time': "",
+                'date': shift.date.isoformat(),
+                'total_time': shift.total_time,
+                'work_location': "",
+                'is_paused': False,
+                'type': 'software_shift',
+                'status': 'Present'
+            })
+            
+        from apps.masters.models import Project
+        simplified_projs = [p.project_name.lower() for p in Project.objects.filter(is_simplified_project=True)]
+        if not simplified_projs:
+            simplified_projs = ['software']
+            
+        for att in leave_qs:
+            emp = emps.get(att.emp_id)
+            if not emp:
+                continue
+                
+            # Filter authorized projects for supervisor
+            emp_projs = [p.strip().lower() for p in (emp.project or "").split("|") if p.strip()]
+            if not getattr(request.user, 'is_super_admin', False):
+                authorized = request.user.get_authorized_projects()
+                if not any(p in [auth.lower() for auth in authorized] for p in emp_projs):
+                    continue
+                    
+            # Only include if employee is assigned to a simplified project
+            matching_simplified = [p for p in emp_projs if p in simplified_projs]
+            if not matching_simplified:
+                continue
+                
+            proj_name = matching_simplified[0].upper()
+            
+            data.append({
+                'id': f"leave_{att.id}",
+                'emp_id': att.emp_id,
+                'name': emp.name,
+                'project_name': proj_name,
+                'client_code': "",
+                'work_type': "",
+                'batch': "",
+                'units_completed': 0,
+                'start_time': "",
+                'end_time': "",
+                'date': att.date.isoformat(),
+                'total_time': "00:00:00",
+                'work_location': "",
+                'is_paused': False,
+                'type': 'software_shift',
+                'status': 'Leave'
+            })
+            
+        return EnvelopeMixin().ok(data)
+
+from django.db import connection
+from django.http import HttpResponse
+
+def run_migrations(request):
+    sql = """
+    CREATE TABLE IF NOT EXISTS `ot_software_shifts` (
+        `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, 
+        `emp_id` varchar(20) NOT NULL, 
+        `date` date NOT NULL, 
+        `total_time` varchar(20) NOT NULL, 
+        `project_name` varchar(150) NOT NULL, 
+        `created_at` datetime(6) NOT NULL, 
+        `updated_at` datetime(6) NOT NULL, 
+        `accumulated_seconds` double precision DEFAULT 0.0 NOT NULL,
+        `end_time` datetime(6) NULL,
+        `is_ended` bool DEFAULT 0 NOT NULL,
+        `is_paused` bool DEFAULT 0 NOT NULL,
+        `pause_start` datetime(6) NULL,
+        `start_time` datetime(6) NULL,
+        CONSTRAINT `uq_software_shift_emp_day` UNIQUE (`emp_id`, `date`)
+    );
+    """
+    
+    alter_statements = [
+        "ALTER TABLE `ot_software_shifts` ADD COLUMN `accumulated_seconds` double precision NOT NULL DEFAULT 0.0;",
+        "ALTER TABLE `ot_software_shifts` ADD COLUMN `end_time` datetime(6) NULL;",
+        "ALTER TABLE `ot_software_shifts` ADD COLUMN `is_ended` bool NOT NULL DEFAULT 0;",
+        "ALTER TABLE `ot_software_shifts` ADD COLUMN `is_paused` bool NOT NULL DEFAULT 0;",
+        "ALTER TABLE `ot_software_shifts` ADD COLUMN `pause_start` datetime(6) NULL;",
+        "ALTER TABLE `ot_software_shifts` ADD COLUMN `start_time` datetime(6) NULL;",
+    ]
+
+    try:
+        with connection.cursor() as cursor:
+            # 1. Try to create the table (if it doesn't exist at all)
+            cursor.execute(sql)
+            
+            # 2. If it did exist, try to add the missing columns one by one
+            # (We ignore errors if the column already exists)
+            for stmt in alter_statements:
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
+                    
+        return HttpResponse("Database updated successfully with raw SQL! You can now use the new timer.")
+    except Exception as e:
+        return HttpResponse(f"Error updating database: {e}")

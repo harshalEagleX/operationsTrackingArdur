@@ -886,9 +886,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Map the old UI fields to the new DRF backend schema.
-            // employee_id is intentionally omitted — order is created unassigned.
+            // employee_id is intentionally omitted - order is created unassigned.
+            // allocation_id is omitted so the backend automatically generates a collision-free ID.
             const mappedData = {
-                allocation_id: orderData.task_id,
                 project: orderData.project,
                 client_code: orderData.client_code,
                 work_type: orderData.work_type,
@@ -975,7 +975,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => {
                 if (!response.ok) {
                     return response.json().then(data => {
-                        throw new Error(data.error || 'Failed to allocate task');
+                        const errMsg = (data.error && data.error.message) ? data.error.message : (data.message || data.detail || 'Error allocating task');
+                        throw new Error(errMsg);
                     });
                 }
                 return response.json();
@@ -1756,13 +1757,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="oa-detail-label">Property Address</div>
                             <div class="oa-detail-value">${order.property_address || '-'}</div>
                         </div>
-                        <div class="oa-detail-item">
+                        <div class="oa-detail-item editable">
                             <div class="oa-detail-label">State</div>
-                            <div class="oa-detail-value">${order.state || '-'}</div>
+                            <div class="oa-detail-value">
+                                <select class="oa-edit-state" style="display: none; width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 4px;">
+                                    <option value="${order.state || ''}">${order.state || 'Select State'}</option>
+                                </select>
+                                <span class="oa-display-value">${order.state || '-'}</span>
+                            </div>
                         </div>
-                        <div class="oa-detail-item">
+                        <div class="oa-detail-item editable">
                             <div class="oa-detail-label">County</div>
-                            <div class="oa-detail-value">${order.county || '-'}</div>
+                            <div class="oa-detail-value">
+                                <select class="oa-edit-county" style="display: none; width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 4px;">
+                                    <option value="${order.county || ''}">${order.county || 'Select County'}</option>
+                                </select>
+                                <span class="oa-display-value">${order.county || '-'}</span>
+                            </div>
                         </div>
                         <div class="oa-detail-item ${editableClass}">
                             <div class="oa-detail-label">Assigned To</div>
@@ -1949,26 +1960,79 @@ document.addEventListener('DOMContentLoaded', function() {
         // Load order types for dropdown
         fetch('/api/v1/allocations/rates/order_types/')
             .then(response => response.json())
-            .then(orderTypes => {
-                const orderTypeSelect = popup.querySelector('.oa-edit-ordertype');
-                orderTypeSelect.innerHTML = orderTypes.map(type => 
-                    `<option value="${type}" ${type === order.order_details ? 'selected' : ''}>
-                        ${type}
-                    </option>`
-                ).join('');
+            .then(data => {
+                const orderTypes = data.data || data;
+                if (Array.isArray(orderTypes)) {
+                    const orderTypeSelect = popup.querySelector('.oa-edit-ordertype');
+                    orderTypeSelect.innerHTML = orderTypes.map(type => 
+                        `<option value="${type}" ${type === order.order_id || type === order.order_details ? 'selected' : ''}>
+                            ${type}
+                        </option>`
+                    ).join('');
+                }
             });
+
+        // Helper function to load states for modal
+        const loadModalStates = (orderType, selectedState) => {
+            const stateSelect = popup.querySelector('.oa-edit-state');
+            if (orderType) {
+                MasterDataCache.getOrFetch(`oa_states_${orderType}`, `/api/v1/allocations/rates/states/${orderType}/`)
+                    .then(states => {
+                        stateSelect.innerHTML = '<option value="">Select State</option>' +
+                            states.map(state => `<option value="${state}" ${state === selectedState ? 'selected' : ''}>${state}</option>`).join('');
+                    })
+                    .catch(error => console.error('Error loading states:', error));
+            }
+        };
+
+        // Helper function to load counties for modal
+        const loadModalCounties = (orderType, state, selectedCounty) => {
+            const countySelect = popup.querySelector('.oa-edit-county');
+            if (orderType && state) {
+                MasterDataCache.getOrFetch(`oa_counties_${orderType}_${state}`, `/api/v1/allocations/rates/counties/${orderType}/${encodeURIComponent(state)}/`)
+                    .then(counties => {
+                        countySelect.innerHTML = '<option value="">Select County</option>' +
+                            counties.map(county => `<option value="${county}" ${county === selectedCounty ? 'selected' : ''}>${county}</option>`).join('');
+                    })
+                    .catch(error => console.error('Error loading counties:', error));
+            }
+        };
+
+        // Initial load for State and County
+        const currentOrderType = order.order_id || order.order_details;
+        if (currentOrderType) {
+            loadModalStates(currentOrderType, order.state);
+            loadModalCounties(currentOrderType, order.state, order.county);
+        }
+
+        // Add event listeners for cascading dropdowns
+        popup.querySelector('.oa-edit-ordertype').addEventListener('change', function() {
+            loadModalStates(this.value, '');
+            popup.querySelector('.oa-edit-county').innerHTML = '<option value="">Select County</option>';
+        });
+
+        popup.querySelector('.oa-edit-state').addEventListener('change', function() {
+            const orderType = popup.querySelector('.oa-edit-ordertype').value;
+            loadModalCounties(orderType, this.value, '');
+        });
 
         // Load work types for dropdown
         fetch('/api/v1/masters/projects/')
             .then(response => response.json())
             .then(data => {
-                if (data.work_types && Array.isArray(data.work_types)) {
-                    const workTypeSelect = popup.querySelector('.oa-edit-worktype');
-                    workTypeSelect.innerHTML = data.work_types.map(type => 
-                        `<option value="${type}" ${type === order.work_type ? 'selected' : ''}>
-                            ${type}
-                        </option>`
-                    ).join('');
+                const projects = data.data || data;
+                if (Array.isArray(projects)) {
+                    const projName = (order.projectName || order.project || '').toLowerCase();
+                    const matchedProject = projects.find(p => (p.project_name || '').toLowerCase() === projName || (p.project_id || '').toLowerCase() === projName);
+                    if (matchedProject && matchedProject.worktypes) {
+                        const workTypes = [...new Set(matchedProject.worktypes.split('|').filter(t => t.trim()))];
+                        const workTypeSelect = popup.querySelector('.oa-edit-worktype');
+                        workTypeSelect.innerHTML = workTypes.map(type => 
+                            `<option value="${type}" ${type === order.work_type ? 'selected' : ''}>
+                                ${type}
+                            </option>`
+                        ).join('');
+                    }
                 }
             })
             .catch(error => {
@@ -2048,7 +2112,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Handle edit button click
         editBtn.addEventListener('click', function() {
-            popup.querySelectorAll('.oa-edit-employee, .oa-edit-qc, .oa-edit-worktype, .oa-edit-ordertype, .oa-edit-searchtype, .oa-edit-remarks, .oa-edit-qccomments, .oa-edit-eta, .oa-edit-general-instructions').forEach(el => {
+            popup.querySelectorAll('.oa-edit-employee, .oa-edit-qc, .oa-edit-worktype, .oa-edit-ordertype, .oa-edit-searchtype, .oa-edit-remarks, .oa-edit-qccomments, .oa-edit-eta, .oa-edit-general-instructions, .oa-edit-state, .oa-edit-county').forEach(el => {
                 el.style.display = 'block';
             });
             // Show the fees edit controls container
@@ -2088,7 +2152,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 qc_comments: popup.querySelector('.oa-edit-qccomments') ? popup.querySelector('.oa-edit-qccomments').value || '' : '',
                 qc_id: popup.querySelector('.oa-edit-qc') ? popup.querySelector('.oa-edit-qc').value || '' : '',
                 qc_name: popup.querySelector('.oa-edit-qc') ? (popup.querySelector('.oa-edit-qc').options[popup.querySelector('.oa-edit-qc').selectedIndex]?.text || '').replace('Select QC', '') : '',
-                fees: searchTypeSelect.value === 'Ground' ? vendorRatesSelect.value : feesInput.value
+                fees: searchTypeSelect.value === 'Ground' ? vendorRatesSelect.value : feesInput.value,
+                state: popup.querySelector('.oa-edit-state').value || '',
+                county: popup.querySelector('.oa-edit-county').value || ''
             };
             // Handle ETA
             const etaInput = popup.querySelector('.oa-edit-eta');
@@ -2130,7 +2196,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => {
                 if (!response.ok) {
                     return response.json().then(data => {
-                        throw new Error(data.error || data.detail || 'Failed to update order');
+                        const errMsg = (data.error && data.error.message) ? data.error.message : (data.message || data.detail || 'Error allocating task');
+                        throw new Error(errMsg);
                     });
                 }
                 return response.json();
@@ -2402,7 +2469,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const response = await fetch('/api/v1/allocations/');
+            const dateInput = document.getElementById('allocationDateFilter');
+            let query = '';
+            if (dateInput && dateInput.value) {
+                query = `?date=${encodeURIComponent(dateInput.value)}`;
+            }
+            
+            const response = await fetch(`/api/v1/allocations/${query}`);
             const data = await response.json();
             
             if (response.ok) {
@@ -2443,6 +2516,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
             fetchExistingOrders(true); // Pass true to indicate manual refresh
+        });
+    }
+
+    // Initialize date filter to today
+    const dateInput = document.getElementById('allocationDateFilter');
+    if (dateInput) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+
+        dateInput.addEventListener('change', () => {
+            fetchExistingOrders(true);
         });
     }
 

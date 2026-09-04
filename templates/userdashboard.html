@@ -453,6 +453,17 @@
         </div>
     </div>
 
+    <!-- End Shift Confirmation Popup -->
+    <div id="end-shift-popup" class="popup hidden">
+        <div class="popup-content">
+            <h2 style="margin-bottom: 20px; font-size: 17px; text-align: center; color: #333;">Are you sure you want to end your shift for the day?</h2>
+            <div>
+                <button id="confirm-end-shift" class="popup-btn" style="background-color: #dc3545; color: white;">Yes, End Shift</button>
+                <button id="cancel-end-shift" class="popup-btn">No, Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Side Navigation -->
     <div id="sidenav" class="side-nav">
         <ul class="nav-links">
@@ -1043,6 +1054,9 @@
                     <div class="action-buttons" style="display: flex; justify-content: center; gap: 15px;">
                         <button class="btn-shift btn-start-shift" id="btn-start-shift" onclick="startShift()" style="padding: 12px 30px; font-size: 1.1rem; border: none; border-radius: 25px; cursor: pointer; color: #fff; font-weight: 600; background-color: #28a745;">
                             <i class="fas fa-play"></i> Start Shift
+                        </button>
+                        <button class="btn-shift btn-resume-shift" id="btn-resume-shift" onclick="resumeShift()" style="display: none; padding: 12px 30px; font-size: 1.1rem; border: none; border-radius: 25px; cursor: pointer; color: #fff; font-weight: 600; background-color: #17a2b8;">
+                            <i class="fas fa-play-circle"></i> Resume
                         </button>
                         <button class="btn-shift btn-end-shift" id="btn-end-shift" onclick="endShift()" style="display: none; padding: 12px 30px; font-size: 1.1rem; border: none; border-radius: 25px; cursor: pointer; color: #fff; font-weight: 600; background-color: #dc3545;">
                             <i class="fas fa-stop"></i> End Shift

@@ -26,9 +26,18 @@ class AllocationService(BaseService):
         self.require_supervisor("Only a supervisor can allocate work.")
 
         allocation_id = data.get("allocation_id")
-        if allocation_id and BatchAllocation.objects.filter(
-            allocation_id=allocation_id
-        ).exists():
+        if not allocation_id:
+            last = BatchAllocation.objects.order_by("-pk").first()
+            if not last or not last.allocation_id.startswith("Task-"):
+                allocation_id = "Task-000001"
+            else:
+                try:
+                    num = int(last.allocation_id.replace("Task-", ""))
+                    allocation_id = f"Task-{num + 1:06d}"
+                except ValueError:
+                    allocation_id = "Task-000001"
+            data["allocation_id"] = allocation_id
+        elif BatchAllocation.objects.filter(allocation_id=allocation_id).exists():
             raise ConflictError(f"Allocation {allocation_id} already exists.")
 
         if not data.get("ar_number"):

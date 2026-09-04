@@ -14,11 +14,15 @@ $(document).ready(function () {
         ]
     });
 
-    // Load summary data by default
-    fetchSummaryData();
+    // Restore the last active tab
+    const lastActiveTab = sessionStorage.getItem('activeReportTab') || 'summary';
+    setTimeout(() => {
+        $(`.${lastActiveTab}-btn`).trigger('click');
+    }, 100);
 
     // Toggle button click handlers
     $('.summary-btn').click(function () {
+        sessionStorage.setItem('activeReportTab', 'summary');
         $(this).addClass('active');
         $('.report-btn').removeClass('active');
         $('.graphs-btn').removeClass('active');
@@ -31,6 +35,7 @@ $(document).ready(function () {
     });
 
     $('.report-btn').click(function () {
+        sessionStorage.setItem('activeReportTab', 'report');
         $(this).addClass('active');
         $('.summary-btn').removeClass('active');
         $('.graphs-btn').removeClass('active');
@@ -48,6 +53,7 @@ $(document).ready(function () {
     });
 
     $('.graphs-btn').click(function () {
+        sessionStorage.setItem('activeReportTab', 'graphs');
         $(this).addClass('active');
         $('.summary-btn').removeClass('active');
         $('.report-btn').removeClass('active');
@@ -761,12 +767,20 @@ $(document).ready(function () {
         dom: 'rt<"bottom"lip><"clear">',  // Customize the layout
         lengthMenu: [10, 25, 50, 100], // Define the length menu options
         columns: [
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                defaultContent: ''
+            },
             { data: 'emp_id' },
             { data: 'name' },
             {
                 data: 'start_time',
-                render: function (data) {
-                    return data ? data.split('T')[0] : '';
+                render: function (data, type, row) {
+                    if (data) return data.split('T')[0];
+                    if (row.date) return row.date.split('T')[0];
+                    return '';
                 }
             },
             {
@@ -796,6 +810,9 @@ $(document).ready(function () {
             {
                 data: null,
                 render: function (data) {
+                    if (data.status) {
+                        return data.status;
+                    }
                     if (data.is_paused) {
                         return `Paused${data.pause_reason ? ' (' + data.pause_reason + ')' : ''}`;
                     } else if (data.end_time) {
@@ -811,6 +828,13 @@ $(document).ready(function () {
                 $(row).addClass('paused-row');
             }
         }
+    });
+
+    table.on('draw.dt', function () {
+        const info = table.page.info();
+        table.column(0, { search: 'applied', order: 'applied', page: 'current' }).nodes().each(function (cell, i) {
+            cell.innerHTML = i + 1 + info.start;
+        });
     });
 
     // Move the length menu to the custom container
@@ -961,17 +985,31 @@ $(document).ready(function () {
     // Project filter change event
     $('#projectFilter').on('change', function () {
         const selectedProject = $(this).val();
-        table.column(5).search(selectedProject).draw();
-        
-        // Dynamically show/hide columns based on project
-        if (selectedProject && selectedProject.toUpperCase().includes('TITLE INDEXING')) {
-            table.column(8).visible(false, false); // Order No.
-            table.column(9).visible(true, false);  // Units Completed
-            table.column(11).visible(false, false); // Location
+        table.column(6).search(selectedProject).draw();
+
+        // Manage column visibility based on project selection
+        if (selectedProject === 'SOFTWARE' || selectedProject === 'software') {
+            table.column(1).visible(true, false); // Emp ID
+            table.column(2).visible(true, false); // Emp Name
+            table.column(3).visible(true, false); // Date
+            table.column(4).visible(false, false); // Start
+            table.column(5).visible(false, false); // End
+            table.column(6).visible(true, false); // Project
+            table.column(7).visible(false, false); // Client Code
+            table.column(8).visible(false, false); // WorkType
+            table.column(9).visible(false, false); // Order No.
+            table.column(10).visible(true, false);  // Units Completed
+            table.column(12).visible(false, false); // Location
+            table.column(13).visible(true, false); // Status
         } else {
-            table.column(8).visible(true, false);  // Order No.
-            table.column(9).visible(false, false); // Units Completed
-            table.column(11).visible(true, false);  // Location
+            table.column(4).visible(true, false); // Start
+            table.column(5).visible(true, false); // End
+            table.column(7).visible(true, false); // Client Code
+            table.column(8).visible(true, false); // WorkType
+            table.column(9).visible(true, false);  // Order No.
+            table.column(10).visible(false, false); // Units Completed
+            table.column(12).visible(true, false);  // Location
+            table.column(13).visible(true, false); // Status
         }
         table.columns.adjust().draw();
     });
@@ -979,7 +1017,7 @@ $(document).ready(function () {
     // Work Location filter change event
     $('#workLocationFilter').on('change', function () {
         const selectedWorkLocation = $(this).val();
-        table.column(11).search(selectedWorkLocation).draw(); // Assuming work_location is the 12th column
+        table.column(12).search(selectedWorkLocation).draw(); // Assuming work_location is the 13th column
     });
 
     // Search field keyup event
@@ -1019,13 +1057,16 @@ $(document).ready(function () {
             fetch(`/api/v1/allocations/indexing/`, { // We don't have date filters on indexing API yet, fetching all for now or the API ignores it.
                 headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
             }).then(res => res.json()),
+            fetch(`/api/v1/tracking/software-shifts/?from=${startDate}&to=${endDate}`, {
+                headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
+            }).then(res => res.json()),
             fetch('/api/v1/masters/projects/?active=true', { credentials: 'same-origin' }).then(r => r.json())
-        ]).then(([trackingRes, indexingRes, projRes]) => {
+        ]).then(([trackingRes, indexingRes, softwareShiftRes, projRes]) => {
             const rows1 = trackingRes.data || trackingRes;
             const rows2 = indexingRes.data || indexingRes;
+            const rows3 = softwareShiftRes.data || softwareShiftRes;
             const rawProjects = Array.isArray(projRes) ? projRes : (projRes.results || projRes.data || []);
 
-            // Format indexing data to match WorkSession shape
             const formattedRows2 = Array.isArray(rows2) ? rows2.map(item => {
                 return {
                     id: item.id,
@@ -1046,7 +1087,28 @@ $(document).ready(function () {
                 };
             }) : [];
 
-            const rows = [...(Array.isArray(rows1) ? rows1 : []), ...formattedRows2];
+            const formattedRows3 = Array.isArray(rows3) ? rows3.map(item => {
+                return {
+                    id: item.id,
+                    emp_id: item.emp_id || "",
+                    name: item.name || item.emp_id || "",
+                    project_name: item.project_name || 'SOFTWARE',
+                    client_code: item.client_code || "",
+                    work_type: item.work_type || "",
+                    batch: item.batch || "",
+                    units_completed: item.units_completed || 0,
+                    start_time: item.start_time || null,
+                    end_time: item.end_time || null,
+                    date: item.date || "",
+                    total_time: item.total_time || "00:00:00",
+                    work_location: item.work_location || "",
+                    is_paused: item.is_paused || false,
+                    type: item.type || 'software_shift',
+                    status: item.status
+                };
+            }) : [];
+
+            const rows = [...(Array.isArray(rows1) ? rows1 : []), ...formattedRows2, ...formattedRows3];
             table.clear();
             table.rows.add(rows).draw();
 
@@ -1478,6 +1540,7 @@ $(document).ready(function () {
     });
 
     $('.attendance-btn').click(function() {
+        sessionStorage.setItem('activeReportTab', 'attendance');
         $('.reports-toggle-btn span').removeClass('active');
         $(this).addClass('active');
         $('.summary-section, .reports-section, .graphs-section').hide();
@@ -1491,7 +1554,7 @@ $(document).ready(function () {
         
         $.get('/api/v1/masters/projects/', function(res) {
             let projects = res.data || res;
-            $('#attProjectFilter').empty().append('<option value="">All Projects</option>');
+            $('#attProjectFilter').empty().append('<option value="">Select Project</option>');
             projects.forEach(p => {
                 $('#attProjectFilter').append('<option value="' + p.project_name + '">' + p.project_name + '</option>');
             });
@@ -1524,7 +1587,7 @@ $(document).ready(function () {
                     return;
                 }
                 
-                data.forEach(function(row) {
+                data.forEach(function(row, index) {
                     let firstLogin = row.first_login ? new Date(row.first_login).toLocaleTimeString() : '-';
                     let lastLogout = row.last_logout ? new Date(row.last_logout).toLocaleTimeString() : '-';
                     
@@ -1540,6 +1603,7 @@ $(document).ready(function () {
 
                     tbody.append(`
                         <tr>
+                            <td>${index + 1}</td>
                             <td>${row.date}</td>
                             <td>${row.emp_id}</td>
                             <td>${row.emp_name}</td>

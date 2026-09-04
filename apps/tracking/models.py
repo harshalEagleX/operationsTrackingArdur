@@ -259,3 +259,37 @@ class Attendance(models.Model):
 
     def __str__(self) -> str:
         return f"{self.emp_id} - {self.date}: {self.status}"
+
+
+class SoftwareShift(models.Model):
+    """Timer records for the Software project shift tracker."""
+
+    id = models.AutoField(primary_key=True)
+    emp_id = models.CharField(max_length=20, db_index=True)
+    date = models.DateField(db_index=True)
+    total_time = models.CharField(max_length=20, default="00:00:00")
+    project_name = models.CharField(max_length=150, default="SOFTWARE")
+    
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    is_paused = models.BooleanField(default=False)
+    pause_start = models.DateTimeField(null=True, blank=True)
+    accumulated_seconds = models.FloatField(default=0.0)
+    is_ended = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(default=now_ist)
+    updated_at = models.DateTimeField(default=now_ist)
+
+    class Meta:
+        managed = legacy_managed()
+        db_table = "ot_software_shifts"
+        ordering = ["-date", "-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["emp_id", "date"],
+                name="uq_software_shift_emp_day",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.emp_id} - {self.date}: {self.total_time}"
