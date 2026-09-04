@@ -11,8 +11,8 @@ from core.timezone import now_ist
 
 class AllocationStatus(models.TextChoices):
     PENDING = "pending", "Pending"
-    IN_PROGRESS = "in_progress", "In progress"
-    SEND_FOR_QC = "send_for_qc", "Send for QC"
+    SEARCH_IN_PROGRESS = "search_in_progress", "Search In Progress"
+    READY_FOR_QC = "ready_for_qc", "Ready for QC"
     QC_IN_PROGRESS = "qc_in_progress", "QC In Progress"
     COMPLETED = "completed", "Completed"
     DISPATCH = "dispatch", "Dispatch"
@@ -39,7 +39,7 @@ class AllocationQuerySet(OwnedQuerySet):
 
     def open(self):
         return self.filter(
-            status__in=(AllocationStatus.PENDING, AllocationStatus.IN_PROGRESS, AllocationStatus.SEND_FOR_QC, AllocationStatus.QC_IN_PROGRESS)
+            status__in=(AllocationStatus.PENDING, AllocationStatus.SEARCH_IN_PROGRESS, AllocationStatus.READY_FOR_QC, AllocationStatus.QC_IN_PROGRESS)
         )
 
     def open_or_completed_today(self):
@@ -48,7 +48,7 @@ class AllocationQuerySet(OwnedQuerySet):
         today_start = now_ist().replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + datetime.timedelta(days=1)
         return self.filter(
-            Q(status__in=(AllocationStatus.PENDING, AllocationStatus.IN_PROGRESS, AllocationStatus.SEND_FOR_QC, AllocationStatus.QC_IN_PROGRESS)) |
+            Q(status__in=(AllocationStatus.PENDING, AllocationStatus.SEARCH_IN_PROGRESS, AllocationStatus.READY_FOR_QC, AllocationStatus.QC_IN_PROGRESS)) |
             Q(status__in=[AllocationStatus.COMPLETED, AllocationStatus.DISPATCH], completed_at__gte=today_start, completed_at__lt=today_end)
         )
 
@@ -159,7 +159,7 @@ class BatchAllocation(models.Model):
 
     @property
     def is_open(self) -> bool:
-        return self.status in (AllocationStatus.PENDING, AllocationStatus.IN_PROGRESS, AllocationStatus.QC_IN_PROGRESS)
+        return self.status in (AllocationStatus.PENDING, AllocationStatus.SEARCH_IN_PROGRESS, AllocationStatus.QC_IN_PROGRESS)
 
     @property
     def progress_percent(self) -> float:

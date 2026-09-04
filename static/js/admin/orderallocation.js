@@ -1,8 +1,10 @@
 function formatStatusDisplay(statusStr) {
     if (!statusStr) return '-';
     let s = statusStr.toLowerCase();
-    if (s === 'send_for_qc' || s === 'send__for__qc') return 'Send for QC';
-    if (s === 'in_progress' || s === 'in__progress') return 'In Progress';
+    if (s === 'ready_for_qc') return 'Ready for QC';
+    if (s === 'search_in_progress') return 'Search In Progress';
+    if (s === 'qc_in_progress') return 'QC In Progress';
+    if (s === 'completed') return 'Search Complete';
     return statusStr.replace(/_+/g, ' ');
 }
 
@@ -101,6 +103,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (typeof window.fetchExistingOrders === 'function') {
                             window.fetchExistingOrders();
                         }
+                        if (typeof window.fetchOrderSummary === 'function') {
+                            window.fetchOrderSummary();
+                        }
                     }
                 }
             });
@@ -116,6 +121,9 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 if (typeof window.fetchExistingOrders === 'function') {
                     window.fetchExistingOrders();
+                }
+                if (typeof window.fetchOrderSummary === 'function') {
+                    window.fetchOrderSummary();
                 }
             }, 0);
         }
@@ -1129,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const totalItems = allocationState.filteredOrders.length;
         if (totalItems === 0) {
-            resultsContainer.innerHTML = '<tr><td colspan="10" class="no-data">No orders allocated yet</td></tr>';
+            resultsContainer.innerHTML = '<tr><td colspan="11" class="no-data">No orders allocated yet</td></tr>';
             if (paginationInfo) paginationInfo.textContent = 'Showing 0 to 0 of 0 entries';
             if (paginationBtns) paginationBtns.innerHTML = '';
             return;
@@ -1148,13 +1156,13 @@ document.addEventListener('DOMContentLoaded', function() {
             paginationInfo.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${totalItems} entries`;
         }
 
-        const ordersList = pageItems.map(order => {
+        // Build an individual order <tr> row
+        function getOrderRow(order) {
             if (!order) return '';
-
             const taskId = order.taskId || order.task_id || order.allocation_id || '-';
             const clientCodeVal = order.client_code || order.clientCode || '-';
-            const clientCode = (window.clientCodeMap && window.clientCodeMap.has(clientCodeVal) && window.clientCodeMap.get(clientCodeVal)) 
-                               ? window.clientCodeMap.get(clientCodeVal) 
+            const clientCode = (window.clientCodeMap && window.clientCodeMap.has(clientCodeVal) && window.clientCodeMap.get(clientCodeVal))
+                               ? window.clientCodeMap.get(clientCodeVal)
                                : clientCodeVal;
             const workType = order.work_type || order.workType || '-';
             const batchId = order.batch_id || order.batchId || order.batch || '-';
@@ -1167,11 +1175,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const employeeName = order.employee_name || employeeMap.get(employeeId.toString()) || employeeId || '';
             const status = order.status || 'Pending';
 
-            // Build the "Assigned To" and "Assign QC To" cells.
-            // Completed/cancelled orders: plain non-clickable text to prevent 409 on reassign.
-            // All other orders: clickable trigger that opens the inline dropdown.
-            const isFinalState = status.toLowerCase() === 'completed' || status.toLowerCase() === 'cancelled' || status.toLowerCase() === 'dispatch';
-            const assignedToCell = isFinalState
+            const isOrderFinished = status.toLowerCase() === 'cancelled' || status.toLowerCase() === 'dispatch';
+            const isSearchCompleted = isOrderFinished || status.toLowerCase() === 'completed' || status.toLowerCase() === 'ready_for_qc' || status.toLowerCase() === 'qc_in_progress';
+            const assignedToCell = isSearchCompleted
                 ? `<span style="font-size:12px;color:#6b7280;">${employeeName || '-'}</span>`
                 : (employeeId
                     ? `<span class="oa-assign-trigger oa-assigned" data-task-id="${taskId}" data-assign-type="employee" title="Click to reassign">
@@ -1183,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const qcId = order.qc_id || order.qcId || '';
             const qcName = order.qc_name || employeeMap.get(qcId.toString()) || qcId || '';
-            const qcToCell = isFinalState
+            const qcToCell = isOrderFinished
                 ? `<span style="font-size:12px;color:#6b7280;">${qcName || '-'}</span>`
                 : (qcId
                     ? `<span class="oa-assign-trigger oa-assigned" data-task-id="${taskId}" data-assign-type="qc" title="Click to assign QC">
@@ -1213,9 +1219,176 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                 </tr>
             `;
-        }).filter(row => row).join('');
+        }
 
-        resultsContainer.innerHTML = ordersList;
+        // Group page items by client_code, preserving first-seen order
+        const groups = {};
+        const groupOrder = [];
+        pageItems.forEach(order => {
+            const codeVal = order.client_code || order.clientCode || '-';
+            if (!groups[codeVal]) {
+                groups[codeVal] = [];
+                groupOrder.push(codeVal);
+            }
+            groups[codeVal].push(order);
+        });
+
+        let html = '';
+        groupOrder.forEach(codeVal => {
+            const orders = groups[codeVal];
+            const clientName = (window.clientCodeMap && window.clientCodeMap.has(codeVal) && window.clientCodeMap.get(codeVal))
+                               ? window.clientCodeMap.get(codeVal)
+                               : codeVal;
+
+            const total = orders.length;
+            const assigned = orders.filter(o => !!(o.employee_id || o.employeeId || '')).length;
+            const notAssigned = total - assigned;
+            const completed = orders.filter(o => {
+                const s = (o.status || '').toLowerCase();
+                return s === 'completed' || s === 'dispatch';
+            }).length;
+            const dispatched = orders.filter(o => (o.status || '').toLowerCase() === 'dispatch').length;
+            const cancelled = orders.filter(o => {
+                const s = (o.status || '').toLowerCase();
+                return s === 'cancelled' || s === 'on_hold';
+            }).length;
+            const searcherDone = orders.filter(o => {
+                const s = (o.status || '').toLowerCase();
+                return s === 'ready_for_qc' || s === 'qc_in_progress' || s === 'completed' || s === 'dispatch';
+            }).length;
+
+            const groupId = `client-group-${codeVal.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+            html += `
+                <tr class="client-group-header" data-group="${groupId}" style="background:#f0f4ff; border-left: 4px solid #4f46e5;">
+                    <td colspan="11" style="padding: 10px 14px; border-left: 4px solid #4f46e5;">
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <span style="font-size:14px; font-weight:700; color:#1e1b4b; display:flex; align-items:center; gap:6px; min-width:130px; white-space:nowrap;">
+                                <i class="fas fa-building" style="color:#4f46e5;"></i> ${clientName}
+                                <i class="fas fa-chevron-down client-group-chevron" style="font-size:10px; margin-left:4px; color:#6b7280; transition:transform 0.25s;"></i>
+                            </span>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:13px;">
+                                <span class="client-filter-badge" data-group="${groupId}" data-filter="all" style="background:#e0e7ff; color:#3730a3; border-radius:20px; padding:4px 14px; font-weight:600; white-space:nowrap; cursor:pointer; transition:box-shadow 0.15s;">
+                                    <i class="fas fa-inbox" style="margin-right:4px;"></i>Received: ${total}
+                                </span>
+                                <span class="client-filter-badge" data-group="${groupId}" data-filter="assigned" style="background:#dbeafe; color:#1d4ed8; border-radius:20px; padding:4px 14px; font-weight:600; white-space:nowrap; cursor:pointer; transition:box-shadow 0.15s;">
+                                    <i class="fas fa-user-check" style="margin-right:4px;"></i>Assigned: ${assigned}
+                                </span>
+                                <span class="client-filter-badge" data-group="${groupId}" data-filter="unassigned" style="background:#fee2e2; color:#b91c1c; border-radius:20px; padding:4px 14px; font-weight:600; white-space:nowrap; cursor:pointer; transition:box-shadow 0.15s;">
+                                    <i class="fas fa-user-slash" style="margin-right:4px;"></i>Unassigned: ${notAssigned}
+                                </span>
+                                <span class="client-filter-badge" data-group="${groupId}" data-filter="searcher_done" style="background:#fef3c7; color:#92400e; border-radius:20px; padding:4px 14px; font-weight:600; white-space:nowrap; cursor:pointer; transition:box-shadow 0.15s;">
+                                    <i class="fas fa-search" style="margin-right:4px;"></i>Searcher Done: ${searcherDone}
+                                </span>
+                                <span class="client-filter-badge" data-group="${groupId}" data-filter="completed" style="background:#ede9fe; color:#5b21b6; border-radius:20px; padding:4px 14px; font-weight:600; white-space:nowrap; cursor:pointer; transition:box-shadow 0.15s;">
+                                    <i class="fas fa-check-double" style="margin-right:4px;"></i>Search Complete: ${completed}
+                                </span>
+                                <span class="client-filter-badge" data-group="${groupId}" data-filter="dispatched" style="background:#d1fae5; color:#065f46; border-radius:20px; padding:4px 14px; font-weight:600; white-space:nowrap; cursor:pointer; transition:box-shadow 0.15s;">
+                                    <i class="fas fa-paper-plane" style="margin-right:4px;"></i>Dispatched: ${dispatched}
+                                </span>
+                                <span class="client-filter-badge" data-group="${groupId}" data-filter="cancelled" style="background:#f1f5f9; color:#475569; border-radius:20px; padding:4px 14px; font-weight:600; white-space:nowrap; cursor:pointer; transition:box-shadow 0.15s;">
+                                    <i class="fas fa-ban" style="margin-right:4px;"></i>Cancelled/Hold: ${cancelled}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            orders.forEach(order => { html += getOrderRow(order); });
+        });
+
+        resultsContainer.innerHTML = html;
+
+        // ── Badge filter: click a pill to show only matching order rows for that client ──
+        const activeFilters = {}; // groupId -> currently active filter
+
+        function applyGroupFilter(groupId, filter) {
+            const headerRow = resultsContainer.querySelector(`.client-group-header[data-group="${groupId}"]`);
+            if (!headerRow) return;
+
+            // Toggle: clicking the active filter again resets to 'all'
+            if (activeFilters[groupId] === filter && filter !== 'all') {
+                filter = 'all';
+            }
+            activeFilters[groupId] = filter;
+
+            // Update badge active state
+            resultsContainer.querySelectorAll(`.client-filter-badge[data-group="${groupId}"]`).forEach(badge => {
+                const isActive = badge.dataset.filter === filter;
+                badge.style.outline = isActive && filter !== 'all' ? '2px solid currentColor' : 'none';
+                badge.style.outlineOffset = '1px';
+            });
+
+            // Show/hide order rows for this group
+            let sibling = headerRow.nextElementSibling;
+            while (sibling && !sibling.classList.contains('client-group-header')) {
+                const status = (sibling.querySelector('.status-badge')?.textContent || '').trim().toLowerCase().replace(/\s+/g, '_');
+                const empCell = sibling.querySelector('.oa-assign-cell[data-assign-type="employee"]');
+                const hasEmployee = empCell && empCell.dataset.employeeId && empCell.dataset.employeeId.trim() !== '';
+
+                let visible = false;
+                switch (filter) {
+                    case 'all':
+                        visible = true;
+                        break;
+                    case 'assigned':
+                        visible = hasEmployee;
+                        break;
+                    case 'unassigned':
+                        visible = !hasEmployee;
+                        break;
+                    case 'searcher_done':
+                        visible = ['ready_for_qc', 'qc_in_progress', 'search_complete', 'completed', 'dispatch'].some(s => status.includes(s));
+                        break;
+                    case 'completed':
+                        visible = status.includes('search_complete') || status.includes('completed') || status.includes('dispatch');
+                        break;
+                    case 'dispatched':
+                        visible = status.includes('dispatch');
+                        break;
+                    case 'cancelled':
+                        visible = status.includes('cancelled') || status.includes('on_hold') || status.includes('hold');
+                        break;
+                    default:
+                        visible = true;
+                }
+
+                sibling.style.display = visible ? '' : 'none';
+                sibling = sibling.nextElementSibling;
+            }
+        }
+
+        resultsContainer.querySelectorAll('.client-filter-badge').forEach(badge => {
+            badge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                applyGroupFilter(badge.dataset.group, badge.dataset.filter);
+            });
+        });
+
+        resultsContainer.querySelectorAll('.client-group-chevron').forEach(chevron => {
+            // Make it look clickable
+            chevron.style.cursor = 'pointer';
+            chevron.style.padding = '4px 6px';
+            chevron.style.borderRadius = '4px';
+
+            chevron.addEventListener('mouseenter', () => { chevron.style.background = 'rgba(79,70,229,0.12)'; });
+            chevron.addEventListener('mouseleave', () => { chevron.style.background = ''; });
+
+            chevron.addEventListener('click', (e) => {
+                e.stopPropagation(); // prevent any parent row handlers
+                const headerRow = chevron.closest('.client-group-header');
+                if (!headerRow) return;
+                let sibling = headerRow.nextElementSibling;
+                let collapsed = null;
+                while (sibling && !sibling.classList.contains('client-group-header')) {
+                    if (collapsed === null) collapsed = sibling.style.display !== 'none';
+                    sibling.style.display = collapsed ? 'none' : '';
+                    sibling = sibling.nextElementSibling;
+                }
+                chevron.style.transform = collapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            });
+        });
 
         if (paginationBtns) {
             renderPaginationButtons(paginationBtns, allocationState.currentPage, totalPages);
@@ -1330,6 +1503,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 const row = cell.closest('tr.order-row');
                 if (assignType === 'employee' && row) {
                     row.dataset.employeeId = newEmpId;
+                }
+
+                // If QC was assigned, update status badge if status changed (e.g. completed -> ready_for_qc)
+                const updatedStatus = data.data?.status || data.status;
+                if (updatedStatus && row) {
+                    const statusBadgeEl = row.querySelector('.status-cell .status-badge');
+                    if (statusBadgeEl) {
+                        statusBadgeEl.className = `status-badge ${updatedStatus.toLowerCase()}`;
+                        statusBadgeEl.textContent = formatStatusDisplay(updatedStatus);
+                    }
+                }
+
+                // Keep allocationState up to date if available
+                if (typeof allocationState !== 'undefined' && allocationState.allOrders) {
+                    const existingOrder = allocationState.allOrders.find(o => 
+                        (o.allocation_id || o.order_id || o.taskId || o.id) == taskId
+                    );
+                    if (existingOrder) {
+                        if (assignType === 'qc') {
+                            existingOrder.qc_id = newEmpId;
+                            existingOrder.qc_name = newEmpName;
+                            if (updatedStatus) existingOrder.status = updatedStatus;
+                        } else {
+                            existingOrder.employee_id = newEmpId;
+                            existingOrder.employee_name = newEmpName;
+                        }
+                    }
                 }
 
                 // Send chat notification to the newly assigned employee.
@@ -1647,8 +1847,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const dispatchDate = order.dispatch_date ? new Date(order.dispatch_date).toLocaleString() : '-';
         
         const statusStr = order.status || 'Pending';
-        const isFinalState = statusStr.toLowerCase() === 'completed' || statusStr.toLowerCase() === 'cancelled' || statusStr.toLowerCase() === 'dispatch';
-        const editableClass = isFinalState ? '' : 'editable';
+        const statusStrLower = statusStr.toLowerCase();
+        const isOrderFinished = statusStrLower === 'cancelled' || statusStrLower === 'dispatch';
+        const isSearchCompleted = isOrderFinished || ['completed', 'ready_for_qc', 'qc_in_progress'].includes(statusStrLower);
+        const editableSearcherClass = isSearchCompleted ? '' : 'editable';
+        const editableQcClass = isOrderFinished ? '' : 'editable';
         // Remove any existing popups
         const existingPopup = document.querySelector('.oa-details-popup');
         if (existingPopup) {
@@ -1775,7 +1978,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="oa-display-value">${order.county || '-'}</span>
                             </div>
                         </div>
-                        <div class="oa-detail-item ${editableClass}">
+                        <div class="oa-detail-item ${editableSearcherClass}">
                             <div class="oa-detail-label">Assigned To</div>
                             <div class="oa-detail-value">
                                 <select class="oa-edit-employee" style="display: none;">
@@ -1784,7 +1987,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="oa-display-value">${order.employeeName || '-'}</span>
                             </div>
                         </div>
-                        <div class="oa-detail-item ${editableClass}">
+                        <div class="oa-detail-item ${editableQcClass}">
                             <div class="oa-detail-label">Assign QC To</div>
                             <div class="oa-detail-value">
                                 <select class="oa-edit-qc" style="display: none;">
@@ -2507,6 +2710,85 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Make fetchExistingOrders available globally
     window.fetchExistingOrders = fetchExistingOrders;
+
+    window.fetchOrderSummary = async function fetchOrderSummary(isManualRefresh = false) {
+        try {
+            const summaryDateInput = document.getElementById('summaryDateFilter');
+            let query = '';
+            if (summaryDateInput && summaryDateInput.value) {
+                query = `?date=${encodeURIComponent(summaryDateInput.value)}`;
+            }
+            
+            const response = await fetch(`/api/v1/allocations/summary/${query}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                const tbody = document.getElementById('summary-table-body');
+                if (!tbody) return;
+                
+                tbody.innerHTML = '';
+                const results = data.data || data;
+                
+                if (!results || results.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center;">No orders found for this date.</td></tr>`;
+                    return;
+                }
+                
+                results.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.style.cursor = 'pointer';
+                    
+                    // Add click event to filter main table
+                    tr.addEventListener('click', () => {
+                        const searchInput = document.getElementById('allocationSearchInput');
+                        if (searchInput) {
+                            searchInput.value = item.client_name || item.client_code;
+                            // Trigger search
+                            const inputEvent = new Event('input', { bubbles: true });
+                            searchInput.dispatchEvent(inputEvent);
+                            
+                            // Scroll to main table
+                            document.querySelector('.allocation-table').scrollIntoView({ behavior: 'smooth' });
+                        }
+                    });
+                    
+                    tr.innerHTML = `
+                        <td style="font-weight: 500;">${item.client_name || item.client_code}</td>
+                        <td><span class="badge" style="background: #e2e8f0; color: #475569;">${item.total}</span></td>
+                        <td><span class="badge" style="background: #dbeafe; color: #1e40af;">${item.assigned}</span></td>
+                        <td><span class="badge" style="background: #fee2e2; color: #b91c1c;">${item.not_assigned}</span></td>
+                        <td><span class="badge" style="background: #fef3c7; color: #b45309;">${item.search_completed}</span></td>
+                        <td><span class="badge" style="background: #dcfce7; color: #15803d;">${item.qc_completed}</span></td>
+                        <td><span class="badge" style="background: #e0e7ff; color: #4338ca;">${item.dispatched}</span></td>
+                        <td><span class="badge" style="background: #f1f5f9; color: #64748b;">${item.cancelled_hold}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching order summary:', error);
+            const tbody = document.getElementById('summary-table-body');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">Failed to load summary.</td></tr>`;
+            }
+        }
+    }
+
+    // Initialize summary date filter
+    const summaryDateInput = document.getElementById('summaryDateFilter');
+    if (summaryDateInput) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        summaryDateInput.value = `${yyyy}-${mm}-${dd}`;
+
+        summaryDateInput.addEventListener('change', () => {
+            if (typeof window.fetchOrderSummary === 'function') {
+                window.fetchOrderSummary(true);
+            }
+        });
+    }
 
     // Start auto-refresh when the page loads
     startAutoRefresh();

@@ -1,6 +1,15 @@
 from django.contrib import admin
 
-from apps.allocations.models import BatchAllocation, OrderHistory, TitleIndexingSession
+from apps.allocations.models import BatchAllocation, OrderHistory, OrderRate, TitleIndexingSession
+
+
+@admin.register(OrderRate)
+class OrderRateAdmin(admin.ModelAdmin):
+    list_display = ("order_type", "state", "stateabr", "county", "vendor_rts", "eta_rts", "vendor_slt", "eta_slt", "remark")
+    list_filter = ("order_type", "state")
+    search_fields = ("order_type", "state", "county", "stateabr")
+    ordering = ("order_type", "state", "county")
+
 
 
 @admin.register(BatchAllocation)

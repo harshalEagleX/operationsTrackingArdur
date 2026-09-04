@@ -107,13 +107,13 @@ class AllocationService(BaseService):
                 )
             allocation.completed_quantity = completed_quantity
 
-        if status == AllocationStatus.IN_PROGRESS and not allocation.started_at:
+        if status == AllocationStatus.SEARCH_IN_PROGRESS and not allocation.started_at:
             allocation.started_at = now_ist()
             
         if status == AllocationStatus.QC_IN_PROGRESS and not allocation.qc_started_at:
             allocation.qc_started_at = now_ist()
 
-        if status in (AllocationStatus.COMPLETED, AllocationStatus.SEND_FOR_QC, AllocationStatus.DISPATCH) and not allocation.completed_at:
+        if status in (AllocationStatus.COMPLETED, AllocationStatus.READY_FOR_QC, AllocationStatus.DISPATCH) and not allocation.completed_at:
             allocation.completed_at = now_ist()
             if allocation.started_at:
                 delta = allocation.completed_at - allocation.started_at

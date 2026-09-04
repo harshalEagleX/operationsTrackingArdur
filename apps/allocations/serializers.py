@@ -99,6 +99,30 @@ class AllocationWriteSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
             update_fields.append(attr)
         
+        # If QC is assigned to an order that was in COMPLETED (Search Complete) status, transition to READY_FOR_QC
+        if "qc_id" in validated_data and validated_data["qc_id"]:
+            if instance.status == AllocationStatus.COMPLETED:
+                from_status = instance.status
+                instance.status = AllocationStatus.READY_FOR_QC
+                update_fields.append("status")
+                try:
+                    from core.utils import now_ist
+                    req = self.context.get("request")
+                    emp_actor = req.user.emp_id if req and hasattr(req, "user") and hasattr(req.user, "emp_id") else "admin"
+                    OrderHistory.objects.create(
+                        allocation_id=instance.allocation_id,
+                        order_id=instance.order_id,
+                        employee_id=instance.employee_id,
+                        action="status_ready_for_qc",
+                        from_status=from_status,
+                        to_status=AllocationStatus.READY_FOR_QC,
+                        remarks=f"QC assigned to {instance.qc_name or instance.qc_id}",
+                        performed_by=emp_actor,
+                        created_at=now_ist(),
+                    )
+                except Exception:
+                    pass
+        
         if update_fields:
             instance.save(update_fields=update_fields)
         return instance

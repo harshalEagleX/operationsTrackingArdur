@@ -167,7 +167,7 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         # User is the QC person, only show when it reaches QC or later
         from apps.allocations.models import AllocationStatus
         cond_qc = Q(qc_id=emp_id) & Q(status__in=[
-            AllocationStatus.SEND_FOR_QC,
+            AllocationStatus.READY_FOR_QC,
             AllocationStatus.QC_IN_PROGRESS,
             AllocationStatus.COMPLETED,
         ])
@@ -180,6 +180,46 @@ class AllocationViewSet(ServiceMixin, EnvelopeMixin, viewsets.ModelViewSet):
         """Return the next auto-generated ar_number."""
         return self.ok({"next_ar_number": BatchAllocation.generate_ar_number()})
 
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        """Returns client-wise aggregation of order statuses for a given date."""
+        from django.db.models import Count, Q
+        from apps.allocations.models import AllocationStatus
+        
+        queryset = self.get_queryset()
+        
+        # We assume get_queryset already applied the date filter (if provided)
+        # However, get_queryset limits date using `startswith`, we might want to group by client_code.
+        summary_data = queryset.values('client_code').annotate(
+            total=Count('id'),
+            assigned=Count('id', filter=Q(employee_id__gt='')),
+            not_assigned=Count('id', filter=Q(employee_id='')),
+            search_completed=Count('id', filter=Q(status__in=[
+                AllocationStatus.READY_FOR_QC, 
+                AllocationStatus.QC_IN_PROGRESS, 
+                AllocationStatus.COMPLETED, 
+                AllocationStatus.DISPATCH
+            ])),
+            qc_completed=Count('id', filter=Q(status__in=[
+                AllocationStatus.COMPLETED, 
+                AllocationStatus.DISPATCH
+            ])),
+            dispatched=Count('id', filter=Q(status=AllocationStatus.DISPATCH)),
+            cancelled_hold=Count('id', filter=Q(status__in=[
+                AllocationStatus.CANCELLED,
+                AllocationStatus.ON_HOLD
+            ]))
+        ).order_by('client_code')
+        
+        # Now fetch client names
+        from apps.masters.models import ClientCode
+        client_codes = [s['client_code'] for s in summary_data]
+        clients = {c.client_code: c.client_name for c in ClientCode.objects.filter(client_code__in=client_codes)}
+        
+        for item in summary_data:
+            item['client_name'] = clients.get(item['client_code'], item['client_code'])
+            
+        return self.ok(list(summary_data))
 
 class OrderHistoryViewSet(EnvelopeMixin, viewsets.ReadOnlyModelViewSet):
     """/api/v1/allocations/history/ — the audit trail, supervisors only."""
